@@ -54,9 +54,9 @@ describe('TimeSlot', () => {
 ```ts
 it('rejeita agendamento em slot ocupado sem persistir nada', async () => {
   const repo = new InMemoryAppointmentRepository([anAppointment({ startsAt: '2026-08-20T14:00:00Z' })]);
-  const useCase = new ScheduleAppointmentUseCase(repo, new AvailabilityCalculator(repo, fixedHours), fakeUow, fakeIds);
+  const service = new ScheduleAppointmentService(repo, new AvailabilityCalculator(repo, fixedHours), fakeUow, fakeIds);
 
-  await expect(useCase.execute(overlappingInput())).rejects.toThrow(SlotUnavailableError);
+  await expect(service.execute(overlappingInput())).rejects.toThrow(SlotUnavailableError);
   expect(repo.all()).toHaveLength(1);
   expect(fakeUow.publishedEvents).toHaveLength(0);
 });
@@ -98,7 +98,7 @@ describe('RLS de pacientes', () => {
 ```ts
 it('impede dois agendamentos simultâneos para o mesmo profissional', async () => {
   const input = { professionalId, startsAt: at('14:00'), endsAt: at('14:40') };
-  const results = await Promise.allSettled([scheduleUseCase.execute(input), scheduleUseCase.execute(input)]);
+  const results = await Promise.allSettled([scheduleService.execute(input), scheduleService.execute(input)]);
 
   expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
   expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
@@ -154,9 +154,9 @@ it('processa o mesmo wamid apenas uma vez', async () => {
 
 | Escopo | Mínimo | Racional |
 | --- | --- | --- |
-| `domain/` | 90% | É onde está a regra; teste barato |
-| `application/` | 85% | Orquestração e erros |
-| `infrastructure/` | 60% | Coberto indiretamente por integração |
+| `models/` (domínio) | 90% | É onde está a regra; teste barato |
+| `services/` (aplicação) | 85% | Orquestração e erros |
+| `repositories/`, `controllers/`, `jobs/` | 60% | Cobertos indiretamente por integração |
 | Frontend (hooks/utils) | 70% | Componentes visuais cobertos por e2e |
 | Global | 80% | Guarda geral |
 
@@ -176,16 +176,21 @@ Cobertura é piso, não meta de vaidade: PR que sobe cobertura sem testar compor
 Regras de lint que valem citar explicitamente:
 
 ```js
-// packages/config/eslint/boundaries.js
+// eslint.config.js — fronteiras (ver doc 16)
 'boundaries/element-types': ['error', { default: 'disallow', rules: [
-  { from: 'domain',         allow: ['domain'] },
-  { from: 'application',    allow: ['domain', 'application'] },
-  { from: 'infrastructure', allow: ['domain', 'application', 'infrastructure'] },
+  { from: 'models',       allow: ['models'] },
+  { from: 'services',     allow: ['models', 'services', 'interfaces', 'repositories-contract'] },
+  { from: 'controllers',  allow: ['models', 'services', 'schemas', 'interfaces'] },
+  { from: 'repositories', allow: ['models', 'interfaces', 'repositories'] },
 ]}],
 'import/no-restricted-paths': ['error', { zones: [
-  { target: './src/modules/*/domain',      from: './node_modules/@prisma', message: 'domain não conhece ORM' },
-  { target: './src/modules/*/domain',      from: './node_modules/express', message: 'domain não conhece HTTP' },
-  { target: './src/modules/!(platform)/**', from: './src/modules/*/domain', except: ['./public-api.ts'] },
+  { target: './src/modules/*/models', from: './node_modules/@prisma',  message: 'models não conhece ORM' },
+  { target: './src/modules/*/models', from: './node_modules/express',  message: 'models não conhece HTTP' },
+  { target: './src/modules/*/models', from: './node_modules/zod',      message: 'validação de entrada é em schemas/' },
+  { target: './src/modules/*/services', from: './src/modules/*/repositories/prisma-*.ts',
+    message: 'service depende do contrato, não da implementação' },
+  // cruzar módulo apenas pelo <dominio>_public.ts
+  { target: './src/modules/**', from: './src/modules/*/!(*_public.ts)' },
 ]}],
 ```
 

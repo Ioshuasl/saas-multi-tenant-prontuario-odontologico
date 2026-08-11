@@ -72,17 +72,17 @@ Regras não negociáveis:
 
 | Use case | Regras principais |
 | --- | --- |
-| `SignUpUseCase` | Cria `Tenant` + `Unit` padrão + `User` + `Membership(OWNER)` + seeds (procedimentos, horários, anamnese padrão) em uma transação; publica `identity.tenant_created` |
-| `SignInUseCase` | Valida senha (tempo constante), zera contador de falhas, emite access+refresh, registra `LOGIN` |
-| `RefreshTokenUseCase` | Rotação com detecção de reuso; revoga família em caso de reuso e registra alerta |
-| `SignOutUseCase` / `SignOutAllUseCase` | Revoga token atual / toda a família do usuário |
-| `RequestPasswordResetUseCase` | Sempre responde 202 (não revela existência); token de 1h de uso único |
-| `ResetPasswordUseCase` | Aplica nova senha, revoga todas as sessões, notifica por e-mail |
-| `InviteMemberUseCase` | Verifica limite do plano (`PLAN_LIMIT_EXCEEDED`), impede duplicidade, envia e-mail |
-| `AcceptInvitationUseCase` | Cria (ou vincula) `User` e cria `Membership`; consome o token |
-| `ChangeMemberRoleUseCase` | Impede remover o último OWNER; audita mudança |
-| `DeactivateMemberUseCase` | Revoga sessões do membro; mantém histórico (nunca apaga autoria de evolução) |
-| `SwitchTenantUseCase` | Emite novo access token para outro membership válido |
+| `SignUpService` | Cria `Tenant` + `Unit` padrão + `User` + `Membership(OWNER)` + seeds (procedimentos, horários, anamnese padrão) em uma transação; publica `identity.tenant_created` |
+| `SignInService` | Valida senha (tempo constante), zera contador de falhas, emite access+refresh, registra `LOGIN` |
+| `RefreshTokenService` | Rotação com detecção de reuso; revoga família em caso de reuso e registra alerta |
+| `SignOutService` / `SignOutAllService` | Revoga token atual / toda a família do usuário |
+| `RequestPasswordResetService` | Sempre responde 202 (não revela existência); token de 1h de uso único |
+| `ResetPasswordService` | Aplica nova senha, revoga todas as sessões, notifica por e-mail |
+| `InviteMemberService` | Verifica limite do plano (`PLAN_LIMIT_EXCEEDED`), impede duplicidade, envia e-mail |
+| `AcceptInvitationService` | Cria (ou vincula) `User` e cria `Membership`; consome o token |
+| `ChangeMemberRoleService` | Impede remover o último OWNER; audita mudança |
+| `DeactivateMemberService` | Revoga sessões do membro; mantém histórico (nunca apaga autoria de evolução) |
+| `SwitchTenantService` | Emite novo access token para outro membership válido |
 
 ## 5. Endpoints
 

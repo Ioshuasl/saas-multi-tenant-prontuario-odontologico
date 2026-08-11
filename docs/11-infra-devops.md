@@ -75,7 +75,7 @@ Scripts padronizados na raiz: `dev`, `build`, `lint`, `typecheck`, `test`, `test
 Validação de ambiente na inicialização — a aplicação **não sobe** com configuração inválida:
 
 ```ts
-// apps/api/src/config/env.ts
+// backend/src/shared/config/env.ts
 export const env = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']),
   PORT: z.coerce.number().default(3333),
@@ -110,7 +110,7 @@ jobs:
       - pnpm lint                        # ESLint + regras de fronteira de módulo
       - pnpm typecheck                   # tsc --noEmit em todos os pacotes
       - pnpm arch:check                  # dependency-cruiser (Clean Architecture)
-      - pnpm test -- --coverage          # Vitest unit (domain/application)
+      - pnpm test -- --coverage          # Vitest unit (models/services)
       - pnpm audit --audit-level=high
       - gitleaks detect
   integration:

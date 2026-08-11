@@ -64,9 +64,9 @@ Este vocabulário é obrigatório em código, banco, API e conversas. Se um term
 | Bounded context | Fronteira de significado; aqui, um módulo do monólito |
 | Evento de domínio | Fato ocorrido no domínio, em passado (`AppointmentScheduled`) |
 | Outbox | Tabela que grava eventos na mesma transação do agregado, garantindo entrega |
-| Use case | Operação de aplicação que orquestra domínio e ports (`ScheduleAppointmentUseCase`) |
+| Use case (caso de uso) | Operação de aplicação que orquestra domínio e ports; no código vive em `services/` com sufixo `Service` (`ScheduleAppointmentService`) |
 | Port | Interface de dependência externa definida pelo domínio/aplicação |
-| Adapter | Implementação concreta de um port em `infrastructure` |
+| Adapter | Implementação concreta de um port (`repositories/prisma-*`, `shared/integrations/`) |
 | Repositório | Port de persistência de um agregado |
 | Unit of Work | Abstração de transação que agrupa escritas + publicação de eventos |
 | RLS (Row Level Security) | Filtro de linhas aplicado pelo PostgreSQL por política |
@@ -85,8 +85,8 @@ Este vocabulário é obrigatório em código, banco, API e conversas. Se um term
 | --- | --- | --- |
 | Tabelas e colunas | `snake_case`, singular | `clinical_note`, `starts_at` |
 | Payload de API | `camelCase` | `startsAt`, `totalCents` |
-| Classes | `PascalCase` | `ScheduleAppointmentUseCase` |
-| Arquivos | `kebab-case` com sufixo de papel | `appointment.repository.ts`, `schedule-appointment.usecase.ts` |
+| Classes | `PascalCase` | `ScheduleAppointmentService` |
+| Arquivos | `kebab-case` com sufixo de papel | `appointment.repository.ts`, `schedule-appointment.service.ts` |
 | Eventos | `<modulo>.<entidade>_<verbo_passado>` | `scheduling.appointment_scheduled` |
 | Códigos de erro | `SCREAMING_SNAKE_CASE` estável | `SLOT_UNAVAILABLE` |
 | Jobs/filas | `kebab-case` verbal | `send-whatsapp-message` |
@@ -105,6 +105,6 @@ Este vocabulário é obrigatório em código, banco, API e conversas. Se um term
 | "Consulta" como tabela | `Appointment` (agendamento) | Consulta é o ato; agendamento é o registro |
 | "Ficha" | `MedicalRecord` | "Ficha" remete ao papel |
 | "Assinatura" sem qualificar | `Subscription` (SaaS) vs `Signature` (documento) | Ambiguidade grave em código |
-| "Serviço" para procedimento | `Procedure` | `Service` é termo técnico de camada |
+| "Serviço" para procedimento | `Procedure` | `Service` é termo técnico: caso de uso em `services/` |
 | "Cancelado" para falta | `NO_SHOW` | Falta e cancelamento têm consequências diferentes |
 | "Deletar" dado clínico | `amend` / `anonymize` / `inactivate` | Dado clínico não se apaga |

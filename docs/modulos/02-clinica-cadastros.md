@@ -53,19 +53,19 @@ Preços ficam em zero no seed (a clínica define os seus) — sugerir preço ser
 
 | Use case | Observações |
 | --- | --- |
-| `UpdateClinicProfileUseCase` | Valida CNPJ/CPF e timezone; audita alteração |
-| `CreateUnitUseCase` | Verifica limite do plano; cria horários padrão |
-| `SetBusinessHoursUseCase` | Substituição atômica da grade semanal; valida sobreposição; alerta se há agendamentos futuros fora do novo horário (não cancela nada automaticamente) |
-| `AddBusinessHoursExceptionUseCase` | Feriado/férias; lista agendamentos afetados para decisão manual |
-| `CreateProcedureUseCase` / `UpdateProcedureUseCase` | Código único; alteração de preço não retroage |
-| `ImportProcedureCatalogUseCase` | Idempotente por código; não sobrescreve procedimento existente |
-| `CreateProfessionalUseCase` | Vincula a um membership; valida CRO; atribui cor livre |
-| `DeactivateProcedureUseCase` | Bloqueia se há itens de tratamento `PLANNED` referenciando (sugere substituição) |
+| `UpdateClinicProfileService` | Valida CNPJ/CPF e timezone; audita alteração |
+| `CreateUnitService` | Verifica limite do plano; cria horários padrão |
+| `SetBusinessHoursService` | Substituição atômica da grade semanal; valida sobreposição; alerta se há agendamentos futuros fora do novo horário (não cancela nada automaticamente) |
+| `AddBusinessHoursExceptionService` | Feriado/férias; lista agendamentos afetados para decisão manual |
+| `CreateProcedureService` / `UpdateProcedureService` | Código único; alteração de preço não retroage |
+| `ImportProcedureCatalogService` | Idempotente por código; não sobrescreve procedimento existente |
+| `CreateProfessionalService` | Vincula a um membership; valida CRO; atribui cor livre |
+| `DeactivateProcedureService` | Bloqueia se há itens de tratamento `PLANNED` referenciando (sugere substituição) |
 
 ## 6. API pública do módulo (consumida por outros módulos)
 
 ```ts
-// modules/clinic/public-api.ts
+// modules/clinic/clinic_public.ts
 export interface ClinicModuleApi {
   getTenantSettings(tenantId: TenantId): Promise<{ timezone: string; slug: string; name: string }>;
   getProcedure(tenantId: TenantId, procedureId: EntityId): Promise<ProcedureSummary | null>;

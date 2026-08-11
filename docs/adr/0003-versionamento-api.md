@@ -17,19 +17,20 @@ Alternativas: prefixo de URL (`/api/v1`), cabeçalho customizado (`X-API-Version
 2. Mudanças **aditivas** não mudam a versão: novo endpoint, novo campo opcional na resposta, novo parâmetro opcional, novo valor de enum **em campo que o cliente já trata como aberto**.
 3. Mudanças **incompatíveis** exigem `v2`: remover/renomear campo, mudar tipo, mudar semântica, tornar obrigatório o que era opcional, mudar código de erro estável.
 4. Ao lançar `v2`, `v1` é mantida por no mínimo **6 meses**, com `Deprecation` e `Sunset` nos cabeçalhos e aviso em `meta.warnings`.
-5. A versão vive na **camada de interface**: controllers e DTOs por versão; use cases e domínio são compartilhados. Se `v2` precisa de comportamento diferente, é o adapter da `v2` que traduz — nunca um `if (version === 2)` dentro do domínio.
+5. A versão vive na **camada de interface**: rotas e schemas por versão; `services/` e `models/` são compartilhados. Se `v2` precisa de comportamento diferente, é o adapter da `v2` que traduz — nunca um `if (version === 2)` dentro do domínio.
 6. Rotas experimentais/internas ficam em `/api/v1/internal/*`, sem garantia de estabilidade, e não entram no OpenAPI público.
 7. Webhooks de saída (fase 2) têm versionamento próprio no payload (`"version": "1"`).
 8. O contrato é gerado do código (Zod → OpenAPI) e verificado no CI: diff incompatível sem bump de versão **falha o build**.
 
 ```
-apps/api/src/
-├── http/
-│   ├── v1/
-│   │   ├── router.ts
-│   │   └── <modulo>/{controller,dto}.ts
-│   └── v2/            # criado só quando necessário
-└── modules/…          # domínio e use cases sem noção de versão
+backend/src/
+├── routes/index.ts                       # monta /api/v1 (e /api/v2 quando existir)
+└── modules/<dominio>/
+    ├── routes/
+    │   ├── v1/<dominio>.routes.ts
+    │   └── v2/<dominio>.routes.ts        # criado só quando necessário
+    ├── controllers/ · schemas/            # por versão quando o contrato divergir
+    └── services/ · models/               # sem noção de versão
 ```
 
 ## Consequências

@@ -84,13 +84,13 @@ Itens sem permissão são **omitidos** (não aparecem como "bloqueado", para nã
 
 | Use case | Regras |
 | --- | --- |
-| `CreatePatientUseCase` | Valida CPF/telefone, checa duplicidade, gera `code`, exige responsável se menor, publica `patients.patient_created` |
-| `UpdatePatientUseCase` | Concorrência otimista por `version`; audita alteração de contato |
-| `DeactivatePatientUseCase` | Bloqueia se há parcela em aberto ou agendamento futuro (pede confirmação explícita) |
-| `GrantConsentUseCase` / `RevokeConsentUseCase` | Versiona texto; revogação notifica `messaging` |
-| `GetPatientTimelineUseCase` | Compõe fontes conforme permissão; paginado por cursor |
-| `SearchPatientsUseCase` | Busca por nome (trigram, sem acento), CPF, telefone e código; `< 300 ms` com 50k registros |
-| `AddGuardianUseCase` | Valida parentesco e contato |
+| `CreatePatientService` | Valida CPF/telefone, checa duplicidade, gera `code`, exige responsável se menor, publica `patients.patient_created` |
+| `UpdatePatientService` | Concorrência otimista por `version`; audita alteração de contato |
+| `DeactivatePatientService` | Bloqueia se há parcela em aberto ou agendamento futuro (pede confirmação explícita) |
+| `GrantConsentService` / `RevokeConsentService` | Versiona texto; revogação notifica `messaging` |
+| `GetPatientTimelineService` | Compõe fontes conforme permissão; paginado por cursor |
+| `SearchPatientsService` | Busca por nome (trigram, sem acento), CPF, telefone e código; `< 300 ms` com 50k registros |
+| `AddGuardianService` | Valida parentesco e contato |
 
 ## 7. Busca
 

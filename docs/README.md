@@ -6,7 +6,7 @@ Planejamento do MVP de um software odontológico completo (prontuário digital, 
 
 - **Frontend:** React + TypeScript (TSX) com Next.js (App Router)
 - **Backend:** Node.js + TypeScript + Express, API REST versionada (`/api/v1`)
-- **Arquitetura:** monólito modular com módulos em camadas, Domain-Driven Design (DDD), Clean Architecture e princípios SOLID
+- **Arquitetura:** monólito modular com módulos em camadas, Domain-Driven Design (DDD), Clean Architecture e princípios SOLID, sobre a convenção de pastas do time (`controllers/`, `services/`, `repositories/`, `models/`, `shared/`, `<dominio>_public.ts`)
 - **Banco:** PostgreSQL, multi-tenancy por `tenant_id` + Row Level Security (RLS)
 
 ## Índice
@@ -28,6 +28,7 @@ Planejamento do MVP de um software odontológico completo (prontuário digital, 
 | [13 — Roadmap e Estimativas](./13-roadmap-estimativas.md) | Fases, marcos, sequenciamento e riscos |
 | [14 — Métricas e KPIs](./14-metricas-kpis.md) | North star, métricas de produto e de negócio SaaS |
 | [15 — Glossário](./15-glossario.md) | Vocabulário do domínio odontológico e ubiquitous language |
+| [16 — Estrutura de Pastas](./16-estrutura-de-pastas.md) | Convenção de pastas backend/frontend, nomes de arquivo, regras de fronteira |
 
 ### Módulos (detalhamento funcional + domínio)
 
@@ -54,7 +55,7 @@ Planejamento do MVP de um software odontológico completo (prontuário digital, 
 ## Como usar estes documentos
 
 1. Leia `01`, `03` e `04` para entender **o que** será construído no MVP.
-2. Leia `05`, `06`, `07` e `08` antes de escrever a primeira linha de código — eles definem os contratos internos que mantêm o monólito modular saudável.
+2. Leia `05`, `06`, `07`, `08` e `16` antes de escrever a primeira linha de código — eles definem os contratos internos e a estrutura de pastas que mantêm o monólito modular saudável.
 3. Cada arquivo em `modulos/` é o ponto de partida para o backlog daquele módulo (bounded context).
 4. Toda decisão técnica relevante nova entra como um novo ADR em `adr/`, nunca como edição silenciosa de um documento existente.
 

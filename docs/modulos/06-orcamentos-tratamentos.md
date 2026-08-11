@@ -68,20 +68,20 @@ Conteúdo: dados da clínica (nome, CNPJ, endereço, telefone, CRO do responsáv
 
 | Use case | Notas |
 | --- | --- |
-| `CreateQuoteUseCase` | Valida procedimentos ativos, exige dente quando aplicável, calcula total |
-| `UpdateQuoteUseCase` | Só em `DRAFT`; recalcula total |
-| `SendQuoteUseCase` | Gera PDF + token, dispara `messaging`, muda para `SENT` |
-| `DecideQuoteUseCase` | Coração do módulo: aprovação total/parcial/rejeição; transação com `billing`; idempotente |
+| `CreateQuoteService` | Valida procedimentos ativos, exige dente quando aplicável, calcula total |
+| `UpdateQuoteService` | Só em `DRAFT`; recalcula total |
+| `SendQuoteService` | Gera PDF + token, dispara `messaging`, muda para `SENT` |
+| `DecideQuoteService` | Coração do módulo: aprovação total/parcial/rejeição; transação com `billing`; idempotente |
 | `ExpireQuotesJob` | Cron diário por tenant (timezone) |
-| `DuplicateQuoteUseCase` | Novo orçamento com preços atuais, referenciando o original |
-| `ExecuteTreatmentItemUseCase` | Chamado no fluxo de evolução; atualiza odontograma e registra produção |
-| `CancelTreatmentItemUseCase` | Bloqueia item executado; exige motivo |
-| `GetTreatmentPlanProgressUseCase` | % concluído, valor executado x pendente, próximos itens |
+| `DuplicateQuoteService` | Novo orçamento com preços atuais, referenciando o original |
+| `ExecuteTreatmentItemService` | Chamado no fluxo de evolução; atualiza odontograma e registra produção |
+| `CancelTreatmentItemService` | Bloqueia item executado; exige motivo |
+| `GetTreatmentPlanProgressService` | % concluído, valor executado x pendente, próximos itens |
 
 ## 8. Integração entre módulos (aprovação)
 
 ```ts
-export class DecideQuoteUseCase {
+export class DecideQuoteService {
   async execute(input: DecideQuoteInput): Promise<DecideQuoteOutput> {
     return this.uow.run(input.ctx, async () => {
       const quote = await this.quotes.findById(input.ctx, input.quoteId);
