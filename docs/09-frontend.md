@@ -6,11 +6,11 @@
 | --- | --- | --- |
 | Framework | Next.js (App Router) | Requisito do projeto; SSR para páginas públicas (SEO do link de agendamento) e RSC para telas pesadas de leitura |
 | Linguagem | TypeScript `strict`, componentes `.tsx` | Requisito |
-| Estilo | Tailwind CSS + design system próprio em `packages/ui` | Velocidade e consistência; evita CSS-in-JS em RSC |
+| Estilo | Tailwind CSS + design system próprio em `shared/ui` | Velocidade e consistência; evita CSS-in-JS em RSC |
 | Componentes base | Radix UI primitives (acessibilidade) encapsulados no nosso DS | Acessibilidade correta sem reinventar |
 | Estado servidor | TanStack Query | Cache, revalidação, mutação otimista (essencial na agenda) |
 | Estado cliente | Zustand para UI local (filtros, painéis) | Leve; sem Redux |
-| Formulários | React Hook Form + Zod (schemas de `packages/contracts`) | Mesma validação do backend |
+| Formulários | React Hook Form + Zod (schemas de `contracts/`) | Mesma validação do backend |
 | Tabelas | TanStack Table | Virtualização e coluna dinâmica |
 | Datas | `date-fns` + `date-fns-tz` (timezone do tenant) | Agenda depende de fuso correto |
 | Gráficos | Recharts | Suficiente para dashboards do MVP |
@@ -22,9 +22,11 @@
 
 ## 2. Estrutura de pastas
 
+Mantém a convenção dos outros projetos do time (`packages/<área>` por domínio + `shared/` transversal), com uma diferença imposta pelo Next.js: **`app/` substitui `pages/` + `routes/`**, porque o roteamento do App Router é o próprio sistema de arquivos (não existe arquivo de configuração de rotas para manter). A regra "1 arquivo ≈ 1 rota" continua valendo: cada `page.tsx` é fino e só compõe o que vem de `packages/`. Racional completo em [16 — Estrutura de Pastas](./16-estrutura-de-pastas.md).
+
 ```
-apps/web/src/
-├── app/
+frontend/src/
+├── app/                                 # ROTAS (equivalente ao pages/ + routes/)
 │   ├── (public)/                        # sem autenticação
 │   │   ├── login/page.tsx
 │   │   ├── signup/page.tsx
@@ -67,30 +69,46 @@ apps/web/src/
 │   ├── api/auth/[...]/route.ts          # rotas BFF mínimas (cookie de refresh)
 │   ├── layout.tsx
 │   └── error.tsx / not-found.tsx
-├── features/                            # lógica por domínio (espelha os módulos do backend)
-│   ├── scheduling/{api,hooks,components,types}
-│   ├── patients/…
-│   ├── clinical-records/…
-│   ├── treatments/…
-│   ├── billing/…
-│   ├── messaging/…
-│   └── reporting/…
-├── lib/
-│   ├── api-client.ts                    # fetch tipado + refresh automático + tratamento de erro
-│   ├── query-client.ts
+├── packages/                            # DOMÍNIO: agrupado por área de uso, espelha os módulos do backend
+│   ├── operacional/                     # dia a dia da recepção
+│   │   ├── scheduling/{api,hooks,components,types}
+│   │   └── patients/{api,hooks,components,types}
+│   ├── clinico/                         # uso do dentista
+│   │   ├── clinical-records/…            # anamnese, odontograma, evolução, anexos
+│   │   └── treatments/…                  # orçamento, plano de tratamento
+│   ├── financeiro/
+│   │   └── billing/…                     # receber, pagar, caixa, fluxo de caixa
+│   ├── admin/                           # dono da clínica
+│   │   ├── clinic/…                      # unidades, horários, procedimentos, usuários
+│   │   ├── subscription/…                # plano, faturas, créditos
+│   │   └── reporting/…                   # dashboards e relatórios
+│   ├── messaging/                       # inbox WhatsApp (recepção + dono)
+│   └── public/                          # sem sessão: auth, autoagendamento, anamnese/orçamento por token
+├── shared/                              # transversal: usado por 2+ packages
+│   ├── ui/                             # design system (Radix encapsulado + Tailwind)
+│   ├── layout/                         # shell, sidebar, seletor de unidade, busca global
+│   ├── api/
+│   │   ├── api-client.ts               # fetch tipado + refresh automático + erro
+│   │   └── query-client.ts
+│   ├── hooks/                          # useTenant, usePermissions, useDebounce…
 │   ├── auth/{session.ts,permissions.ts}
-│   ├── format/{money.ts,date.ts,cpf.ts,phone.ts}
-│   └── dental/{fdi.ts,tooth-map.ts}
-├── components/                          # componentes de app (não do DS)
-└── styles/
+│   ├── helpers/
+│   │   ├── format/{money.ts,date.ts,cpf.ts,phone.ts}
+│   │   └── dental/{fdi.ts,tooth-map.ts}
+│   └── styles/
 ```
 
-Regra de organização: **feature-first**. `app/` contém rotas finas que compõem componentes de `features/`. Nada de lógica de dados em arquivos de página.
+Regras de organização:
+
+1. **Rota é fina.** `page.tsx` cuida de parâmetros, metadata e composição. Zero lógica de dados ou de negócio em arquivo de página.
+2. **`packages/` é dono da lógica.** Cada domínio traz seu `api/` (chamadas + query keys), `hooks/`, `components/` e `types/`.
+3. **Um package não importa de outro package.** Se dois precisam da mesma coisa, ela sobe para `shared/` (mesma disciplina do `_public.ts` no backend). Exceção única e explicitada: `patients` expõe um seletor de paciente reutilizado por `clinico` e `financeiro` — fica em `shared/ui` como componente burro que recebe dados por prop.
+4. **`shared/` é para o que já tem 2+ consumidores reais**, não para o que "talvez seja reutilizado".
 
 ## 3. Cliente de API tipado
 
 ```ts
-// lib/api-client.ts
+// shared/api/api-client.ts
 import type { ApiError, ApiResponse } from '@repo/contracts';
 
 class ApiClient {
@@ -187,7 +205,7 @@ Layout de três áreas em uma única rota (sem navegação entre telas durante o
 ### Hook de dados por feature
 
 ```ts
-// features/scheduling/hooks/use-day-agenda.ts
+// packages/operacional/scheduling/hooks/use-day-agenda.ts
 export function useDayAgenda(params: { unitId: string; date: string; professionalIds?: string[] }) {
   return useQuery({
     queryKey: ['agenda', params],
@@ -216,7 +234,7 @@ export function useRescheduleAppointment() {
 ### Permissões na UI
 
 ```tsx
-// lib/auth/permissions.ts + componente Can
+// shared/auth/permissions.ts + componente Can
 <Can permission="clinical_records.write" fallback={null}>
   <Button onClick={openNoteEditor}>Registrar evolução</Button>
 </Can>
@@ -230,7 +248,7 @@ Esconder na UI é **conveniência**, nunca segurança — o servidor sempre reav
 - Client Components: agenda, odontograma, inbox, formulários — tudo que é interativo.
 - Nunca passar token do usuário para RSC via props; chamadas autenticadas server-side usam o cookie.
 
-## 6. Design system (`packages/ui`)
+## 6. Design system (`shared/ui`)
 
 Componentes previstos no MVP: `Button`, `Input`, `Select`, `Combobox` (busca de paciente), `DatePicker`, `TimePicker`, `Modal`, `Drawer`, `Tabs`, `Table`, `Badge`, `StatusPill`, `Avatar`, `Tooltip`, `Toast`, `EmptyState`, `Skeleton`, `MoneyInput`, `CpfInput`, `PhoneInput`, `Odontogram`, `AgendaGrid`, `Timeline`.
 

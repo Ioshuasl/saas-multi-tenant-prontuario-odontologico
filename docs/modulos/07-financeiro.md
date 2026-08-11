@@ -96,16 +96,16 @@ Job diário por tenant marca parcelas vencidas e publica `billing.installment_ov
 
 | Use case | Notas |
 | --- | --- |
-| `CreateReceivableFromApprovedQuoteUseCase` | Chamado por `treatments` via port; gera parcelas com resíduo na primeira |
-| `CreateManualReceivableUseCase` | Título sem orçamento (ex.: venda de produto) |
-| `RegisterPaymentUseCase` | Idempotente; múltiplas formas; vincula à sessão de caixa; gera crédito no excedente |
-| `ReversePaymentUseCase` | Exige motivo; bloqueado se o caixa está fechado |
-| `CancelReceivableUseCase` | Só sem pagamentos; exige motivo |
-| `OpenCashSessionUseCase` / `CloseCashSessionUseCase` | Uma sessão por operador/unidade; fechamento com contagem |
-| `RegisterCashMovementUseCase` | Sangria/suprimento com motivo |
-| `CreatePayableUseCase` / `PayPayableUseCase` | Recorrência simples (mensal) para aluguel/folha |
+| `CreateReceivableFromApprovedQuoteService` | Chamado por `treatments` via port; gera parcelas com resíduo na primeira |
+| `CreateManualReceivableService` | Título sem orçamento (ex.: venda de produto) |
+| `RegisterPaymentService` | Idempotente; múltiplas formas; vincula à sessão de caixa; gera crédito no excedente |
+| `ReversePaymentService` | Exige motivo; bloqueado se o caixa está fechado |
+| `CancelReceivableService` | Só sem pagamentos; exige motivo |
+| `OpenCashSessionService` / `CloseCashSessionService` | Uma sessão por operador/unidade; fechamento com contagem |
+| `RegisterCashMovementService` | Sangria/suprimento com motivo |
+| `CreatePayableService` / `PayPayableService` | Recorrência simples (mensal) para aluguel/folha |
 | `MarkOverdueInstallmentsJob` | Cron diário respeitando timezone |
-| `GetCashFlowUseCase` | Regime caixa/competência explícito |
+| `GetCashFlowService` | Regime caixa/competência explícito |
 
 ## 10. Recibo
 

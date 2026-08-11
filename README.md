@@ -18,7 +18,7 @@ Software odontológico completo entregue como SaaS B2B multi-tenant: prontuário
 ## Por onde começar
 
 1. [Visão de produto](./docs/01-visao-produto.md) e [escopo do MVP](./docs/04-escopo-mvp.md) — o que será construído.
-2. [Arquitetura](./docs/05-arquitetura.md), [multi-tenancy](./docs/06-multi-tenancy.md), [modelo de dados](./docs/07-modelo-de-dados.md) e [API v1](./docs/08-api-v1.md) — como será construído.
+2. [Arquitetura](./docs/05-arquitetura.md), [estrutura de pastas](./docs/16-estrutura-de-pastas.md), [multi-tenancy](./docs/06-multi-tenancy.md), [modelo de dados](./docs/07-modelo-de-dados.md) e [API v1](./docs/08-api-v1.md) — como será construído.
 3. [Decisões de arquitetura (ADRs)](./docs/README.md#decisões-de-arquitetura-adrs) — por que foi construído assim.
 
 Índice completo: [`docs/README.md`](./docs/README.md).

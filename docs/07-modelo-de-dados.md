@@ -856,7 +856,7 @@ Views herdam a RLS das tabelas base (são `security_invoker` por padrão nas ver
 
 ## 12. Migrações
 
-- Prisma Migrate com migrações versionadas em `apps/api/prisma/migrations`.
+- Prisma Migrate com migrações versionadas em `backend/prisma/migrations`.
 - Todo recurso não suportado pelo Prisma (RLS, `EXCLUDE`, triggers, views, colunas geradas, extensões) entra como **SQL manual** dentro da migração gerada.
 - Extensões necessárias: `pgcrypto` (ou UUID v7 gerado na aplicação), `citext`, `btree_gist`, `pg_trgm`.
 - Política: migração sempre compatível para frente (expand/contract). Nunca `DROP COLUMN` no mesmo deploy que remove o uso — duas etapas.

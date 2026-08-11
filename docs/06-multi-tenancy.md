@@ -60,7 +60,7 @@ export function tenantContext(): RequestHandler {
 ## 4. Ativação da RLS por transação
 
 ```ts
-// modules/platform/infrastructure/tenant-prisma.ts
+// backend/src/shared/database/tenant-prisma.ts
 export class TenantPrisma {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -189,7 +189,7 @@ Uma restrição equivalente é aplicada por `chair_id` (quando informado). A apl
 ## 8. Provisionamento e ciclo de vida do tenant
 
 ```
-signup → CreateTenantUseCase (transação única):
+signup → CreateTenantService (transação única):
   1. cria tenant (status TRIAL, trial_ends_at = now + 14d)
   2. cria unidade padrão com fuso horário
   3. cria user (Argon2id) + membership OWNER
