@@ -13,12 +13,12 @@ Checklist (roadmap [`docs/13`](../../13-roadmap-estimativas.md)):
 - [x] `typecheck` verde (backend + frontend) + smoke `/health`
 - [x] CI workflow (quality + integration RLS) + gitleaks config
 - [x] Middlewares segurança esqueleto (`helmet`, CORS, requestId) — do scaffold
-- [ ] `arch:check` (dependency-cruiser)
+- [x] `arch:check` (dependency-cruiser)
 - [x] Primeira migração + RLS (`20260811180000_init_rls`)
 - [x] Esqueleto `audit_log` na migração
 - [x] `TenantPrisma` + `pnpm test:rls` verde local
-- [ ] Port `KeyManagementPort` stub
-- [ ] ESLint real (hoje stub no CI)
+- [x] Port `KeyManagementPort` stub (`LocalKeyManagementAdapter` + `pnpm test:kms`)
+- [x] ESLint real (`eslint.config.mjs` + typescript-eslint type-aware)
 - [ ] Confirmar CI verde no GitHub após push
 
 ## Bloqueios
@@ -31,3 +31,4 @@ _Nenhum no momento._
 - Nome comercial do produto ainda não congelado; packages usam escopo `@repo/*`.
 - Se o Postgres local já existia sem roles: `docker compose down -v` e sobe de novo (init em `docker/postgres/init`).
 - Runtime usa `app_user`; migrações usam `DATABASE_MIGRATION_URL` (postgres local).
+- Fronteiras de módulo: `dependency-cruiser` (CI); ESLint type-aware no código de `src/`.

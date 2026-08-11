@@ -36,6 +36,12 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Architecture boundaries
+        run: pnpm arch:check
+
+      - name: KeyManagement stub
+        run: pnpm test:kms
+
       - name: Lint
         run: pnpm lint
 

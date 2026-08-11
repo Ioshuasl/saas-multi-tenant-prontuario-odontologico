@@ -4,6 +4,46 @@ Append-only. Entradas mais recentes no topo.
 
 ---
 
+## 2026-08-11 — Sprint 0: ESLint real + push CI
+
+### Feito
+
+- `eslint.config.mjs` (flat) com `typescript-eslint` recommendedTypeChecked
+- `pnpm lint` real em backend/frontend/contracts (sem stub)
+- Inclusão no CI já existente (`pnpm lint`)
+
+### Validação local
+
+- `pnpm lint` / `typecheck` / `arch:check` / `test:kms` ok
+
+### Próximo
+
+- Push `main` e confirmar workflow CI no GitHub
+
+---
+
+## 2026-08-11 — Sprint 0: dependency-cruiser + KeyManagementPort
+
+### Feito
+
+- `backend/.dependency-cruiser.cjs` — regras Clean/Orius (models sem framework, Prisma só na borda, sem ciclos, cruzar módulo via `*_public.ts`)
+- Scripts `pnpm arch:check` / `pnpm test:kms`; CI Quality roda ambos
+- `KeyManagementPort` + `LocalKeyManagementAdapter` (AES-256-GCM wrap DEK; KEK via `KEK_LOCAL_BASE64`; fallback só em dev; production exige KEK)
+
+### Validação
+
+- `pnpm arch:check` → no dependency violations (24 modules)
+- `pnpm test:kms` → OK wrap/unwrap + falha com KEK errada + production sem KEK
+- `typecheck` backend ok
+
+### Próximo
+
+- ESLint real
+- Confirmar CI no GitHub após push
+- Dockerfiles EasyPanel
+
+---
+
 ## 2026-08-11 — Sprint 0: CI + migração RLS
 
 ### Feito

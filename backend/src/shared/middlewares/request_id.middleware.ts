@@ -1,7 +1,9 @@
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 
+/* Express Request augmentation — padrão tipado do Express 4 */
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace -- Express augmentation API
   namespace Express {
     interface Request {
       requestId: string;
