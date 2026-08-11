@@ -10,15 +10,17 @@ Append-only. Entradas mais recentes no topo.
 
 - `eslint.config.mjs` (flat) com `typescript-eslint` recommendedTypeChecked
 - `pnpm lint` real em backend/frontend/contracts (sem stub)
-- Inclusão no CI já existente (`pnpm lint`)
+- Push `main`; CI Quality falhou na 1ª tentativa (Prisma client); corrigido com `prisma generate` no typecheck/CI
+- **CI verde:** [run 31531294140](https://github.com/Ioshuasl/saas-multi-tenant-prontuario-odontologico/actions/runs/31531294140) — Quality + Integration success
 
-### Validação local
+### Validação
 
-- `pnpm lint` / `typecheck` / `arch:check` / `test:kms` ok
+- Local: `pnpm lint` / `typecheck` / `arch:check` / `test:kms` ok
+- GitHub Actions: success
 
-### Próximo
+### Sprint 0
 
-- Push `main` e confirmar workflow CI no GitHub
+Checklist em [`sprints/S0-fundacao.md`](./sprints/S0-fundacao.md) **completa**.
 
 ---
 

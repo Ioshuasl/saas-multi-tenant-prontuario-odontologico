@@ -19,7 +19,8 @@ Checklist (roadmap [`docs/13`](../../13-roadmap-estimativas.md)):
 - [x] `TenantPrisma` + `pnpm test:rls` verde local
 - [x] Port `KeyManagementPort` stub (`LocalKeyManagementAdapter` + `pnpm test:kms`)
 - [x] ESLint real (`eslint.config.mjs` + typescript-eslint type-aware)
-- [ ] Confirmar CI verde no GitHub após push
+- [x] Confirmar CI verde no GitHub após push
+  ([run af543c0](https://github.com/Ioshuasl/saas-multi-tenant-prontuario-odontologico/actions/runs/31531294140) — Quality + Integration success)
 
 ## Bloqueios
 
