@@ -1,0 +1,876 @@
+# 07 — Modelo de Dados
+
+Convenções: PostgreSQL, `snake_case` nas tabelas/colunas, PK `uuid` (v7), `tenant_id uuid NOT NULL` em toda tabela operacional, `created_at`/`updated_at timestamptz`, dinheiro em **centavos** (`bigint`), timestamps em **UTC**, soft delete apenas onde indicado (`deleted_at`).
+
+## 1. Diagrama de contexto (agregados por módulo)
+
+```
+┌ clinic ──────────────────┐  ┌ identity ────────────────┐
+│ tenant                   │  │ user                     │
+│ unit                     │  │ membership ──► tenant     │
+│ chair                    │  │ invitation               │
+│ business_hours           │  │ refresh_token            │
+│ business_hours_exception │  └──────────────────────────┘
+│ procedure                │
+│ professional ──► user    │  ┌ subscription ────────────┐
+└──────────────────────────┘  │ plan / subscription      │
+                              │ usage_counter            │
+┌ patients ────────────────┐  └──────────────────────────┘
+│ patient                  │
+│ patient_contact          │  ┌ messaging ───────────────┐
+│ legal_guardian           │  │ whatsapp_account         │
+│ consent                  │  │ message_template         │
+└─────────┬────────────────┘  │ conversation             │
+          │                   │ message                  │
+┌ scheduling ──────────────┐  │ automation               │
+│ appointment              │  │ automation_run           │
+│ appointment_history      │  │ message_credit_ledger    │
+│ schedule_block           │  └──────────────────────────┘
+│ waitlist_entry           │
+│ public_booking_token     │  ┌ platform ────────────────┐
+└─────────┬────────────────┘  │ outbox_event             │
+          │                   │ audit_log                │
+┌ clinical-records ────────┐  │ platform_audit_log       │
+│ medical_record           │  │ data_subject_request     │
+│ anamnesis_form/response  │  └──────────────────────────┘
+│ clinical_alert           │
+│ tooth_state (odontograma)│  ┌ billing ─────────────────┐
+│ clinical_note (+version) │  │ receivable / installment  │
+│ attachment               │  │ payment                  │
+└─────────┬────────────────┘  │ payable                  │
+          │                   │ cash_session             │
+┌ treatments ──────────────┐  │ cash_movement            │
+│ quote / quote_item       │  │ financial_category        │
+│ treatment_plan / item    │  │ production_entry         │
+│ executed_procedure       │  └──────────────────────────┘
+└──────────────────────────┘
+```
+
+## 2. Tabelas — clinic e identity
+
+```sql
+CREATE TABLE tenant (
+  id                uuid PRIMARY KEY,
+  name              text NOT NULL,
+  slug              citext NOT NULL UNIQUE,          -- usado no link público /agendar/{slug}
+  legal_name        text,
+  tax_id            text,                            -- CNPJ/CPF
+  responsible_cro   text,                            -- CRO do responsável técnico
+  timezone          text NOT NULL DEFAULT 'America/Sao_Paulo',
+  status            text NOT NULL DEFAULT 'TRIAL',    -- TRIAL|ACTIVE|PAST_DUE|SUSPENDED|CANCELLED|DELETED
+  trial_ends_at     timestamptz,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  updated_at        timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE unit (
+  id           uuid PRIMARY KEY,
+  tenant_id    uuid NOT NULL REFERENCES tenant(id),
+  name         text NOT NULL,
+  is_default   boolean NOT NULL DEFAULT false,
+  phone        text,
+  address      jsonb,                                 -- {street, number, complement, district, city, state, zip}
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX uq_unit_default ON unit (tenant_id) WHERE is_default;
+
+CREATE TABLE chair (
+  id         uuid PRIMARY KEY,
+  tenant_id  uuid NOT NULL,
+  unit_id    uuid NOT NULL REFERENCES unit(id),
+  name       text NOT NULL,
+  color      text,
+  active     boolean NOT NULL DEFAULT true
+);
+
+CREATE TABLE "user" (
+  id                 uuid PRIMARY KEY,
+  email              citext NOT NULL UNIQUE,
+  password_hash      text NOT NULL,                   -- Argon2id
+  name               text NOT NULL,
+  phone              text,
+  email_verified_at  timestamptz,
+  last_login_at      timestamptz,
+  failed_attempts    smallint NOT NULL DEFAULT 0,
+  locked_until       timestamptz,
+  created_at         timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE membership (
+  id                uuid PRIMARY KEY,
+  tenant_id         uuid NOT NULL REFERENCES tenant(id),
+  user_id           uuid NOT NULL REFERENCES "user"(id),
+  role              text NOT NULL,                    -- OWNER|DENTIST|RECEPTION|ASSISTANT|FINANCE
+  default_unit_id   uuid REFERENCES unit(id),
+  permissions       jsonb NOT NULL DEFAULT '{}',      -- overrides pontuais sobre o papel
+  active            boolean NOT NULL DEFAULT true,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, user_id)
+);
+
+CREATE TABLE professional (               -- perfil clínico de um membership
+  id             uuid PRIMARY KEY,
+  tenant_id      uuid NOT NULL,
+  membership_id  uuid NOT NULL REFERENCES membership(id),
+  cro_number     text,
+  cro_state      char(2),
+  specialties    text[] NOT NULL DEFAULT '{}',
+  color          text,                                -- cor na agenda
+  active         boolean NOT NULL DEFAULT true,
+  UNIQUE (tenant_id, membership_id)
+);
+
+CREATE TABLE business_hours (
+  id               uuid PRIMARY KEY,
+  tenant_id        uuid NOT NULL,
+  unit_id          uuid NOT NULL REFERENCES unit(id),
+  professional_id  uuid REFERENCES professional(id),  -- NULL = horário da unidade
+  weekday          smallint NOT NULL CHECK (weekday BETWEEN 0 AND 6),
+  starts_at        time NOT NULL,
+  ends_at          time NOT NULL,
+  CHECK (ends_at > starts_at)
+);
+
+CREATE TABLE business_hours_exception (
+  id               uuid PRIMARY KEY,
+  tenant_id        uuid NOT NULL,
+  unit_id          uuid NOT NULL,
+  professional_id  uuid,
+  date             date NOT NULL,
+  closed           boolean NOT NULL DEFAULT true,
+  starts_at        time,
+  ends_at          time,
+  reason           text
+);
+
+CREATE TABLE procedure (
+  id                 uuid PRIMARY KEY,
+  tenant_id          uuid NOT NULL,
+  code               text NOT NULL,                   -- código interno / TUSS-odonto futuro
+  name               text NOT NULL,
+  specialty          text,
+  default_minutes    smallint NOT NULL DEFAULT 30,
+  price_cents        bigint NOT NULL DEFAULT 0,
+  requires_tooth     boolean NOT NULL DEFAULT false,
+  requires_face      boolean NOT NULL DEFAULT false,
+  active             boolean NOT NULL DEFAULT true,
+  created_at         timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, code)
+);
+```
+
+## 3. Tabelas — patients
+
+```sql
+CREATE TABLE patient (
+  id               uuid PRIMARY KEY,
+  tenant_id        uuid NOT NULL,
+  unit_id          uuid NOT NULL,                     -- unidade de origem
+  code             bigint GENERATED BY DEFAULT AS IDENTITY, -- nº de ficha exibido ao usuário
+  name             text NOT NULL,
+  social_name      text,
+  cpf              char(11),
+  birth_date       date,
+  sex              text,                              -- livre; não bloqueia cadastro
+  phone_primary    text NOT NULL,
+  phone_secondary  text,
+  email            citext,
+  address          jsonb,
+  how_found_us     text,                              -- origem/indicação (base do CRM futuro)
+  notes            text,
+  photo_key        text,                              -- chave no object storage
+  active           boolean NOT NULL DEFAULT true,
+  deleted_at       timestamptz,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX uq_patient_cpf   ON patient (tenant_id, cpf) WHERE cpf IS NOT NULL AND deleted_at IS NULL;
+CREATE INDEX idx_patient_name        ON patient (tenant_id, name);
+CREATE INDEX idx_patient_phone       ON patient (tenant_id, phone_primary);
+CREATE INDEX idx_patient_name_trgm   ON patient USING gin (name gin_trgm_ops);  -- busca por nome parcial
+
+CREATE TABLE legal_guardian (
+  id           uuid PRIMARY KEY,
+  tenant_id    uuid NOT NULL,
+  patient_id   uuid NOT NULL REFERENCES patient(id),
+  name         text NOT NULL,
+  cpf          char(11),
+  relationship text,
+  phone        text,
+  email        citext
+);
+
+CREATE TABLE consent (
+  id            uuid PRIMARY KEY,
+  tenant_id     uuid NOT NULL,
+  patient_id    uuid NOT NULL REFERENCES patient(id),
+  type          text NOT NULL,        -- DATA_PROCESSING|WHATSAPP_MARKETING|IMAGE_USE|TERMS
+  granted       boolean NOT NULL,
+  document_version text NOT NULL,
+  channel       text NOT NULL,        -- IN_PERSON|LINK|WHATSAPP
+  ip_address    inet,
+  granted_at    timestamptz NOT NULL DEFAULT now(),
+  revoked_at    timestamptz
+);
+CREATE INDEX idx_consent_patient ON consent (tenant_id, patient_id, type);
+```
+
+## 4. Tabelas — scheduling
+
+```sql
+CREATE TABLE appointment (
+  id               uuid PRIMARY KEY,
+  tenant_id        uuid NOT NULL,
+  unit_id          uuid NOT NULL,
+  patient_id       uuid NOT NULL REFERENCES patient(id),
+  professional_id  uuid NOT NULL REFERENCES professional(id),
+  chair_id         uuid REFERENCES chair(id),
+  procedure_id     uuid REFERENCES procedure(id),
+  treatment_item_id uuid,                            -- item do plano a executar (referência lógica)
+  starts_at        timestamptz NOT NULL,
+  ends_at          timestamptz NOT NULL,
+  period           tstzrange GENERATED ALWAYS AS (tstzrange(starts_at, ends_at, '[)')) STORED,
+  status           text NOT NULL DEFAULT 'SCHEDULED', -- REQUESTED|SCHEDULED|CONFIRMED|IN_SERVICE|COMPLETED|NO_SHOW|CANCELLED
+  origin           text NOT NULL DEFAULT 'INTERNAL',  -- INTERNAL|PUBLIC_LINK|WAITLIST|RECURRENCE
+  confirmed_at     timestamptz,
+  arrived_at       timestamptz,
+  cancelled_at     timestamptz,
+  cancel_reason    text,
+  recurrence_id    uuid,
+  notes            text,
+  created_by       uuid,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now(),
+  CHECK (ends_at > starts_at)
+);
+
+ALTER TABLE appointment ADD CONSTRAINT appointment_professional_no_overlap
+  EXCLUDE USING gist (tenant_id WITH =, professional_id WITH =, period WITH &&)
+  WHERE (status NOT IN ('CANCELLED', 'NO_SHOW'));
+
+ALTER TABLE appointment ADD CONSTRAINT appointment_chair_no_overlap
+  EXCLUDE USING gist (tenant_id WITH =, chair_id WITH =, period WITH &&)
+  WHERE (chair_id IS NOT NULL AND status NOT IN ('CANCELLED', 'NO_SHOW'));
+
+CREATE INDEX idx_appointment_agenda  ON appointment (tenant_id, unit_id, starts_at);
+CREATE INDEX idx_appointment_patient ON appointment (tenant_id, patient_id, starts_at DESC);
+
+CREATE TABLE appointment_history (      -- append-only: quem mudou o quê
+  id              uuid PRIMARY KEY,
+  tenant_id       uuid NOT NULL,
+  appointment_id  uuid NOT NULL REFERENCES appointment(id),
+  action          text NOT NULL,        -- CREATED|RESCHEDULED|STATUS_CHANGED|CANCELLED
+  from_value      jsonb,
+  to_value        jsonb,
+  actor_id        uuid,                 -- NULL = sistema/paciente
+  actor_type      text NOT NULL,        -- USER|PATIENT|SYSTEM
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE schedule_block (
+  id               uuid PRIMARY KEY,
+  tenant_id        uuid NOT NULL,
+  unit_id          uuid NOT NULL,
+  professional_id  uuid REFERENCES professional(id),  -- NULL = unidade toda
+  chair_id         uuid REFERENCES chair(id),
+  starts_at        timestamptz NOT NULL,
+  ends_at          timestamptz NOT NULL,
+  period           tstzrange GENERATED ALWAYS AS (tstzrange(starts_at, ends_at, '[)')) STORED,
+  reason           text NOT NULL,
+  created_at       timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE waitlist_entry (
+  id                uuid PRIMARY KEY,
+  tenant_id         uuid NOT NULL,
+  unit_id           uuid NOT NULL,
+  patient_id        uuid NOT NULL REFERENCES patient(id),
+  professional_id   uuid REFERENCES professional(id),  -- NULL = qualquer
+  procedure_id      uuid REFERENCES procedure(id),
+  preferred_periods jsonb NOT NULL DEFAULT '[]',       -- [{weekday, from, to}]
+  priority          smallint NOT NULL DEFAULT 0,
+  status            text NOT NULL DEFAULT 'WAITING',   -- WAITING|OFFERED|SCHEDULED|EXPIRED|CANCELLED
+  offered_at        timestamptz,
+  expires_at        timestamptz,
+  created_at        timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_waitlist_active ON waitlist_entry (tenant_id, status, priority DESC, created_at);
+
+CREATE TABLE public_booking_token (     -- também usado para anamnese/orçamento por link
+  id           uuid PRIMARY KEY,
+  tenant_id    uuid NOT NULL,
+  purpose      text NOT NULL,           -- BOOKING|ANAMNESIS|QUOTE|CONFIRMATION
+  target_id    uuid,
+  token_hash   text NOT NULL,
+  expires_at   timestamptz NOT NULL,
+  used_at      timestamptz,
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX uq_booking_token_hash ON public_booking_token (token_hash);
+```
+
+## 5. Tabelas — clinical-records
+
+```sql
+CREATE TABLE medical_record (           -- 1:1 com paciente; agrega o prontuário
+  id           uuid PRIMARY KEY,
+  tenant_id    uuid NOT NULL,
+  patient_id   uuid NOT NULL REFERENCES patient(id),
+  opened_at    timestamptz NOT NULL DEFAULT now(),
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, patient_id)
+);
+
+CREATE TABLE anamnesis_form (           -- questionário configurável pela clínica
+  id           uuid PRIMARY KEY,
+  tenant_id    uuid NOT NULL,
+  name         text NOT NULL,
+  version      integer NOT NULL DEFAULT 1,
+  questions    jsonb NOT NULL,          -- [{id, label, type, options, alertWhen}]
+  active       boolean NOT NULL DEFAULT true,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, name, version)
+);
+
+CREATE TABLE anamnesis_response (
+  id                uuid PRIMARY KEY,
+  tenant_id         uuid NOT NULL,
+  medical_record_id uuid NOT NULL REFERENCES medical_record(id),
+  form_id           uuid NOT NULL REFERENCES anamnesis_form(id),
+  form_version      integer NOT NULL,
+  answers           jsonb NOT NULL,
+  answered_by       text NOT NULL,      -- PATIENT|PROFESSIONAL
+  answered_at       timestamptz NOT NULL DEFAULT now(),
+  signature         jsonb               -- {type: SIMPLE, ip, userAgent, hash}
+);
+
+CREATE TABLE clinical_alert (            -- derivado da anamnese ou manual
+  id                uuid PRIMARY KEY,
+  tenant_id         uuid NOT NULL,
+  medical_record_id uuid NOT NULL REFERENCES medical_record(id),
+  severity          text NOT NULL,       -- INFO|WARNING|CRITICAL
+  category          text NOT NULL,       -- ALLERGY|CONDITION|MEDICATION|OTHER
+  description       text NOT NULL,
+  source            text NOT NULL,       -- ANAMNESIS|MANUAL
+  active            boolean NOT NULL DEFAULT true,
+  created_at        timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE tooth_state (               -- estado atual do odontograma (1 linha por dente/face)
+  id                uuid PRIMARY KEY,
+  tenant_id         uuid NOT NULL,
+  medical_record_id uuid NOT NULL REFERENCES medical_record(id),
+  dentition         text NOT NULL,       -- PERMANENT|DECIDUOUS
+  tooth_code        text NOT NULL,       -- notação FDI: 11..48 / 51..85
+  face              text,                -- M|D|V|L|O|C (NULL = dente inteiro)
+  condition         text NOT NULL,       -- HEALTHY|CARIES|RESTORED|ABSENT|IMPLANT|CROWN|ROOT_CANAL|EXTRACTED|SEALANT|FRACTURE
+  notes             text,
+  recorded_by       uuid NOT NULL,
+  recorded_at       timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, medical_record_id, dentition, tooth_code, face)
+);
+
+CREATE TABLE tooth_state_history (       -- append-only: evolução do odontograma
+  id             uuid PRIMARY KEY,
+  tenant_id      uuid NOT NULL,
+  tooth_state_id uuid NOT NULL,
+  from_condition text,
+  to_condition   text NOT NULL,
+  source         text NOT NULL,          -- MANUAL|PROCEDURE_EXECUTION
+  source_id      uuid,
+  actor_id       uuid NOT NULL,
+  created_at     timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE clinical_note (             -- evolução clínica (imutável)
+  id                uuid PRIMARY KEY,
+  tenant_id         uuid NOT NULL,
+  medical_record_id uuid NOT NULL REFERENCES medical_record(id),
+  appointment_id    uuid,
+  professional_id   uuid NOT NULL REFERENCES professional(id),
+  content           text NOT NULL,
+  procedures        jsonb NOT NULL DEFAULT '[]',   -- [{procedureId, tooth, face}]
+  version           integer NOT NULL DEFAULT 1,
+  supersedes_id     uuid REFERENCES clinical_note(id),
+  amend_reason      text,                          -- obrigatório quando version > 1
+  content_hash      text NOT NULL,                 -- SHA-256 do conteúdo (integridade)
+  signed_at         timestamptz NOT NULL DEFAULT now(),
+  signature         jsonb NOT NULL,                -- {type, userId, croNumber, ip}
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  CHECK (version = 1 OR amend_reason IS NOT NULL)
+);
+CREATE INDEX idx_clinical_note_record ON clinical_note (tenant_id, medical_record_id, created_at DESC);
+-- Regra de imutabilidade garantida por trigger: UPDATE/DELETE bloqueados (exceto colunas de índice interno)
+
+CREATE TABLE attachment (
+  id                uuid PRIMARY KEY,
+  tenant_id         uuid NOT NULL,
+  medical_record_id uuid REFERENCES medical_record(id),
+  patient_id        uuid NOT NULL,
+  clinical_note_id  uuid REFERENCES clinical_note(id),
+  category          text NOT NULL,       -- XRAY|PHOTO|EXAM|DOCUMENT|OTHER
+  file_name         text NOT NULL,
+  storage_key       text NOT NULL,
+  mime_type         text NOT NULL,
+  size_bytes        bigint NOT NULL,
+  checksum_sha256   text NOT NULL,
+  uploaded_by       uuid NOT NULL,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  deleted_at        timestamptz
+);
+CREATE INDEX idx_attachment_patient ON attachment (tenant_id, patient_id, created_at DESC);
+```
+
+### Trigger de imutabilidade da evolução
+
+```sql
+CREATE OR REPLACE FUNCTION clinical_note_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'clinical_note is append-only; create a new version with supersedes_id';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_clinical_note_no_update
+  BEFORE UPDATE OR DELETE ON clinical_note
+  FOR EACH ROW EXECUTE FUNCTION clinical_note_immutable();
+```
+
+## 6. Tabelas — treatments
+
+```sql
+CREATE TABLE quote (                      -- orçamento
+  id              uuid PRIMARY KEY,
+  tenant_id       uuid NOT NULL,
+  unit_id         uuid NOT NULL,
+  patient_id      uuid NOT NULL REFERENCES patient(id),
+  professional_id uuid NOT NULL REFERENCES professional(id),
+  number          bigint GENERATED BY DEFAULT AS IDENTITY,
+  status          text NOT NULL DEFAULT 'DRAFT',   -- DRAFT|SENT|APPROVED|PARTIALLY_APPROVED|REJECTED|EXPIRED|CANCELLED
+  subtotal_cents  bigint NOT NULL DEFAULT 0,
+  discount_cents  bigint NOT NULL DEFAULT 0,
+  total_cents     bigint NOT NULL DEFAULT 0,
+  valid_until     date,
+  notes           text,
+  sent_at         timestamptz,
+  decided_at      timestamptz,
+  decided_by      text,                            -- USER|PATIENT_LINK
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE quote_item (
+  id             uuid PRIMARY KEY,
+  tenant_id      uuid NOT NULL,
+  quote_id       uuid NOT NULL REFERENCES quote(id) ON DELETE CASCADE,
+  procedure_id   uuid NOT NULL REFERENCES procedure(id),
+  tooth_code     text,
+  face           text,
+  quantity       smallint NOT NULL DEFAULT 1,
+  unit_price_cents bigint NOT NULL,
+  discount_cents bigint NOT NULL DEFAULT 0,
+  total_cents    bigint NOT NULL,
+  approved       boolean NOT NULL DEFAULT true,     -- permite aprovação parcial
+  sort_order     smallint NOT NULL DEFAULT 0
+);
+
+CREATE TABLE treatment_plan (
+  id           uuid PRIMARY KEY,
+  tenant_id    uuid NOT NULL,
+  patient_id   uuid NOT NULL REFERENCES patient(id),
+  quote_id     uuid REFERENCES quote(id),
+  status       text NOT NULL DEFAULT 'ACTIVE',      -- ACTIVE|COMPLETED|CANCELLED
+  started_at   timestamptz NOT NULL DEFAULT now(),
+  completed_at timestamptz
+);
+
+CREATE TABLE treatment_item (
+  id                uuid PRIMARY KEY,
+  tenant_id         uuid NOT NULL,
+  treatment_plan_id uuid NOT NULL REFERENCES treatment_plan(id),
+  procedure_id      uuid NOT NULL REFERENCES procedure(id),
+  quote_item_id     uuid REFERENCES quote_item(id),
+  tooth_code        text,
+  face              text,
+  price_cents       bigint NOT NULL,
+  status            text NOT NULL DEFAULT 'PLANNED', -- PLANNED|IN_PROGRESS|EXECUTED|CANCELLED
+  professional_id   uuid REFERENCES professional(id),
+  executed_at       timestamptz,
+  clinical_note_id  uuid,
+  created_at        timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_treatment_item_status ON treatment_item (tenant_id, treatment_plan_id, status);
+```
+
+## 7. Tabelas — billing (financeiro da clínica)
+
+```sql
+CREATE TABLE financial_category (
+  id         uuid PRIMARY KEY,
+  tenant_id  uuid NOT NULL,
+  name       text NOT NULL,
+  kind       text NOT NULL,          -- REVENUE|EXPENSE
+  parent_id  uuid REFERENCES financial_category(id),
+  active     boolean NOT NULL DEFAULT true,
+  UNIQUE (tenant_id, name, kind)
+);
+
+CREATE TABLE receivable (             -- título a receber (pode ter N parcelas)
+  id            uuid PRIMARY KEY,
+  tenant_id     uuid NOT NULL,
+  unit_id       uuid NOT NULL,
+  patient_id    uuid NOT NULL REFERENCES patient(id),
+  quote_id      uuid REFERENCES quote(id),
+  treatment_plan_id uuid REFERENCES treatment_plan(id),
+  total_cents   bigint NOT NULL,
+  installments  smallint NOT NULL DEFAULT 1,
+  status        text NOT NULL DEFAULT 'OPEN',   -- OPEN|PARTIALLY_PAID|PAID|CANCELLED
+  category_id   uuid REFERENCES financial_category(id),
+  description   text,
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE installment (
+  id             uuid PRIMARY KEY,
+  tenant_id      uuid NOT NULL,
+  receivable_id  uuid NOT NULL REFERENCES receivable(id) ON DELETE CASCADE,
+  number         smallint NOT NULL,
+  due_date       date NOT NULL,
+  amount_cents   bigint NOT NULL,
+  paid_cents     bigint NOT NULL DEFAULT 0,
+  status         text NOT NULL DEFAULT 'OPEN',  -- OPEN|PAID|OVERDUE|CANCELLED
+  paid_at        timestamptz,
+  UNIQUE (tenant_id, receivable_id, number)
+);
+CREATE INDEX idx_installment_due ON installment (tenant_id, due_date) WHERE status IN ('OPEN','OVERDUE');
+
+CREATE TABLE payment (
+  id              uuid PRIMARY KEY,
+  tenant_id       uuid NOT NULL,
+  unit_id         uuid NOT NULL,
+  installment_id  uuid REFERENCES installment(id),
+  cash_session_id uuid,
+  amount_cents    bigint NOT NULL,
+  method          text NOT NULL,       -- CASH|DEBIT|CREDIT|PIX|TRANSFER|CHECK|OTHER
+  card_brand      text,
+  installments_qty smallint,
+  received_at     timestamptz NOT NULL DEFAULT now(),
+  received_by     uuid NOT NULL,
+  reversed_at     timestamptz,
+  reversal_reason text,
+  receipt_number  bigint GENERATED BY DEFAULT AS IDENTITY,
+  notes           text
+);
+CREATE INDEX idx_payment_period ON payment (tenant_id, unit_id, received_at);
+
+CREATE TABLE payable (
+  id           uuid PRIMARY KEY,
+  tenant_id    uuid NOT NULL,
+  unit_id      uuid NOT NULL,
+  category_id  uuid REFERENCES financial_category(id),
+  supplier     text,
+  description  text NOT NULL,
+  amount_cents bigint NOT NULL,
+  due_date     date NOT NULL,
+  paid_at      timestamptz,
+  paid_cents   bigint,
+  method       text,
+  recurrence   jsonb,                  -- {frequency: MONTHLY, until: date}
+  status       text NOT NULL DEFAULT 'OPEN',   -- OPEN|PAID|OVERDUE|CANCELLED
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE cash_session (            -- caixa do dia por operador
+  id              uuid PRIMARY KEY,
+  tenant_id       uuid NOT NULL,
+  unit_id         uuid NOT NULL,
+  opened_by       uuid NOT NULL,
+  opened_at       timestamptz NOT NULL DEFAULT now(),
+  opening_cents   bigint NOT NULL DEFAULT 0,
+  closed_by       uuid,
+  closed_at       timestamptz,
+  counted_cents   bigint,
+  expected_cents  bigint,
+  difference_cents bigint,
+  difference_reason text,
+  status          text NOT NULL DEFAULT 'OPEN'    -- OPEN|CLOSED
+);
+CREATE UNIQUE INDEX uq_cash_session_open ON cash_session (tenant_id, unit_id, opened_by) WHERE status = 'OPEN';
+
+CREATE TABLE cash_movement (
+  id              uuid PRIMARY KEY,
+  tenant_id       uuid NOT NULL,
+  cash_session_id uuid NOT NULL REFERENCES cash_session(id),
+  kind            text NOT NULL,        -- IN|OUT|SUPPLY|WITHDRAWAL
+  amount_cents    bigint NOT NULL,
+  method          text NOT NULL,
+  payment_id      uuid REFERENCES payment(id),
+  description     text,
+  created_by      uuid NOT NULL,
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE production_entry (         -- produção do profissional (base de comissão futura)
+  id                uuid PRIMARY KEY,
+  tenant_id         uuid NOT NULL,
+  unit_id           uuid NOT NULL,
+  professional_id   uuid NOT NULL REFERENCES professional(id),
+  patient_id        uuid NOT NULL,
+  treatment_item_id uuid REFERENCES treatment_item(id),
+  procedure_id      uuid NOT NULL,
+  amount_cents      bigint NOT NULL,
+  executed_at       timestamptz NOT NULL,
+  created_at        timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_production_period ON production_entry (tenant_id, professional_id, executed_at);
+```
+
+## 8. Tabelas — messaging
+
+```sql
+CREATE TABLE whatsapp_account (
+  id                 uuid PRIMARY KEY,
+  tenant_id          uuid NOT NULL,
+  unit_id            uuid,
+  waba_id            text NOT NULL,
+  phone_number_id    text NOT NULL,
+  display_phone      text NOT NULL,
+  access_token_ref   text NOT NULL,      -- referência no gerenciador de segredos, NUNCA o token
+  webhook_verified_at timestamptz,
+  status             text NOT NULL DEFAULT 'PENDING',  -- PENDING|CONNECTED|ERROR|DISCONNECTED
+  last_error         text,
+  created_at         timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, phone_number_id)
+);
+
+CREATE TABLE message_template (
+  id            uuid PRIMARY KEY,
+  tenant_id     uuid,                  -- NULL = template global da plataforma
+  key           text NOT NULL,         -- APPOINTMENT_CONFIRMATION|APPOINTMENT_REMINDER|RECEIPT|...
+  category      text NOT NULL,         -- MARKETING|UTILITY|AUTHENTICATION
+  language      text NOT NULL DEFAULT 'pt_BR',
+  provider_name text NOT NULL,         -- nome aprovado na Meta
+  body          text NOT NULL,
+  variables     jsonb NOT NULL DEFAULT '[]',
+  status        text NOT NULL DEFAULT 'PENDING',  -- PENDING|APPROVED|REJECTED|PAUSED
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE conversation (
+  id                  uuid PRIMARY KEY,
+  tenant_id           uuid NOT NULL,
+  whatsapp_account_id uuid NOT NULL REFERENCES whatsapp_account(id),
+  patient_id          uuid REFERENCES patient(id),  -- NULL = contato não identificado
+  contact_phone       text NOT NULL,
+  contact_name        text,
+  status              text NOT NULL DEFAULT 'OPEN',  -- OPEN|PENDING|CLOSED
+  assigned_to         uuid,
+  service_window_expires_at timestamptz,             -- janela de 24h (custo!)
+  last_message_at     timestamptz,
+  unread_count        integer NOT NULL DEFAULT 0,
+  created_at          timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, whatsapp_account_id, contact_phone)
+);
+CREATE INDEX idx_conversation_inbox ON conversation (tenant_id, status, last_message_at DESC);
+
+CREATE TABLE message (
+  id                uuid PRIMARY KEY,
+  tenant_id         uuid NOT NULL,
+  conversation_id   uuid NOT NULL REFERENCES conversation(id),
+  direction         text NOT NULL,       -- INBOUND|OUTBOUND
+  type              text NOT NULL,       -- TEXT|TEMPLATE|IMAGE|DOCUMENT|AUDIO|INTERACTIVE
+  template_id       uuid REFERENCES message_template(id),
+  body              text,
+  media_key         text,
+  provider_message_id text,
+  status            text NOT NULL DEFAULT 'QUEUED',  -- QUEUED|SENT|DELIVERED|READ|FAILED
+  error_code        text,
+  error_message     text,
+  billable          boolean NOT NULL DEFAULT false,
+  cost_cents        integer,
+  related_type      text,                 -- APPOINTMENT|QUOTE|INSTALLMENT
+  related_id        uuid,
+  sent_by           uuid,                 -- NULL = automação
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  updated_at        timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX uq_message_provider_id ON message (provider_message_id) WHERE provider_message_id IS NOT NULL;
+CREATE INDEX idx_message_conversation ON message (tenant_id, conversation_id, created_at);
+
+CREATE TABLE automation (
+  id           uuid PRIMARY KEY,
+  tenant_id    uuid NOT NULL,
+  key          text NOT NULL,          -- CONFIRMATION_D1|REMINDER_H3|BIRTHDAY|RECALL|DUNNING
+  enabled      boolean NOT NULL DEFAULT true,
+  config       jsonb NOT NULL,         -- {offsetHours, sendWindow, templateId}
+  updated_at   timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, key)
+);
+
+CREATE TABLE automation_run (
+  id             uuid PRIMARY KEY,
+  tenant_id      uuid NOT NULL,
+  automation_id  uuid NOT NULL REFERENCES automation(id),
+  target_type    text NOT NULL,
+  target_id      uuid NOT NULL,
+  scheduled_for  timestamptz NOT NULL,
+  executed_at    timestamptz,
+  result         text,                 -- SENT|SKIPPED_NO_CONSENT|SKIPPED_NO_CREDIT|SKIPPED_CANCELLED|FAILED
+  message_id     uuid REFERENCES message(id),
+  UNIQUE (tenant_id, automation_id, target_type, target_id)   -- idempotência
+);
+
+CREATE TABLE message_credit_ledger (
+  id           uuid PRIMARY KEY,
+  tenant_id    uuid NOT NULL,
+  kind         text NOT NULL,          -- PURCHASE|BONUS|CONSUMPTION|ADJUSTMENT
+  amount_cents bigint NOT NULL,        -- positivo = crédito, negativo = consumo
+  message_id   uuid REFERENCES message(id),
+  balance_after_cents bigint NOT NULL,
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+```
+
+## 9. Tabelas — platform e subscription
+
+```sql
+CREATE TABLE outbox_event (
+  id            uuid PRIMARY KEY,
+  tenant_id     uuid NOT NULL,
+  name          text NOT NULL,          -- 'scheduling.appointment_scheduled'
+  payload       jsonb NOT NULL,
+  occurred_at   timestamptz NOT NULL DEFAULT now(),
+  processed_at  timestamptz,
+  attempts      smallint NOT NULL DEFAULT 0,
+  last_error    text
+);
+CREATE INDEX idx_outbox_pending ON outbox_event (processed_at, occurred_at) WHERE processed_at IS NULL;
+
+CREATE TABLE audit_log (
+  id            uuid PRIMARY KEY,
+  tenant_id     uuid NOT NULL,
+  actor_id      uuid,
+  actor_type    text NOT NULL,          -- USER|PATIENT|SYSTEM|SUPPORT
+  action        text NOT NULL,          -- READ|CREATE|UPDATE|DELETE|EXPORT|LOGIN|PERMISSION_DENIED
+  resource_type text NOT NULL,
+  resource_id   uuid,
+  patient_id    uuid,                   -- facilita relatório de acesso por paciente (LGPD)
+  ip_address    inet,
+  user_agent    text,
+  metadata      jsonb,
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_audit_tenant_time ON audit_log (tenant_id, created_at DESC);
+CREATE INDEX idx_audit_patient ON audit_log (tenant_id, patient_id, created_at DESC) WHERE patient_id IS NOT NULL;
+
+CREATE TABLE data_subject_request (     -- LGPD: solicitações do titular
+  id           uuid PRIMARY KEY,
+  tenant_id    uuid NOT NULL,
+  patient_id   uuid REFERENCES patient(id),
+  type         text NOT NULL,           -- ACCESS|CORRECTION|DELETION|PORTABILITY|REVOKE_CONSENT
+  status       text NOT NULL DEFAULT 'RECEIVED',  -- RECEIVED|IN_PROGRESS|COMPLETED|REJECTED
+  requested_at timestamptz NOT NULL DEFAULT now(),
+  due_at       timestamptz NOT NULL,
+  completed_at timestamptz,
+  handled_by   uuid,
+  resolution   text,
+  export_key   text
+);
+
+CREATE TABLE plan (
+  id            uuid PRIMARY KEY,
+  code          text NOT NULL UNIQUE,   -- ESSENCIAL|CLINICA|REDE
+  name          text NOT NULL,
+  price_cents   bigint NOT NULL,
+  interval      text NOT NULL,          -- MONTHLY|YEARLY
+  limits        jsonb NOT NULL,         -- {professionals, units, storageGb, monthlyMessages}
+  active        boolean NOT NULL DEFAULT true
+);
+
+CREATE TABLE subscription (
+  id                 uuid PRIMARY KEY,
+  tenant_id          uuid NOT NULL UNIQUE REFERENCES tenant(id),
+  plan_id            uuid NOT NULL REFERENCES plan(id),
+  status             text NOT NULL,     -- TRIALING|ACTIVE|PAST_DUE|CANCELED
+  current_period_end timestamptz,
+  external_customer_id text,
+  external_subscription_id text,
+  cancel_at          timestamptz,
+  created_at         timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE usage_counter (
+  id           uuid PRIMARY KEY,
+  tenant_id    uuid NOT NULL,
+  metric       text NOT NULL,          -- ACTIVE_PROFESSIONALS|STORAGE_BYTES|MESSAGES_SENT
+  period       text NOT NULL,          -- '2026-08' ou 'CURRENT'
+  value        bigint NOT NULL DEFAULT 0,
+  updated_at   timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, metric, period)
+);
+```
+
+## 10. Views de leitura (contrato do módulo `reporting`)
+
+```sql
+CREATE VIEW vw_agenda_day AS
+SELECT a.tenant_id, a.unit_id, a.id AS appointment_id, a.starts_at, a.ends_at, a.status,
+       p.id AS patient_id, p.name AS patient_name, p.phone_primary,
+       pr.id AS professional_id, u.name AS professional_name,
+       proc.name AS procedure_name, c.name AS chair_name
+FROM appointment a
+JOIN patient p       ON p.id = a.patient_id
+JOIN professional pr ON pr.id = a.professional_id
+JOIN membership m    ON m.id = pr.membership_id
+JOIN "user" u        ON u.id = m.user_id
+LEFT JOIN procedure proc ON proc.id = a.procedure_id
+LEFT JOIN chair c    ON c.id = a.chair_id;
+
+CREATE VIEW vw_financial_summary_month AS
+SELECT tenant_id, unit_id, date_trunc('month', received_at) AS month,
+       SUM(amount_cents) FILTER (WHERE reversed_at IS NULL) AS received_cents
+FROM payment GROUP BY 1, 2, 3;
+
+CREATE VIEW vw_no_show_rate AS
+SELECT tenant_id, unit_id, date_trunc('month', starts_at) AS month,
+       COUNT(*) FILTER (WHERE status = 'NO_SHOW')::numeric
+         / NULLIF(COUNT(*) FILTER (WHERE status IN ('COMPLETED','NO_SHOW')), 0) AS no_show_rate
+FROM appointment GROUP BY 1, 2, 3;
+```
+
+Views herdam a RLS das tabelas base (são `security_invoker` por padrão nas versões atuais do PostgreSQL; declare explicitamente `WITH (security_invoker = true)` para não depender do default).
+
+## 11. Regras de integridade que **não** ficam só na aplicação
+
+| Regra | Mecanismo |
+| --- | --- |
+| Sem double-booking por profissional/cadeira | `EXCLUDE USING gist` |
+| Evolução clínica imutável | trigger `BEFORE UPDATE OR DELETE` |
+| Soma das parcelas = total do título | trigger de validação `AFTER INSERT/UPDATE` em `installment` (deferrable) ou verificação no caso de uso + teste |
+| Uma unidade padrão por tenant | índice único parcial |
+| Um caixa aberto por operador/unidade | índice único parcial |
+| Unicidade de CPF por tenant | índice único parcial |
+| Idempotência de automação | `UNIQUE (tenant_id, automation_id, target_type, target_id)` |
+| Idempotência de webhook | `UNIQUE (provider_message_id)` |
+| Isolamento entre tenants | RLS (doc 06) |
+
+## 12. Migrações
+
+- Prisma Migrate com migrações versionadas em `apps/api/prisma/migrations`.
+- Todo recurso não suportado pelo Prisma (RLS, `EXCLUDE`, triggers, views, colunas geradas, extensões) entra como **SQL manual** dentro da migração gerada.
+- Extensões necessárias: `pgcrypto` (ou UUID v7 gerado na aplicação), `citext`, `btree_gist`, `pg_trgm`.
+- Política: migração sempre compatível para frente (expand/contract). Nunca `DROP COLUMN` no mesmo deploy que remove o uso — duas etapas.
+- Seeds: catálogo padrão de procedimentos, planos, templates globais de mensagem, formulário de anamnese padrão.
+
+## 13. Retenção e volumetria estimada (500 tenants, ano 1)
+
+| Tabela | Linhas estimadas | Observação |
+| --- | --- | --- |
+`appointment` | ~2,4 M | 500 tenants × 400/mês × 12
+`message` | ~6 M | 2–3 mensagens por agendamento + inbox
+`audit_log` | ~30 M | maior tabela; particionar por mês e arquivar após 12 meses
+`clinical_note` | ~1,5 M | crescimento permanente (não expira)
+`attachment` | ~1 M / 40 TB? não — cota por plano mantém ~50–200 GB no ano 1 | imagens dominam o custo de storage
+`payment`/`installment` | ~5 M | —
+
+Decisões derivadas: particionar `audit_log` e `message` por mês; anexos em object storage com classe infrequente após 180 dias; prontuário nunca em storage "frio" inacessível (precisa de leitura imediata).
