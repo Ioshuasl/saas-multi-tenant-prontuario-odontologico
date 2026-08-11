@@ -70,11 +70,23 @@ Downgrade com uso acima do novo limite: bloqueado até a clínica ajustar (com l
 
 ## 5. Cobrança
 
-MVP: integração com um gateway de assinatura (Stripe ou similar; decisão na Sprint 0) usando checkout hospedado — **não** armazenamos dado de cartão. Cobrança em BRL, ciclo mensal ou anual, webhook do gateway atualiza o estado da assinatura (idempotente por ID do evento).
+**MVP (agora):** cobrança da assinatura **manual** — sem checkout automatizado no app. O módulo mantém trial, planos, limites e mudança de status por operação. Detalhe: [ADR-0010](../adr/0010-billing-saas-manual-mvp.md).
 
-Cobrança de excedente (mensagens além da franquia) no MVP é por **créditos pré-pagos** (compra avulsa), não por fatura variável — mais simples de operar e mais previsível para a clínica.
+**Candidatos quando automatizar** (um será escolhido em ADR futuro), sempre atrás de port, checkout hospedado, **sem** armazenar cartão na aplicação:
 
-Fase 2: nota fiscal da nossa assinatura, cupons, indicação com bônus, planos anuais com parcelamento.
+| Candidato | Notas |
+| --- | --- |
+| **Stripe** | Billing/Checkout; webhooks maduros |
+| **Mercado Pago** | Forte no BR; Pix / assinaturas |
+| **Asaas** | Assinaturas, boleto, Pix; ecossistema BR |
+
+Campos `external_customer_id` / `external_subscription_id` já previstos em `subscription`. Cobrança em BRL, ciclo mensal ou anual, quando houver gateway.
+
+Créditos de mensagem (excedente da franquia) no MVP: crédito **manual** pela operação; compra avulsa automatizada junto com o gateway futuro.
+
+E-mail transacional: **Resend** ([ADR-0009](../adr/0009-email-resend.md)).
+
+Fase 2+: nota fiscal da nossa assinatura, cupons, indicação com bônus, planos anuais com parcelamento — após gateway escolhido.
 
 ## 6. Onboarding self-service (wizard)
 

@@ -64,10 +64,11 @@ Este vocabulário é obrigatório em código, banco, API e conversas. Se um term
 | Bounded context | Fronteira de significado; aqui, um módulo do monólito |
 | Evento de domínio | Fato ocorrido no domínio, em passado (`AppointmentScheduled`) |
 | Outbox | Tabela que grava eventos na mesma transação do agregado, garantindo entrega |
-| Use case (caso de uso) | Operação de aplicação que orquestra domínio e ports; no código vive em `services/` com sufixo `Service` (`ScheduleAppointmentService`) |
-| Port | Interface de dependência externa definida pelo domínio/aplicação |
-| Adapter | Implementação concreta de um port (`repositories/prisma-*`, `shared/integrations/`) |
-| Repositório | Port de persistência de um agregado |
+| Use case (caso de uso) | Operação de aplicação que orquestra domínio e ports; no código vive em `services/<entidade>/` com classe curta (`CreateService`, `ListService`) — a entidade está no path do arquivo |
+| Port | Dependência externa definida pela aplicação; no código vive em `types/ports/` |
+| Adapter | Implementação concreta de um port (`repositories/<entidade>/`, `shared/integrations/`) |
+| Repositório | Port/adapter de persistência; 1 operação = 1 arquivo (`patient_create.repository.ts` → `CreateRepository`) |
+| Action | Orquestra persistência + efeitos além do repositório (outbox, outro módulo); ausente no CRUD puro |
 | Unit of Work | Abstração de transação que agrupa escritas + publicação de eventos |
 | RLS (Row Level Security) | Filtro de linhas aplicado pelo PostgreSQL por política |
 | Idempotência | Propriedade de uma operação que, repetida, não muda o resultado |
@@ -79,14 +80,72 @@ Este vocabulário é obrigatório em código, banco, API e conversas. Se um term
 | Fitness function | Teste automatizado que valida uma característica arquitetural |
 | Expand/contract | Estratégia de migração em duas etapas para evitar downtime |
 
-## 4. Convenções de nomenclatura
+## 4. Segurança, privacidade e compliance
+
+Vocabulário alinhado a [10 — LGPD](./10-seguranca-lgpd-compliance.md), [17 — Baseline de Segurança](./17-seguranca-baseline.md) e [ADR-0007](./adr/0007-criptografia-envelope-tenant.md). Usar estes nomes em código, ADRs e conversas — não inventar sinônimos.
+
+| Termo (pt-BR / uso) | Termo no código | Definição |
+| --- | --- | --- |
+| Controlador | — (papel LGPD) | A clínica (tenant): decide a finalidade do tratamento dos dados dos pacientes |
+| Operador | — (papel LGPD) | A plataforma (nós): trata dados em nome da clínica, conforme DPA |
+| Titular | data subject / `Patient` (quando paciente) | Pessoa a quem se referem os dados pessoais |
+| Encarregado (DPO) | — | Canal com titulares e ANPD; indicado pela plataforma (e recomendado na clínica) |
+| DPA | — | Contrato/anexo de operador de dados (Data Processing Agreement) entre plataforma e clínica |
+| Dado sensível | — | Dado de saúde (LGPD art. 11); exige base legal específica e controles reforçados |
+| Consentimento | `Consent` | Registro versionado de aceite/revogação (ex.: marketing WhatsApp, uso de imagem) |
+| Opt-in / opt-out | — | Consentimento prévio / revogação; marketing exige opt-in verificado em runtime |
+| Minimização | — | Coletar e expor só o necessário à finalidade |
+| Anonimização | `anonymize` | Eliminação irreversível de identificadores; usada em DSR de eliminação quando há dever de guarda do prontuário |
+| Portabilidade | `EXPORT` / DSR `PORTABILITY` | Entrega dos dados do titular/tenant em formato estruturado (JSON/CSV + anexos) |
+| DSR / solicitação do titular | `DataSubjectRequest` | Pedido LGPD (acesso, correção, eliminação, portabilidade, revogar consentimento) com `due_at` |
+| ROPA | — | Registro das operações de tratamento (documento de compliance) |
+| TLS | — | Criptografia em trânsito (cliente↔API e API↔serviços); obrigatório 1.2+ |
+| Criptografia em repouso | at-rest / SSE | Cifrado no disco/volume/backup/object storage pelo provedor |
+| Envelope encryption | `TenantCrypto` / envelope | DEK cifra o dado; KEK (KMS) cifra a DEK; modelo enterprise do MVP ([ADR-0007](./adr/0007-criptografia-envelope-tenant.md)) |
+| DEK | `DataEncryptionKey` | Chave de dados por tenant (AES-256-GCM); plaintext só em memória |
+| KEK | `KeyEncryptionKey` | Chave no KMS que envolve (wrap) a DEK; não exportável |
+| Wrap / Unwrap | `KeyManagementPort.wrap/unwrap` | Cifrar/decifrar a DEK com a KEK |
+| AAD | `aad` (Additional Authenticated Data) | Dados autenticados no GCM (ex.: `tenantId` + tabela + coluna + rowId) que amarram o ciphertext ao contexto |
+| Ciphertext | — | Conteúdo cifrado persistido; oposto de plaintext |
+| KMS | `KeyManagementPort` | Gestão de KEK/wrap DEK — MVP: local na VPS; futuro: Vault self-hosted ([ADR-0013](./adr/0013-kms-local-vps.md)) |
+| Secret manager | — | Guarda segredos de runtime (JWT, tokens); distinto do KMS de DEK |
+| E2EE (ponta a ponta no cliente) | — | Servidor só vê ciphertext; **não adotado** no MVP (ver ADR-0007) |
+| Modelo enterprise (crypto) | — | TLS + at-rest + envelope por tenant; servidor descriptografa em memória no request autorizado |
+| RBAC | `authorize(permission)` / `Role` | Controle de acesso baseado em papel (+ overrides em `membership.permissions`) |
+| BOLA | — | Broken Object Level Authorization (OWASP API); mitigado por RLS + 404 cross-tenant |
+| BFLA | — | Broken Function Level Authorization; mitigado por permissão por rota |
+| IDOR | — | Acesso a recurso de outro usuário/tenant por manipulação de ID; resposta 404 |
+| Argon2id | — | Algoritmo de hash de senha adotado |
+| Refresh token rotativo | `RefreshTokenFamily` | Cada uso emite novo refresh; reuso revoga a família (detecção de roubo) |
+| Trilha de auditoria | `AuditLog` / `audit_log` | Registro append-only de quem fez o quê, quando, em qual recurso/paciente |
+| Append-only | — | Sem UPDATE/DELETE destrutivo (evolução clínica, auditoria) |
+| `content_hash` | `contentHash` | SHA-256 do conteúdo canônico da evolução (integridade) |
+| Amend | `amend` / `ClinicalNote.amend` | Correção que cria nova versão com motivo, preservando a anterior |
+| Detecção de anomalia | `anomaly.*` / `ANOMALY_TRIGGERED` | Regras determinísticas (ex.: rajada de leitura de prontuário) que geram alerta |
+| Rate limit | — | Limite de requisições por IP, tenant e/ou rota |
+| CSP | Content-Security-Policy | Header que restringe origens de script/recurso no browser |
+| HSTS | Strict-Transport-Security | Força uso de HTTPS no cliente |
+| mTLS | — | TLS mútuo (cliente e servidor autenticam certificado); API↔worker na fase 2 |
+| WAF | — | Web Application Firewall na borda (CDN) |
+| SSRF | — | Server-Side Request Forgery; proibido fetch de URL fornecida pelo usuário |
+| OWASP Top 10 | — | Lista de riscos web mais críticos; controles em [RNF-seguranca-owasp](./requisitos/nao-funcionais/RNF-seguranca-owasp.md) |
+| OWASP API Top 10 | — | Riscos específicos de API (BOLA, BFLA, etc.) |
+| Secure SDLC | — | Práticas de segurança no ciclo de desenvolvimento (checklist de PR, CI, threat model) |
+| Threat model / STRIDE | — | Análise de ameaças (Spoofing, Tampering, Repudiation, Information disclosure, DoS, Elevation) |
+| NGS2 | — | Nível do Manual de Certificação de Registro Eletrônico em Saúde; exigido para “eliminar o papel” (fase 2 + ICP) |
+| ICP-Brasil | `signature.type = ICP` (fase 2) | Infraestrutura de chaves públicas brasileira para assinatura digital com certificado |
+
+## 5. Convenções de nomenclatura
 
 | Contexto | Convenção | Exemplo |
 | --- | --- | --- |
 | Tabelas e colunas | `snake_case`, singular | `clinical_note`, `starts_at` |
 | Payload de API | `camelCase` | `startsAt`, `totalCents` |
-| Classes | `PascalCase` | `ScheduleAppointmentService` |
-| Arquivos | `kebab-case` com sufixo de papel | `appointment.repository.ts`, `schedule-appointment.service.ts` |
+| Classes de operação (backend) | `PascalCase` **curto**, sem entidade | `CreateService`, `ListRepository`, `CreateAction` |
+| Tipagens TS (DTO, ports, I/O) | pasta `types/` (sem `interfaces/`) | `patient_create.types.ts`, `types/ports/*.port.ts` |
+| Enums TypeScript | pasta `enum/` | `patient_origin.enum.ts` → `PatientOrigin` |
+| Arquivos backend | `snake_case` + sufixo de papel | `patient_create.service.ts` → `class CreateService` |
+| Arquivos frontend | `PascalCase` + papel | `PatientCreateData.ts`, `usePatientCreateHook.ts` |
 | Eventos | `<modulo>.<entidade>_<verbo_passado>` | `scheduling.appointment_scheduled` |
 | Códigos de erro | `SCREAMING_SNAKE_CASE` estável | `SLOT_UNAVAILABLE` |
 | Jobs/filas | `kebab-case` verbal | `send-whatsapp-message` |
@@ -95,8 +154,11 @@ Este vocabulário é obrigatório em código, banco, API e conversas. Se um term
 | Datas | `*_at` para instante, `*_date` para data civil | `paid_at`, `due_date` |
 | Booleanos | prefixo `is_`/`has_`/`requires_` quando ajudar leitura | `requires_tooth` |
 | Rotas | substantivo plural, `kebab-case` | `/api/v1/treatment-plans` |
+| Operações CRUD | `list` / `get` / `create` / `update` / `delete` | alinhado à API REST |
 
-## 5. Termos que **não** usamos (para evitar ambiguidade)
+Detalhe da estrutura Orius (1 arquivo por ação, `Data → Service → Hook`) em [16 — Estrutura de Pastas](./16-estrutura-de-pastas.md).
+
+## 6. Termos que **não** usamos (para evitar ambiguidade)
 
 | Evitar | Usar | Motivo |
 | --- | --- | --- |
@@ -108,3 +170,8 @@ Este vocabulário é obrigatório em código, banco, API e conversas. Se um term
 | "Serviço" para procedimento | `Procedure` | `Service` é termo técnico: caso de uso em `services/` |
 | "Cancelado" para falta | `NO_SHOW` | Falta e cancelamento têm consequências diferentes |
 | "Deletar" dado clínico | `amend` / `anonymize` / `inactivate` | Dado clínico não se apaga |
+| "Criptografia de ponta a ponta" / E2EE para o modelo atual | TLS + at-rest + **envelope por tenant** | E2EE no cliente **não** foi adotado (ADR-0007); não usar o termo em marketing nem em código |
+| "Criptografado" sem dizer onde | Qualificar: *em trânsito* (TLS), *em repouso* (volume/SSE), *envelope* (campo) | Evita falsa sensação de E2EE |
+| "Apagar prontuário" a pedido do titular | `anonymize` + retenção por obrigação legal | Prontuário tem dever de guarda; eliminação plena nem sempre é lícita |
+| "Log de auditoria" editável pelo Owner | `audit_log` append-only | Nem o Owner apaga trilha de auditoria |
+| "Chave no `.env` da app" para DEK/KEK | KMS + secret manager | DEK wrapped; KEK nunca no repositório nem no env da aplicação |

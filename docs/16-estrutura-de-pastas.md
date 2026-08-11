@@ -1,238 +1,481 @@
 # 16 — Estrutura de Pastas e Convenções de Código
 
-Este documento fixa a estrutura de pastas do projeto. Ele parte da convenção que o time já usa nos outros projetos e explica, item por item, o que foi mantido, o que foi acrescentado e **por quê** — para que a decisão seja consciente e não uma cópia de template.
+Este documento fixa a estrutura de pastas do projeto. Ele reaproveita o **padrão Orius** (1 arquivo por operação CRUD em cada camada, classes curtas, separação explícita) — o mesmo usado em módulos como `Aluno` no `pdi-ioshua` — adaptado ao stack Node/TypeScript + Next.js deste SaaS.
 
-Princípio geral: **a convenção de pastas é do time; a regra de dependência é da arquitetura.** Nomes de pasta familiares reduzem atrito diário; regras de dependência impedem que o monólito modular apodreça. As duas coisas coexistem sem conflito.
+Princípio geral: **a convenção de pastas/nomenclatura é do time (Orius); a regra de dependência e o `models/` rico são da arquitetura (DDD/Clean).** As duas coisas coexistem.
+
+Referência canônica neste doc: entidade **`Patient`** (módulo `patients`).
+
+---
+
+## 0. Decisões fechadas (resumo)
+
+| Tema | Decisão |
+| --- | --- |
+| Relação com DDD/`models/` | Híbrido: mantém `models/` com invariantes; granularidade Orius (1 arquivo por ação) em service/repository/action |
+| Camada `actions/` | **Só quando há efeito além do repositório** (evento, outro módulo, outbox, side-effect). CRUD puro: `Service → Repository` |
+| Nome da classe | Curto, **sem** prefixo da entidade: `ListService`, `CreateRepository`, `CreateAction` |
+| Nome do arquivo | Backend: `snake_case` (`patient_create.service.ts`). Frontend: `PascalCase` (`PatientCreateService.ts`) |
+| Vocabulário de operação | Alinhado à API REST: `list` / `get` / `create` / `update` / `delete` (+ auxiliares `get_by_<uk>`, verbos de domínio) |
+| Frontend | `Data → Service → Hook` por ação + **TanStack Query** no hook; tipagens em `types/`, enums em `enum/` |
+| Exemplo canônico | `Patient` |
 
 ---
 
 ## 1. Backend
 
-### 1.1 Estrutura adotada
+### 1.1 Estrutura na raiz
 
 ```
 backend/src/
-├── server.ts                    # bootstrap: lê env, conecta, listen
-├── worker.ts                    # bootstrap de filas/cron (mesmo código, outro processo)
-├── app.ts                       # Express: middlewares + rotas, SEM listen (testável via Supertest)
+├── server.ts
+├── worker.ts
+├── app.ts
 ├── routes/
-│   └── index.ts                 # monta /api/v1 agregando as rotas de cada módulo
+│   └── index.ts                 # monta /api/v1
 ├── docs/
-│   └── openapi.yaml             # GERADO dos schemas Zod — não editar à mão
+│   └── openapi.yaml             # gerado dos schemas Zod
 ├── shared/
-│   ├── config/                  # env schema (Zod), constantes, feature flags
-│   ├── database/                # prisma client, tenant-prisma (RLS), unit-of-work, outbox
-│   ├── middlewares/             # auth, tenant, error handler, rate limit, requestId, audit
-│   ├── integrations/            # whatsapp, storage S3, e-mail, gateway de pagamento
-│   ├── queue/                   # filas BullMQ, dispatcher do outbox, scheduler de cron
+│   ├── config/
+│   ├── database/                # prisma, tenant-prisma (RLS), unit-of-work, outbox
+│   ├── middlewares/
+│   ├── integrations/
+│   ├── queue/
 │   ├── domain/                  # kernel: EntityId, TenantId, DomainEvent, erros base
-│   └── helpers/                 # puro e reutilizável: datas, moeda, CPF, FDI, id (UUID v7)
+│   └── helpers/
 └── modules/
     └── <dominio>/               # ver 1.2
 ```
 
-Um módulo por bounded context: `identity`, `clinic`, `patients`, `scheduling`, `clinical-records`, `treatments`, `billing`, `messaging`, `reporting`, `subscription`. As capacidades transversais chamadas de `platform` nos outros documentos (auditoria, outbox, exportação/LGPD, feature flags) não são um módulo de domínio: vivem em `shared/`.
+Módulos (bounded contexts): `identity`, `clinic`, `patients`, `scheduling`, `clinical-records`, `treatments`, `billing`, `messaging`, `reporting`, `subscription`. Capacidades transversais (`platform`) vivem em `shared/`.
 
-### 1.2 Estrutura de um módulo
+### 1.2 Estrutura de um módulo — exemplo `patients` / `Patient`
 
 ```
-modules/scheduling/
-├── models/                      # ← DOMÍNIO (era "domain/")
-│   ├── appointment.model.ts
+modules/patients/
+├── models/                                    # DOMÍNIO (DDD) — zero framework
+│   ├── patient.model.ts
 │   ├── value-objects/
+│   │   ├── cpf.vo.ts
+│   │   └── phone-number.vo.ts
 │   ├── events/
-│   ├── errors/
-│   └── availability-calculator.ts        # domain service
-├── services/                    # ← APLICAÇÃO: 1 caso de uso por arquivo
-│   ├── schedule-appointment.service.ts
-│   └── schedule-appointment.service.spec.ts
+│   │   └── patient-created.event.ts
+│   └── errors/
+│       └── duplicate-patient-cpf.error.ts
+│
+├── schemas/                                   # Zod (entrada HTTP)
+│   └── patient.schema.ts                      # create/update/list query + tipos
+│
 ├── repositories/
-│   ├── appointment.repository.ts         # interface (contrato)
-│   ├── prisma-appointment.repository.ts  # implementação
-│   └── mappers/appointment.mapper.ts
+│   └── patient/
+│       ├── patient_list.repository.ts         # class ListRepository
+│       ├── patient_get.repository.ts          # class GetRepository
+│       ├── patient_create.repository.ts       # class CreateRepository
+│       ├── patient_update.repository.ts       # class UpdateRepository
+│       ├── patient_delete.repository.ts       # class DeleteRepository
+│       ├── patient_get_by_cpf.repository.ts   # class GetByCpfRepository
+│       └── mappers/
+│           └── patient.mapper.ts              # row ↔ Patient (domínio)
+│
+├── actions/                                   # SÓ quando há efeito além do repositório
+│   └── patient/
+│       └── patient_create.action.ts           # class CreateAction
+│           # ex.: persiste + publica outbox (medical_record) na mesma UoW
+│
+├── services/                                  # 1 operação = 1 arquivo = 1 classe curta
+│   └── patient/
+│       ├── patient_list.service.ts            # class ListService
+│       ├── patient_get.service.ts             # class GetService
+│       ├── patient_create.service.ts          # class CreateService
+│       ├── patient_update.service.ts          # class UpdateService
+│       ├── patient_delete.service.ts          # class DeleteService
+│       └── patient_get_by_cpf.service.ts      # class GetByCpfService (unicidade)
+│
 ├── controllers/
-├── routes/v1/
-├── schemas/                     # Zod
-├── interfaces/                  # ports de saída + tipos de entrada/saída
-├── enum/
-├── subscribers/                 # reage a eventos de outros módulos
-├── jobs/                        # handlers de fila do módulo
-├── helpers/                     # puro, específico do módulo
-├── scheduling_public.ts         # fronteira: o que outros módulos podem importar
-└── scheduling.module.ts         # composição de dependências + exporta rotas/subscribers
+│   └── patient.controller.ts                  # fino: parse → service → resposta
+├── routes/
+│   └── v1/patient.routes.ts
+├── types/                                     # tipagens TS do módulo (substitui interfaces/)
+│   ├── patient/
+│   │   ├── patient_create.types.ts            # input/output da operação
+│   │   ├── patient_list.types.ts
+│   │   └── patient_summary.types.ts
+│   └── ports/
+│       └── clinical_records.port.ts           # ports de saída (Clean Architecture)
+├── enum/                                      # enums / mapas const tipados
+│   └── patient/
+│       ├── patient_origin.enum.ts
+│       └── consent_type.enum.ts
+├── subscribers/
+├── jobs/
+├── helpers/
+├── patients_public.ts                         # fronteira entre módulos
+└── patients.module.ts                         # DI + registro de rotas
 ```
 
-### 1.3 O que mudou em relação à convenção original, e por quê
+> **`interfaces/` não existe mais.** Tipagens e ports ficam em `types/`; enums em `enum/`.
+### 1.3 Fluxo por camada
 
-| Convenção original | Aqui | Motivo |
+```
+HTTP  →  routes  →  controller  →  service  →  [action?]  →  repository  →  Prisma
+                                      │
+                                      └── models/ (invariantes, VOs, eventos)
+```
+
+| Situação | Fluxo |
+| --- | --- |
+| CRUD puro (list/get/update simples) | `Service` → `Repository` |
+| Persistência **+** efeito (evento, outro agregado, outbox, chamada a port) | `Service` → `Action` → `Repository` (+ ports) |
+| Unicidade / lookup auxiliar | `GetBy<Uk>Service` chamado pelo `CreateService`/`UpdateService` |
+
+### 1.4 Nomenclatura (backend)
+
+| Peça | Convenção | Exemplo |
 | --- | --- | --- |
-| `models/` = model de ORM | `models/` = modelo **de domínio** | Com Prisma, o mapeamento de tabelas já vive em `prisma/schema.prisma`. A pasta fica livre para o que realmente importa: a classe que **impede** estado inválido. `Appointment` sabe que não se remarca consulta concluída; uma classe que só espelha colunas não sabe nada. |
-| `services/` = tudo que não é controller | `services/` = **um caso de uso por arquivo** | Impede o "service God" de 2 mil linhas. `schedule-appointment.service.ts` tem um método público `execute` e é testável sem banco. |
-| `repositories/` = acesso a dados | `repositories/` = **interface + implementação** juntas | O `service` depende de `appointment.repository.ts` (contrato); a implementação Prisma fica ao lado. Assim o teste de caso de uso usa um fake em memória, sem Testcontainers. |
-| `interfaces/` = tipos diversos | `interfaces/` = **ports de saída** + tipos de I/O | É onde entram `notification.port.ts`, `clock.port.ts`, `storage.port.ts`. Dependência invertida: o domínio declara o que precisa, a borda implementa. |
-| `routes/` | `routes/v1/` | Requisito de API versionada ([ADR-0003](./adr/0003-versionamento-api.md)). A versão vive só na borda; `services/` e `models/` não sabem que existe versão. |
-| `<dominio>_public.ts` opcional | **obrigatório** | É a única fronteira entre módulos. Sem ele o monólito modular vira monólito emaranhado em poucos meses. |
-| — | `subscribers/` e `jobs/` (novos) | O produto depende de trabalho assíncrono (lembrete D-1, webhook do WhatsApp, cron de inadimplência). Sem pasta própria isso acaba dentro de controller. |
-| `shared/` | `shared/` + `shared/domain/` (kernel) | Mantido como estava, com um acréscimo: tipos base do domínio (`TenantId`, `DomainEvent`) que todos os módulos usam. |
+| Arquivo | `snake_case` + sufixo de papel | `patient_create.service.ts` |
+| Classe de operação | Curta, **sem** entidade | `CreateService`, `ListRepository`, `CreateAction` |
+| Parâmetro de entrada | `<entidade>Schema` / campos tipados — **nunca** `data` genérico | `patientSchema: PatientCreateSchema` |
+| Update | `execute(patientId, patientSchema)` | id no path, body sem PK |
+| Operações CRUD | `list` `get` `create` `update` `delete` | alinhado a [08 — API v1](./08-api-v1.md) |
+| Auxiliares | `get_by_<campo>` | `patient_get_by_cpf.service.ts` → `GetByCpfService` |
+| Verbos de domínio (não-CRUD) | verbo no arquivo/classe | `appointment_confirm.service.ts` → `ConfirmService` |
+| Eventos | `<modulo>.<entidade>_<verbo_passado>` | `patients.patient_created` |
+| Tipagens | `types/<entidade>/` ou `types/ports/` | `patient_create.types.ts`, `clinical_records.port.ts` |
+| Enums | `enum/<entidade>/` | `patient_origin.enum.ts` → `PatientOrigin` |
 
-### 1.4 Onde colocar o quê (decisões rápidas)
+```
+# CRUD Patient
+patient_list.service.ts       → class ListService
+patient_get.service.ts        → class GetService
+patient_create.service.ts     → class CreateService
+patient_update.service.ts     → class UpdateService
+patient_delete.service.ts     → class DeleteService
+patient_get_by_cpf.service.ts → class GetByCpfService
+
+patient_list.repository.ts    → class ListRepository
+patient_create.repository.ts  → class CreateRepository
+patient_create.action.ts      → class CreateAction   # só se houver efeito extra
+```
+
+### 1.5 Quando criar `actions/`
+
+**Criar Action** se o caso de uso, além de ler/gravar no repositório da entidade, também:
+
+- publica evento de domínio / grava outbox;
+- chama port de outro módulo;
+- orquestra mais de um repositório na mesma transação;
+- dispara efeito que não é “só o SQL/Prisma desta entidade”.
+
+**Não criar Action** para: listar, buscar por id, update de campos, soft-delete simples, get_by_cpf. Nesses casos o `Service` chama o `Repository` direto.
+
+Exemplo `Patient` — create precisa do prontuário vazio e do evento:
+
+```ts
+// services/patient/patient_create.service.ts
+export class CreateService {
+  constructor(
+    private readonly getByCpf: GetByCpfService,
+    private readonly createAction: CreateAction, // efeito além do repo
+  ) {}
+
+  async execute(ctx: RequestContext, patientSchema: PatientCreateSchema) {
+    const existing = await this.getByCpf.execute(ctx, patientSchema.cpf, false);
+    if (existing) throw new DuplicatePatientCpfError(patientSchema.cpf);
+    return this.createAction.execute(ctx, patientSchema);
+  }
+}
+
+// actions/patient/patient_create.action.ts
+export class CreateAction {
+  constructor(
+    private readonly createRepository: CreateRepository,
+    private readonly uow: UnitOfWork,
+  ) {}
+
+  async execute(ctx: RequestContext, patientSchema: PatientCreateSchema) {
+    return this.uow.run(ctx, async () => {
+      const patient = Patient.create(/* ... VOs / invariantes ... */);
+      await this.createRepository.execute(ctx, patient);
+      await this.uow.publish(patient.pullEvents()); // outbox → clinical-records cria MedicalRecord
+      return patient;
+    });
+  }
+}
+```
+
+Exemplo `Patient` — list **sem** Action:
+
+```ts
+// services/patient/patient_list.service.ts
+export class ListService {
+  constructor(private readonly listRepository: ListRepository) {}
+
+  async execute(ctx: RequestContext, query: PatientListQuery) {
+    return this.listRepository.execute(ctx, query);
+  }
+}
+```
+
+### 1.6 Regras de dependência (Clean Architecture)
+
+```
+controllers · routes · repositories · jobs · subscribers · actions
+        │                                         ▲
+        ▼                                         │
+    services  ──────────────────────────────►  models
+```
+
+- `models/` não importa Express, Prisma, Zod, HTTP.
+- `services/` orquestra; chama `models/`, `actions/` (quando existir) ou `repositories/`; não importa Prisma Client direto.
+- `actions/` orquestra persistência + efeitos; não conhece HTTP.
+- `repositories/` é a única pasta do módulo que fala com Prisma (via `TenantPrisma`).
+- Cruzar módulo **somente** por `<dominio>_public.ts`.
+
+Equivalência Clean Architecture:
+
+| Camada canônica | Pasta aqui |
+| --- | --- |
+| domain | `models/` |
+| application (use cases) | `services/` + `actions/` (quando houver) |
+| application (ports + tipagens) | `types/` (inclui `types/ports/`) |
+| enums / constantes tipadas | `enum/` |
+| interface (HTTP) | `controllers/` + `routes/` + `schemas/` |
+| infrastructure | `repositories/`, `jobs/`, `shared/integrations/` |
+
+> **`models/` não é model de ORM.** Mapeamento de tabelas: `prisma/schema.prisma`. `models/` = invariantes de domínio.
+
+### 1.7 Onde colocar o quê
 
 | Se você está escrevendo… | Vai em |
 | --- | --- |
-| regra que deve ser sempre verdadeira sobre uma entidade | `models/` |
-| validação de formato de entrada (CPF, data, obrigatoriedade) | `schemas/` (Zod) |
-| orquestração: buscar, decidir, salvar, publicar evento | `services/` |
-| SQL, Prisma, mapeamento de row | `repositories/` |
-| leitura de `req`, escrita de `res`, status HTTP | `controllers/` |
-| chamada a API externa (WhatsApp, S3, gateway) | `shared/integrations/` (via port em `interfaces/`) |
-| formatação de moeda/data usada em 2+ módulos | `shared/helpers/` |
-| reação a um evento de outro módulo | `subscribers/` |
-| algo que outro módulo precisa consultar | `<dominio>_public.ts` |
+| regra sempre verdadeira sobre a entidade | `models/` |
+| validação de formato de entrada | `schemas/` (Zod) |
+| tipagem TS (DTO, input/output, summary) | `types/<entidade>/` |
+| port de saída (clock, storage, outro módulo) | `types/ports/` |
+| enum / mapa `as const` do domínio | `enum/<entidade>/` |
+| orquestração de **uma** operação (list/create/…) | `services/<entidade>/` |
+| persistência + efeitos colaterais | `actions/<entidade>/` |
+| SQL/Prisma/mapper | `repositories/<entidade>/` |
+| `req`/`res`/status HTTP | `controllers/` |
+| API externa | `shared/integrations/` (via port em `types/ports/`) |
+| API para outro módulo | `<dominio>_public.ts` |
 
-### 1.5 Convenções de nome de arquivo
-
-`kebab-case` no arquivo, `PascalCase` na classe, com sufixo indicando o papel:
-
-```
-appointment.model.ts            → class Appointment
-time-slot.vo.ts                 → class TimeSlot
-appointment-scheduled.event.ts  → class AppointmentScheduled
-slot-unavailable.error.ts       → class SlotUnavailableError
-schedule-appointment.service.ts → class ScheduleAppointmentService
-appointment.repository.ts       → interface AppointmentRepository
-prisma-appointment.repository.ts→ class PrismaAppointmentRepository
-appointment.controller.ts       → class AppointmentController
-appointment.routes.ts           → function buildAppointmentRoutes
-appointment.schema.ts           → const scheduleAppointmentSchema
-appointment-origin.enum.ts      → const AppointmentOrigin
-notification.port.ts            → interface NotificationPort
-```
-
-Sufixo não é decoração: `.spec.ts` ao lado do arquivo testado, e o sufixo permite que o lint e o `dependency-cruiser` escrevam regras por padrão de nome (ex.: "`*.service.ts` não pode importar `prisma-*.repository.ts`").
-
-### 1.6 Regras verificadas automaticamente
+### 1.8 Verificação automática (CI)
 
 ```js
 // .dependency-cruiser.js (essencial)
 forbidden: [
-  {
-    name: 'no-framework-in-models',
-    from: { path: 'src/modules/[^/]+/models' },
-    to: { dependencyTypes: ['npm'], pathNot: '^(date-fns|uuid)$' },
-  },
-  {
-    name: 'services-nao-usam-implementacao',
-    from: { path: 'src/modules/[^/]+/services' },
-    to: { path: 'src/modules/[^/]+/(controllers|routes)|repositories/prisma-' },
-  },
-  {
-    name: 'cruzar-modulo-so-pelo-public',
+  { name: 'no-framework-in-models', from: { path: 'src/modules/[^/]+/models' },
+    to: { dependencyTypes: ['npm'], pathNot: '^(date-fns|uuid)$' } },
+  { name: 'services-nao-importam-prisma', from: { path: 'src/modules/[^/]+/services' },
+    to: { path: '@prisma/client' } },
+  { name: 'cruzar-modulo-so-pelo-public',
     from: { path: 'src/modules/([^/]+)/' },
-    to: { path: 'src/modules/(?!$1)([^/]+)/(?!\\2_public\\.ts)' },
-  },
-  {
-    name: 'prisma-so-na-borda',
+    to: { path: 'src/modules/(?!$1)([^/]+)/(?!\\2_public\\.ts)' } },
+  { name: 'prisma-so-na-borda',
     from: { pathNot: 'src/(shared/database|modules/[^/]+/repositories)' },
-    to: { path: '@prisma/client' },
-  },
+    to: { path: '@prisma/client' } },
 ]
 ```
-
-Fronteira sem verificação automática apodrece — essa é a razão de as regras existirem no CI e não apenas neste documento.
 
 ---
 
 ## 2. Frontend
 
-### 2.1 Estrutura adotada
+### 2.1 Estrutura na raiz
 
 ```
 frontend/src/
-├── app/                         # ROTAS (substitui pages/ + routes/)
-│   ├── (public)/                # login, signup, agendar/[slug], anamnese/[token]…
-│   └── (app)/                   # área autenticada: agenda, pacientes, financeiro…
+├── app/                         # ROTAS (App Router) — page.tsx fino
+│   ├── (public)/
+│   └── (app)/
+│       └── pacientes/page.tsx   # só compõe PatientIndex
 ├── packages/
-│   ├── operacional/             # scheduling, patients
-│   ├── clinico/                 # clinical-records, treatments
-│   ├── financeiro/              # billing
-│   ├── admin/                   # clinic, subscription, reporting
-│   ├── messaging/               # inbox WhatsApp
-│   └── public/                  # auth, autoagendamento, links por token
+│   ├── operacional/             # recepção: Patient, Appointment, …
+│   ├── clinico/
+│   ├── financeiro/
+│   ├── admin/
+│   ├── messaging/
+│   └── public/
 └── shared/
-    ├── ui/                      # design system
-    ├── layout/                  # shell, sidebar, seletor de unidade
-    ├── api/                     # api-client, query-client
+    ├── ui/
+    ├── layout/
+    ├── api/                     # api-client + query-client (TanStack)
     ├── hooks/
     ├── auth/
-    ├── helpers/                 # format (moeda, data, CPF), dental (FDI)
+    ├── helpers/
     └── styles/
 ```
 
-Cada domínio dentro de um package tem `api/`, `hooks/`, `components/` e `types/`.
+### 2.2 Estrutura por entidade — padrão Orius + TanStack Query
 
-### 2.2 A única mudança relevante: `app/` no lugar de `pages/` + `routes/`
+Camadas **por ação**: `Data → Service → Hook`. O hook é quem usa TanStack Query.
 
-Isso não é preferência, é consequência do Next.js App Router: o roteamento **é** o sistema de arquivos. Não existe arquivo de configuração de rotas para manter, então `routes/` deixaria de ter conteúdo e `pages/` seria um segundo lugar competindo com `app/` pelo mesmo papel.
+```
+packages/operacional/
+├── components/Patient/
+│   ├── PatientIndex.tsx
+│   ├── PatientTable.tsx
+│   ├── PatientColumns.tsx
+│   ├── PatientFilter.tsx
+│   ├── PatientForm.tsx              # página (se rota própria)
+│   ├── PatientFormDialog.tsx        # modal
+│   └── PatientSelectColumns.tsx     # uso em selects
+├── data/Patient/
+│   ├── PatientListData.ts           # único lugar que chama a API (GET lista)
+│   ├── PatientGetData.ts
+│   ├── PatientCreateData.ts
+│   ├── PatientUpdateData.ts
+│   └── PatientDeleteData.ts
+├── services/Patient/
+│   ├── PatientListService.ts        # 'use server' opcional / thin wrapper
+│   ├── PatientGetService.ts
+│   ├── PatientCreateService.ts
+│   ├── PatientUpdateService.ts
+│   └── PatientDeleteService.ts
+├── hooks/Patient/
+│   ├── usePatientListHook.ts        # useQuery → List
+│   ├── usePatientGetHook.ts         # useQuery → Get
+│   ├── usePatientCreateHook.ts      # useMutation → Create
+│   ├── usePatientUpdateHook.ts
+│   ├── usePatientDeleteHook.ts
+│   └── usePatientFormHook.ts        # RHF + Zod (sem fetch)
+├── types/Patient/                   # tipagens TS (substitui interfaces/)
+│   ├── PatientTypes.ts              # entidade / summary
+│   ├── PatientFilterTypes.ts
+│   ├── PatientTableTypes.ts
+│   ├── PatientFormTypes.ts
+│   └── PatientFormDialogTypes.ts
+├── enum/Patient/                    # enums da entidade no frontend
+│   └── PatientOriginEnum.ts
+└── schemas/Patient/
+    └── PatientSchema.ts             # FormValues + zod (espelha contracts/)
+```
 
-O que se preserva da convenção original é o que ela realmente garante: **1 arquivo ≈ 1 rota, e a rota é fina.** Um `page.tsx` cuida de parâmetro de URL, metadata e composição; toda lógica vem de `packages/`. Rota com `useQuery` e regra dentro é o anti-padrão a evitar.
+### 2.3 Nomenclatura (frontend)
 
-Equivalência:
-
-| Convenção original | Aqui |
-| --- | --- |
-| `pages/agenda.tsx` | `app/(app)/agenda/page.tsx` |
-| `routes/index.tsx` (mapa de rotas + guards) | grupos de rota `(public)` / `(app)` + `middleware.ts` |
-| `packages/admin/...` | `packages/admin/...` (idêntico) |
-| `shared/...` | `shared/...` (idêntico) |
-
-### 2.3 Agrupamento dos packages
-
-Os packages são agrupados **por quem usa**, e cada subpasta espelha um módulo do backend — o que dá rastreabilidade direta entre tela e API:
-
-| Package | Perfil que usa | Módulos do backend |
+| Peça | Convenção | Exemplo |
 | --- | --- | --- |
-| `operacional` | recepção | `scheduling`, `patients` |
-| `clinico` | dentista | `clinical-records`, `treatments` |
-| `financeiro` | financeiro/dono | `billing` |
-| `admin` | dono da clínica | `clinic`, `subscription`, `reporting` |
-| `messaging` | recepção + dono | `messaging` |
-| `public` | paciente e visitante | rotas públicas de `scheduling`, `identity` |
+| Pastas de entidade | `PascalCase` | `Patient/` |
+| Arquivos | `PascalCase` + papel | `PatientCreateData.ts`, `usePatientCreateHook.ts` |
+| Tipagens | `types/<Entidade>/` | `PatientFormTypes.ts` |
+| Enums | `enum/<Entidade>/` | `PatientOriginEnum.ts` |
+| Operações | mesmas do REST | `List` `Get` `Create` `Update` `Delete` |
+| Form vs FormDialog | `Form` = página; `FormDialog` = modal | não misturar |
+| Query keys | `['patients', …]` | invalidar no `onSuccess` das mutations |
 
-### 2.4 Regras
+### 2.4 Fluxo e exemplos canônicos
 
-1. **Package não importa de package.** Precisa compartilhar? Sobe para `shared/`. É o equivalente do `_public.ts` do backend.
-2. **`shared/` só recebe o que já tem 2+ consumidores reais.** Abstrair antes de existir o segundo caso gera abstração errada.
-3. **Componente em `shared/ui` é burro:** recebe dados por prop, não busca dados nem conhece domínio.
-4. **Server Component é o padrão**; `'use client'` só onde há interação (agenda, odontograma, inbox, formulários).
-5. Tipos de request/response vêm de `contracts/`, nunca redigitados no frontend.
+```
+Component → Hook (TanStack Query) → Service → Data → api-client → /api/v1
+```
 
-Verificação: `eslint-plugin-boundaries` com `packages/*` como elementos independentes e `shared/*` como destino permitido.
+**Data** — único ponto com HTTP:
+
+```ts
+// data/Patient/PatientListData.ts
+import { apiClient } from '@/shared/api/api-client';
+import type { PatientListQuery, PatientListResult } from '@repo/contracts';
+
+export async function PatientListData(query: PatientListQuery): Promise<PatientListResult> {
+  return apiClient.request('/patients', { method: 'GET', query });
+}
+```
+
+```ts
+// data/Patient/PatientCreateData.ts
+export async function PatientCreateData(body: PatientCreateInput): Promise<Patient> {
+  return apiClient.request('/patients', { method: 'POST', body });
+}
+```
+
+**Service** — thin; sem regra de negócio de servidor:
+
+```ts
+// services/Patient/PatientListService.ts
+import { PatientListData } from '@/packages/operacional/data/Patient/PatientListData';
+
+export async function PatientListService(query: PatientListQuery) {
+  return PatientListData(query);
+}
+```
+
+**Hook** — TanStack Query:
+
+```ts
+// hooks/Patient/usePatientListHook.ts
+export function usePatientListHook(query: PatientListQuery) {
+  return useQuery({
+    queryKey: ['patients', 'list', query],
+    queryFn: () => PatientListService(query),
+    staleTime: 15_000,
+  });
+}
+
+// hooks/Patient/usePatientCreateHook.ts
+export function usePatientCreateHook() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: PatientCreateService,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['patients'] }),
+  });
+}
+```
+
+### 2.5 Regras do frontend
+
+1. **Rota é fina.** `page.tsx` só compõe; zero fetch na página.
+2. **Package não importa de outro package.** Compartilhar → `shared/`.
+3. **`shared/` só com 2+ consumidores reais.**
+4. **Data é o único lugar que fala com a API** daquela ação.
+5. **Service não chama `fetch` direto** — só Data.
+6. **Hook não monta URL** — só Service + Query/Mutation.
+7. **Componente não chama Data/Service** — só Hooks (e FormHook).
+8. Tipos de request/response vêm de `contracts/`, não redigitados.
+
+### 2.6 Agrupamento dos packages
+
+| Package | Perfil | Entidades (exemplos) |
+| --- | --- | --- |
+| `operacional` | recepção | `Patient`, `Appointment`, … |
+| `clinico` | dentista | `ClinicalNote`, `Odontogram`, `Quote`, … |
+| `financeiro` | financeiro/dono | `Receivable`, `Payment`, `CashSession`, … |
+| `admin` | dono | `Clinic`, `Procedure`, `Subscription`, … |
+| `messaging` | recepção + dono | `Conversation`, `Message`, … |
+| `public` | paciente/visitante | booking, anamnese, orçamento por token |
 
 ---
 
 ## 3. O que é fixo e o que é negociável
 
-**Fixo** (quebra a arquitetura se relaxado):
+**Fixo**
 
-- `models/` sem dependência de framework;
-- `services/` sem depender de implementação concreta;
+- 1 operação = 1 arquivo em `services/`, `repositories/` e (quando existir) `actions/`;
+- classe curta sem prefixo da entidade;
+- backend `snake_case` / frontend `PascalCase`;
+- vocabulário `list|get|create|update|delete`;
+- `actions/` só com efeito além do repositório;
+- tipagens em `types/`; enums em `enum/` — **sem pasta `interfaces/`**;
+- `models/` sem framework;
 - cruzar módulo só por `<dominio>_public.ts`;
-- Prisma só em `shared/database/` e `repositories/prisma-*`;
-- rota versionada;
+- Prisma só em `repositories/` e `shared/database/`;
+- frontend: `Data → Service → Hook` + TanStack Query;
 - package do frontend não importa outro package.
 
-**Negociável** (ajustar quando incomodar, com PR e nota neste documento):
+**Negociável** (PR + nota neste documento)
 
-- criar `use-cases/` separado de `services/` se um módulo passar de ~25 services;
-- subdividir `models/` por agregado em módulos grandes (`clinical-records` provavelmente vai precisar);
-- juntar `enum/` dentro de `models/` se ficarem poucos arquivos;
-- criar novos packages no frontend conforme o produto cresce.
+- subdividir `models/` por agregado em módulos grandes;
+- pasta `go/` sob `services/<entidade>/` (como no Orius Python) — **não adotada** no Node; a pasta da entidade já isola;
+- juntar enums triviais em um único arquivo por módulo se forem poucos;
+- novos packages no frontend conforme o produto cresce.
 
-Módulos essencialmente CRUD (catálogo de procedimentos, categorias financeiras) podem usar a versão enxuta — `controllers/` + `services/` + `repositories/` + `schemas/`, sem value objects nem eventos. A cerimônia é reservada a onde há invariante: agenda, prontuário, orçamento e financeiro.
+Módulos CRUD simples (categorias financeiras, tags) podem omitir `models/` ricos e `actions/` — bastam `schemas` + `services` + `repositories`. Cerimônia de domínio fica onde há invariante: agenda, prontuário, orçamento, financeiro, paciente (duplicidade/consentimento).
 
 ## Referências
 
 - [05 — Arquitetura](./05-arquitetura.md)
+- [08 — API v1](./08-api-v1.md)
 - [09 — Frontend](./09-frontend.md)
 - [12 — Qualidade e Testes](./12-qualidade-testes.md)
 - [ADR-0001 — Monólito modular](./adr/0001-monolito-modular.md)
+- Padrão de referência externo: módulo `Aluno` em `pdi-ioshua` (Orius)

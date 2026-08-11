@@ -32,8 +32,8 @@ Convenções: PostgreSQL, `snake_case` nas tabelas/colunas, PK `uuid` (v7), `ten
           │                   │ audit_log                │
 ┌ clinical-records ────────┐  │ platform_audit_log       │
 │ medical_record           │  │ data_subject_request     │
-│ anamnesis_form/response  │  └──────────────────────────┘
-│ clinical_alert           │
+│ anamnesis_form/response  │  │ tenant_crypto_key        │
+│ clinical_alert           │  └──────────────────────────┘
 │ tooth_state (odontograma)│  ┌ billing ─────────────────┐
 │ clinical_note (+version) │  │ receivable / installment  │
 │ attachment               │  │ payment                  │
@@ -339,7 +339,7 @@ CREATE TABLE anamnesis_response (
   medical_record_id uuid NOT NULL REFERENCES medical_record(id),
   form_id           uuid NOT NULL REFERENCES anamnesis_form(id),
   form_version      integer NOT NULL,
-  answers           jsonb NOT NULL,
+  answers           text NOT NULL,       -- ciphertext envelope v1 (JSON plaintext → AES-GCM → base64)
   answered_by       text NOT NULL,      -- PATIENT|PROFESSIONAL
   answered_at       timestamptz NOT NULL DEFAULT now(),
   signature         jsonb               -- {type: SIMPLE, ip, userAgent, hash}
@@ -351,7 +351,7 @@ CREATE TABLE clinical_alert (            -- derivado da anamnese ou manual
   medical_record_id uuid NOT NULL REFERENCES medical_record(id),
   severity          text NOT NULL,       -- INFO|WARNING|CRITICAL
   category          text NOT NULL,       -- ALLERGY|CONDITION|MEDICATION|OTHER
-  description       text NOT NULL,
+  description       text NOT NULL,       -- ciphertext envelope v1
   source            text NOT NULL,       -- ANAMNESIS|MANUAL
   active            boolean NOT NULL DEFAULT true,
   created_at        timestamptz NOT NULL DEFAULT now()
@@ -389,12 +389,12 @@ CREATE TABLE clinical_note (             -- evolução clínica (imutável)
   medical_record_id uuid NOT NULL REFERENCES medical_record(id),
   appointment_id    uuid,
   professional_id   uuid NOT NULL REFERENCES professional(id),
-  content           text NOT NULL,
+  content           text NOT NULL,                 -- ciphertext envelope v1 (ver §14)
   procedures        jsonb NOT NULL DEFAULT '[]',   -- [{procedureId, tooth, face}]
   version           integer NOT NULL DEFAULT 1,
   supersedes_id     uuid REFERENCES clinical_note(id),
   amend_reason      text,                          -- obrigatório quando version > 1
-  content_hash      text NOT NULL,                 -- SHA-256 do conteúdo (integridade)
+  content_hash      text NOT NULL,                 -- SHA-256 do plaintext canônico (antes de cifrar)
   signed_at         timestamptz NOT NULL DEFAULT now(),
   signature         jsonb NOT NULL,                -- {type, userId, croNumber, ip}
   created_at        timestamptz NOT NULL DEFAULT now(),
@@ -734,6 +734,21 @@ CREATE TABLE message_credit_ledger (
 ## 9. Tabelas — platform e subscription
 
 ```sql
+CREATE TABLE tenant_crypto_key (         -- DEK wrapped por tenant (envelope); ver §14
+  id              uuid PRIMARY KEY,
+  tenant_id       uuid NOT NULL REFERENCES tenant(id),
+  key_version     integer NOT NULL DEFAULT 1,
+  algorithm       text NOT NULL DEFAULT 'AES-256-GCM',
+  wrapped_dek     text NOT NULL,        -- DEK cifrada com KEK local (base64); nunca plaintext
+  kek_provider    text NOT NULL DEFAULT 'local_vps',  -- local_vps|vault (futuro)
+  status          text NOT NULL DEFAULT 'ACTIVE',     -- ACTIVE|ROTATING|RETIRED
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  retired_at      timestamptz,
+  UNIQUE (tenant_id, key_version)
+);
+CREATE UNIQUE INDEX uq_tenant_crypto_active
+  ON tenant_crypto_key (tenant_id) WHERE status = 'ACTIVE';
+
 CREATE TABLE outbox_event (
   id            uuid PRIMARY KEY,
   tenant_id     uuid NOT NULL,
@@ -874,3 +889,45 @@ Views herdam a RLS das tabelas base (são `security_invoker` por padrão nas ver
 `payment`/`installment` | ~5 M | —
 
 Decisões derivadas: particionar `audit_log` e `message` por mês; anexos em object storage com classe infrequente após 180 dias; prontuário nunca em storage "frio" inacessível (precisa de leitura imediata).
+
+## 14. Envelope encryption — `tenant_crypto_key` e formato de ciphertext
+
+Decisão de produto: [ADR-0007](./adr/0007-criptografia-envelope-tenant.md), [ADR-0013](./adr/0013-kms-local-vps.md), [doc 17](./17-seguranca-baseline.md) §3.
+
+### 14.1 Tabela de chaves por tenant
+
+Uma linha **ACTIVE** por tenant (índice único parcial). A DEK em plaintext **nunca** é persistida — só `wrapped_dek` (DEK cifrada com a KEK local da VPS).
+
+### 14.2 Formato de coluna cifrada (MVP)
+
+Colunas afetadas: `clinical_note.content`, `anamnesis_response.answers`, `clinical_alert.description` — tipo `text`.
+
+Valor armazenado = **string Base64** de um blob versionado:
+
+```
+bytes = version(1) || nonce(12) || ciphertext(N) || tag(16)
+coluna = Base64(bytes)
+```
+
+| Parte | Tamanho | Função |
+| --- | --- | --- |
+| `version` | 1 byte | `0x01` = v1 (permite evoluir o formato depois) |
+| `nonce` | 12 bytes | aleatório único por encrypt (GCM) |
+| `ciphertext` | N bytes | texto original cifrado (AES-256-GCM) |
+| `tag` | 16 bytes | autenticação GCM (detecta adulteração) |
+
+**AAD** (Additional Authenticated Data, não fica dentro do blob, mas entra no GCM):
+
+```
+aad = `${tenantId}|${table}|${column}|${rowId}`
+```
+
+Exemplo: `a1b2…|clinical_note|content|c9d8…`
+
+Regras:
+
+1. Algoritmo: **AES-256-GCM**; DEK de 32 bytes por tenant.
+2. `content_hash` (evolução) = SHA-256 do **plaintext canônico**, calculado **antes** de cifrar; fica em plaintext.
+3. Decrypt só depois de contexto de tenant (RLS) + RBAC.
+4. Não usar `jsonb` para o envelope — evita índice/consulta acidental sobre ciphertext e mantém um único parser na app.
+5. Trocar KEK = rewrap das DEK (sem re-cifrar campos). Trocar DEK = job assíncrono (fase 2).

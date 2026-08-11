@@ -11,7 +11,7 @@
 
 | Sprint | Objetivo | Épicos | Pontos | Entregável verificável |
 | --- | --- | --- | --- | --- |
-| **S0** | Fundação técnica | E11 (parcial) | ~30 | Monorepo, Docker Compose, Prisma + primeira migração com RLS, CI verde, Express com `/health`, Next.js com layout e login mockado, testes de arquitetura |
+| **S0** | Fundação técnica + segurança | E11 (parcial) | ~30 | Monorepo, Docker Compose, Prisma + primeira migração com RLS, CI verde (incl. gitleaks/audit), Express com `/health` + middlewares de segurança esqueleto, Next.js com layout e login mockado, testes de arquitetura; fundação de segurança: secrets/env Zod, esqueleto `audit_log`, port `KeyManagementPort` + desenho `tenant_crypto_key` (ver [doc 17](./17-seguranca-baseline.md) §12 e [ADR-0007](./adr/0007-criptografia-envelope-tenant.md)) |
 | **S1** | Identidade e clínica | E1, E2 | ~40 | Signup cria tenant; login/refresh; convite de usuário; papéis; dados da clínica; horários; catálogo de procedimentos |
 | **S2** | Pacientes e agenda interna | E3, E4a | ~45 | Cadastro/busca de pacientes; agenda dia/semana com status, drag & drop, bloqueios, prevenção de conflito no banco |
 | **S3** | Canal com o paciente | E4b, E8a | ~45 | Link público de autoagendamento com OTP; fila de espera + reencaixe; conexão WhatsApp; confirmação D-1 e lembrete H-3; webhook de botão |
@@ -97,15 +97,20 @@ Ordem por valor comercial percebido, com base no [benchmark](./02-benchmark-merc
 
 ## 7. Ordem de decisões técnicas pendentes (a fechar na Sprint 0)
 
-1. Provedor de hospedagem (recomendação em [doc 11](./11-infra-devops.md)).
-2. Região de dados (preferência por Brasil).
-3. Object storage (S3 vs R2) e política de cota por plano.
-4. Provedor de e-mail transacional.
-5. Gateway de cobrança da nossa própria assinatura.
-6. Estratégia de UUID v7 (biblioteca vs extensão do Postgres).
-7. Ferramenta de observabilidade (custo x recurso).
+**Fechadas**
 
-Cada decisão fechada gera um ADR em `docs/adr/`.
+1. ~~Provedor de hospedagem~~ → **VPS Hostinger** + anexos **AWS S3** ([ADR-0008](./adr/0008-hospedagem-vps-hostinger-s3.md)).
+2. ~~Topologia / região~~ → Postgres + Redis **na mesma VPS**; S3 em **`sa-east-1`**.
+3. ~~Object storage S3 vs R2~~ → **S3** (ADR-0008); cotas GB por plano ainda a definir no produto.
+4. ~~E-mail transacional~~ → **Resend** ([ADR-0009](./adr/0009-email-resend.md)); Mailpit no local.
+5. ~~Gateway de cobrança SaaS~~ → **manual no MVP**; candidatos futuros: **Stripe**, **Mercado Pago**, **Asaas** ([ADR-0010](./adr/0010-billing-saas-manual-mvp.md)).
+6. ~~UUID v7~~ → gerado na **aplicação** ([ADR-0011](./adr/0011-uuid-v7-aplicacao.md)).
+7. ~~Observabilidade~~ → **Sentry + logs na VPS** agora; self-hosted na VPS como intenção futura ([ADR-0012](./adr/0012-observabilidade-sentry-logs.md)).
+8. ~~KMS / segredos~~ → **KEK + secrets locais na VPS** agora; intenção **Vault self-hosted** ([ADR-0013](./adr/0013-kms-local-vps.md)).
+9. ~~Domínio / TLS / deploy~~ → **EasyPanel** na VPS; HTTPS pelo EasyPanel; **domínio app + domínio api** (flexíveis); Dockerfile (+ Nginx se preciso) ([ADR-0014](./adr/0014-deploy-easypanel-dominios.md)).
+10. ~~Formato ciphertext / `tenant_crypto_key`~~ → blob Base64 `v1|nonce|ct|tag` + tabela em [docs/07 §14](./07-modelo-de-dados.md#14-envelope-encryption--tenant_crypto_key-e-formato-de-ciphertext); explicação leiga em [docs/17 §3.2](./17-seguranca-baseline.md).
+
+Cada decisão fechada gera um ADR em `docs/adr/` (ou atualiza o ADR existente).
 
 ## 8. Como medir se o MVP deu certo
 

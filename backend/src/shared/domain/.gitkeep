@@ -1,0 +1,2 @@
+/** Kernel de domínio compartilhado (EntityId, DomainError, …) — S0+. */
+export {};

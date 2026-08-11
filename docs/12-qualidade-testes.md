@@ -53,10 +53,10 @@ describe('TimeSlot', () => {
 
 ```ts
 it('rejeita agendamento em slot ocupado sem persistir nada', async () => {
-  const repo = new InMemoryAppointmentRepository([anAppointment({ startsAt: '2026-08-20T14:00:00Z' })]);
-  const service = new ScheduleAppointmentService(repo, new AvailabilityCalculator(repo, fixedHours), fakeUow, fakeIds);
+  const repo = new InMemoryCreateRepository([anAppointment({ startsAt: '2026-08-20T14:00:00Z' })]);
+  const service = new CreateService(/* deps com AvailabilityCalculator + fakeUow */);
 
-  await expect(service.execute(overlappingInput())).rejects.toThrow(SlotUnavailableError);
+  await expect(service.execute(ctx, overlappingSchema())).rejects.toThrow(SlotUnavailableError);
   expect(repo.all()).toHaveLength(1);
   expect(fakeUow.publishedEvents).toHaveLength(0);
 });
@@ -178,17 +178,18 @@ Regras de lint que valem citar explicitamente:
 ```js
 // eslint.config.js — fronteiras (ver doc 16)
 'boundaries/element-types': ['error', { default: 'disallow', rules: [
-  { from: 'models',       allow: ['models'] },
-  { from: 'services',     allow: ['models', 'services', 'interfaces', 'repositories-contract'] },
-  { from: 'controllers',  allow: ['models', 'services', 'schemas', 'interfaces'] },
-  { from: 'repositories', allow: ['models', 'interfaces', 'repositories'] },
+  { from: 'models',       allow: ['models', 'enum', 'types'] },
+  { from: 'services',     allow: ['models', 'services', 'actions', 'types', 'enum', 'repositories'] },
+  { from: 'actions',      allow: ['models', 'actions', 'types', 'enum', 'repositories'] },
+  { from: 'controllers',  allow: ['models', 'services', 'schemas', 'types', 'enum'] },
+  { from: 'repositories', allow: ['models', 'types', 'enum', 'repositories'] },
 ]}],
 'import/no-restricted-paths': ['error', { zones: [
   { target: './src/modules/*/models', from: './node_modules/@prisma',  message: 'models não conhece ORM' },
   { target: './src/modules/*/models', from: './node_modules/express',  message: 'models não conhece HTTP' },
   { target: './src/modules/*/models', from: './node_modules/zod',      message: 'validação de entrada é em schemas/' },
-  { target: './src/modules/*/services', from: './src/modules/*/repositories/prisma-*.ts',
-    message: 'service depende do contrato, não da implementação' },
+  { target: './src/modules/*/services', from: './node_modules/@prisma',
+    message: 'service não importa Prisma — use repository/action' },
   // cruzar módulo apenas pelo <dominio>_public.ts
   { target: './src/modules/**', from: './src/modules/*/!(*_public.ts)' },
 ]}],

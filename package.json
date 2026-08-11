@@ -1,0 +1,30 @@
+{
+  "name": "saas-odontologico",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @repo/backend --filter @repo/frontend run dev",
+    "dev:api": "pnpm --filter @repo/backend dev",
+    "dev:web": "pnpm --filter @repo/frontend dev",
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "db:generate": "pnpm --filter @repo/backend db:generate",
+    "db:migrate": "pnpm --filter @repo/backend db:migrate",
+    "db:seed": "pnpm --filter @repo/backend db:seed",
+    "test:rls": "pnpm --filter @repo/backend test:rls"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.18",
+      "sharp": ">=0.35.0"
+    }
+  }
+}

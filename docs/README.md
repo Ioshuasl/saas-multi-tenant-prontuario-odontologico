@@ -6,7 +6,7 @@ Planejamento do MVP de um software odontológico completo (prontuário digital, 
 
 - **Frontend:** React + TypeScript (TSX) com Next.js (App Router)
 - **Backend:** Node.js + TypeScript + Express, API REST versionada (`/api/v1`)
-- **Arquitetura:** monólito modular com módulos em camadas, Domain-Driven Design (DDD), Clean Architecture e princípios SOLID, sobre a convenção de pastas do time (`controllers/`, `services/`, `repositories/`, `models/`, `shared/`, `<dominio>_public.ts`)
+- **Arquitetura:** monólito modular com padrão Orius (1 arquivo por operação CRUD, classes curtas) + Domain-Driven Design (`models/`), Clean Architecture e SOLID; `actions/` só com efeito além do repositório — ver [16](./16-estrutura-de-pastas.md)
 - **Banco:** PostgreSQL, multi-tenancy por `tenant_id` + Row Level Security (RLS)
 
 ## Índice
@@ -28,7 +28,17 @@ Planejamento do MVP de um software odontológico completo (prontuário digital, 
 | [13 — Roadmap e Estimativas](./13-roadmap-estimativas.md) | Fases, marcos, sequenciamento e riscos |
 | [14 — Métricas e KPIs](./14-metricas-kpis.md) | North star, métricas de produto e de negócio SaaS |
 | [15 — Glossário](./15-glossario.md) | Vocabulário do domínio odontológico e ubiquitous language |
-| [16 — Estrutura de Pastas](./16-estrutura-de-pastas.md) | Convenção de pastas backend/frontend, nomes de arquivo, regras de fronteira |
+| [16 — Estrutura de Pastas](./16-estrutura-de-pastas.md) | Padrão Orius (1 arquivo por ação CRUD), nomenclatura, fronteiras, exemplo Patient |
+| [17 — Baseline de Segurança Enterprise](./17-seguranca-baseline.md) | Criptografia (envelope), auditoria, anomalias, endpoints, OWASP, Secure SDLC |
+| [desenvolvimento/](./desenvolvimento/README.md) | Diário e progresso de implementação (não substitui a especificação) |
+
+### Requisitos (RF / RNF)
+
+Catálogo rastreável do MVP — ver [requisitos/README.md](./requisitos/README.md).
+
+- **Funcionais:** [Identidade](./requisitos/funcionais/01-identidade-acesso.md) · [Clínica](./requisitos/funcionais/02-clinica-cadastros.md) · [Pacientes](./requisitos/funcionais/03-pacientes.md) · [Agenda](./requisitos/funcionais/04-agenda.md) · [Prontuário](./requisitos/funcionais/05-prontuario.md) · [Orçamentos](./requisitos/funcionais/06-orcamentos-tratamentos.md) · [Financeiro](./requisitos/funcionais/07-financeiro.md) · [WhatsApp](./requisitos/funcionais/08-whatsapp-comunicacao.md) · [Relatórios](./requisitos/funcionais/09-relatorios.md) · [Billing SaaS](./requisitos/funcionais/10-billing-saas.md) · [Plataforma/LGPD](./requisitos/funcionais/11-plataforma-lgpd.md)
+- **Não funcionais:** [requisitos-nao-funcionais.md](./requisitos/nao-funcionais/requisitos-nao-funcionais.md) (desempenho, segurança, LGPD, UX, observabilidade, DR, qualidade, …)
+- **OWASP / API Security:** [RNF-seguranca-owasp.md](./requisitos/nao-funcionais/RNF-seguranca-owasp.md)
 
 ### Módulos (detalhamento funcional + domínio)
 
@@ -51,12 +61,22 @@ Planejamento do MVP de um software odontológico completo (prontuário digital, 
 - [ADR-0004 — Prisma como ORM e camada de persistência](./adr/0004-orm-prisma.md)
 - [ADR-0005 — WhatsApp Cloud API oficial em vez de WhatsApp Web não oficial](./adr/0005-whatsapp-cloud-api.md)
 - [ADR-0006 — Filas com BullMQ/Redis dentro do monólito](./adr/0006-filas-bullmq.md)
+- [ADR-0007 — Envelope encryption por tenant (modelo enterprise)](./adr/0007-criptografia-envelope-tenant.md)
+- [ADR-0008 — Hospedagem VPS Hostinger + AWS S3 para anexos](./adr/0008-hospedagem-vps-hostinger-s3.md)
+- [ADR-0009 — E-mail transacional com Resend](./adr/0009-email-resend.md)
+- [ADR-0010 — Billing SaaS manual no MVP (Stripe / Mercado Pago / Asaas depois)](./adr/0010-billing-saas-manual-mvp.md)
+- [ADR-0011 — UUID v7 gerado na aplicação](./adr/0011-uuid-v7-aplicacao.md)
+- [ADR-0012 — Observabilidade Sentry + logs (self-hosted depois)](./adr/0012-observabilidade-sentry-logs.md)
+- [ADR-0013 — KEK/segredos locais na VPS (Vault self-hosted depois)](./adr/0013-kms-local-vps.md)
+- [ADR-0014 — Deploy EasyPanel; domínios app e api](./adr/0014-deploy-easypanel-dominios.md)
 
 ## Como usar estes documentos
 
 1. Leia `01`, `03` e `04` para entender **o que** será construído no MVP.
-2. Leia `05`, `06`, `07`, `08` e `16` antes de escrever a primeira linha de código — eles definem os contratos internos e a estrutura de pastas que mantêm o monólito modular saudável.
-3. Cada arquivo em `modulos/` é o ponto de partida para o backlog daquele módulo (bounded context).
-4. Toda decisão técnica relevante nova entra como um novo ADR em `adr/`, nunca como edição silenciosa de um documento existente.
+2. Use `requisitos/` (RF + RNF) como checklist de aceite rastreável; detalhe de domínio fica em `modulos/`.
+3. Leia `10`, `17` e o ADR-0007 antes de implementar qualquer coisa que toque dado clínico, auth ou multi-tenant.
+4. Leia `05`, `06`, `07`, `08` e `16` antes de escrever a primeira linha de código — eles definem os contratos internos e a estrutura de pastas que mantêm o monólito modular saudável.
+5. Cada arquivo em `modulos/` é o ponto de partida para o backlog daquele módulo (bounded context).
+6. Toda decisão técnica relevante nova entra como um novo ADR em `adr/`, nunca como edição silenciosa de um documento existente.
 
 > Escopo desta pasta: **planejamento**. Nenhum código de aplicação é assumido como existente ainda; os exemplos de código são ilustrativos e servem como referência de padrão a ser seguido na implementação.

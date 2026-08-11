@@ -14,7 +14,7 @@ O domínio tem invariantes fortes e regras que não podem vazar para controllers
 
 Adotamos **monólito modular** com um módulo por bounded context (`identity`, `clinic`, `patients`, `scheduling`, `clinical-records`, `treatments`, `billing`, `messaging`, `reporting`, `subscription`), cada um internamente organizado em camadas de **Clean Architecture**, com modelagem de domínio rica (DDD) e princípios SOLID.
 
-As camadas usam os nomes de pasta da convenção do time — `models/` (domínio), `services/` (aplicação), `controllers/`/`routes/` (interface), `repositories/`/`shared/integrations/` (infraestrutura). O mapeamento completo está em [16 — Estrutura de Pastas](../16-estrutura-de-pastas.md); a nomenclatura muda, a regra de dependência não.
+As camadas usam o padrão Orius do time — 1 arquivo por operação (`list`/`get`/`create`/`update`/`delete`), classes curtas (`CreateService`, `ListRepository`), `actions/` só com efeito além do repositório, e `models/` rico (DDD). Nomenclatura de arquivo: `snake_case` no backend. O mapeamento completo e o exemplo canônico `Patient` estão em [16 — Estrutura de Pastas](../16-estrutura-de-pastas.md); a regra de dependência Clean Architecture permanece.
 
 Regras de fronteira:
 

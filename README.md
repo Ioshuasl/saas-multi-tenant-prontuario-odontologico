@@ -2,7 +2,7 @@
 
 Software odontológico completo entregue como SaaS B2B multi-tenant: prontuário eletrônico, agenda online com autoagendamento, gestão financeira e WhatsApp oficial para clínicas.
 
-**Status atual do repositório: planejamento.** Nenhum código de aplicação foi implementado ainda — toda a especificação funcional, técnica e operacional do MVP está em [`docs/`](./docs/README.md).
+**Status:** Sprint 0 — scaffold do monorepo em andamento. Especificação em [`docs/`](./docs/README.md). Diário de implementação em [`docs/desenvolvimento/`](./docs/desenvolvimento/README.md).
 
 ## Stack e arquitetura
 
@@ -15,10 +15,26 @@ Software odontológico completo entregue como SaaS B2B multi-tenant: prontuário
 | Filas | Redis + BullMQ com outbox transacional |
 | Mensageria | WhatsApp Business Cloud API oficial |
 
+## Monorepo
+
+```
+backend/     # API Express + Prisma + worker
+frontend/    # Next.js App Router
+contracts/   # tipos compartilhados (envelope API)
+docs/        # especificação + docs/desenvolvimento/
+```
+
+```bash
+cp .env.example .env
+pnpm install
+docker compose up -d
+pnpm --filter @repo/contracts build
+pnpm dev:api    # http://localhost:3333/health
+pnpm dev:web    # http://localhost:3000/login
+```
+
 ## Por onde começar
 
-1. [Visão de produto](./docs/01-visao-produto.md) e [escopo do MVP](./docs/04-escopo-mvp.md) — o que será construído.
-2. [Arquitetura](./docs/05-arquitetura.md), [estrutura de pastas](./docs/16-estrutura-de-pastas.md), [multi-tenancy](./docs/06-multi-tenancy.md), [modelo de dados](./docs/07-modelo-de-dados.md) e [API v1](./docs/08-api-v1.md) — como será construído.
-3. [Decisões de arquitetura (ADRs)](./docs/README.md#decisões-de-arquitetura-adrs) — por que foi construído assim.
-
-Índice completo: [`docs/README.md`](./docs/README.md).
+1. [Visão de produto](./docs/01-visao-produto.md) e [escopo do MVP](./docs/04-escopo-mvp.md)
+2. [Arquitetura](./docs/05-arquitetura.md), [estrutura de pastas](./docs/16-estrutura-de-pastas.md), [API v1](./docs/08-api-v1.md)
+3. [Progresso de desenvolvimento](./docs/desenvolvimento/PROGRESSO.md)

@@ -31,9 +31,9 @@ Todos os processos são stateless (sessão em token, fila no Redis, arquivo no s
 | Ambiente | Uso | Dados | Deploy |
 | --- | --- | --- | --- |
 | `local` | Desenvolvimento | Seed sintético (Docker Compose) | manual |
-| `preview` | Um ambiente por PR | Banco efêmero com seed | automático no PR |
-| `staging` | Homologação/QA e ensaio de migração | Sintético (**nunca** dado real de paciente) | automático no merge em `main` |
-| `production` | Clientes | Real | manual com aprovação (tag/release) |
+| `preview` | Opcional / futuro | Banco efêmero | — (EasyPanel MVP foca staging + prod) |
+| `staging` | Homologação/QA e ensaio de migração | Sintético (**nunca** dado real de paciente) | EasyPanel (após CI verde) |
+| `production` | Clientes | Real | EasyPanel com aprovação (tag/release) |
 
 ## 3. Desenvolvimento local
 
@@ -87,17 +87,21 @@ export const env = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().default(30),
   STORAGE_ENDPOINT: z.string().url(),
   STORAGE_BUCKET: z.string(),
+  STORAGE_REGION: z.string().default('sa-east-1'),
   STORAGE_ACCESS_KEY: z.string(),
   STORAGE_SECRET_KEY: z.string(),
   WHATSAPP_APP_SECRET: z.string(),
   WHATSAPP_VERIFY_TOKEN: z.string(),
-  MAIL_DSN: z.string(),
-  APP_PUBLIC_URL: z.string().url(),
+  MAIL_DSN: z.string(),                       // Resend em prod; smtp://mailpit em local
+  RESEND_API_KEY: z.string().optional(),      // produção / staging
+  APP_PUBLIC_URL: z.string().url(),           // domínio do app (EasyPanel)
+  CORS_ORIGINS: z.string(),                   // origem(ns) do app, CSV
   SENTRY_DSN: z.string().optional(),
 }).parse(process.env);
+// Frontend: NEXT_PUBLIC_API_URL = domínio da API (EasyPanel)
 ```
 
-Regras: segredos apenas no gerenciador de segredos do provedor; `.env` local nunca comitado; rotação de `JWT_*` com suporte a duas chaves ativas (kid) para não invalidar sessões; token de WhatsApp por tenant guardado no gerenciador de segredos e referenciado por `access_token_ref`.
+Regras: segredos via env injetado pelo EasyPanel / arquivo na VPS ([ADR-0013](./adr/0013-kms-local-vps.md)); `.env` local nunca comitado; rotação de `JWT_*` com suporte a duas chaves ativas (kid) para não invalidar sessões; token de WhatsApp por tenant referenciado por `access_token_ref`.
 
 ## 5. CI (por PR)
 
@@ -129,21 +133,17 @@ Merge bloqueado sem: lint, typecheck, arch, unit, integration, e2e verdes + 1 ap
 
 ## 6. Deploy
 
-- **Estratégia:** rolling update com health check; readiness só responde OK após conexão com banco/redis/storage.
+- **Estratégia:** rolling/restart controlado com health check; readiness só responde OK após conexão com banco/redis/storage.
+- **Hospedagem (MVP):** VPS **Hostinger** com **EasyPanel** — serviços `web`, `api`, `worker`, `postgres`, `redis` ([ADR-0008](./adr/0008-hospedagem-vps-hostinger-s3.md), [ADR-0014](./adr/0014-deploy-easypanel-dominios.md)).
+- **Domínios:** um host para **app** e um para **api** (valores flexíveis no EasyPanel; URLs via env).
+- **TLS:** HTTPS gerenciado pelo **EasyPanel**; repositório entrega Dockerfile (+ Nginx se necessário).
+- **Anexos:** **AWS S3** região **`sa-east-1`**, bucket privado, upload pré-assinado.
 - **Migrações:** executadas em passo separado antes do rollout, com role `app_migrator`. Sempre compatíveis para frente (expand → migrar → contract em release posterior).
-- **Rollback:** imagem anterior + migração desfeita apenas se reversível; se não for, corrigimos para frente (política padrão).
+- **Rollback:** imagem/container anterior + migração desfeita apenas se reversível; se não for, corrigimos para frente (política padrão).
 - **Feature flags** simples por tenant (tabela + cache) para liberar funcionalidade gradualmente (ex.: inbox WhatsApp para 5 clínicas antes de todas).
 - **Janela de manutenção** anunciada no app; agenda é operação crítica em horário comercial → deploys preferencialmente fora de 08:00–19:00.
 
-Alternativas de hospedagem avaliadas (decisão final na Sprint 0):
-
-| Opção | Prós | Contras |
-| --- | --- | --- |
-| Fly.io / Render / Railway | Simplicidade, Postgres gerenciado, custo baixo no início | Menos controle, limites de região |
-| AWS (ECS Fargate + RDS + S3) | Controle, maturidade, região BR (sa-east-1) | Mais complexidade e custo operacional |
-| Vercel (web) + provedor Node (api) | Melhor DX para Next.js | Dois provedores para operar |
-
-Recomendação para o MVP: **web na Vercel + api/worker em provedor Node gerenciado + Postgres gerenciado com PITR + storage S3/R2**, com **dados hospedados em região do Brasil** quando disponível (reduz latência e simplifica a conversa sobre transferência internacional de dados).
+> Alternativas PaaS (Vercel + Railway/Render/Fly, AWS ECS) foram consideradas e **não** adotadas no MVP — a decisão vigente é ADR-0008.
 
 ## 7. Filas e agendamento (BullMQ)
 
@@ -163,14 +163,14 @@ Regras: todo job carrega `tenantId` e `requestId`; jobs mortos vão para DLQ com
 
 ## 8. Observabilidade
 
-| Pilar | Ferramenta | Conteúdo |
+| Pilar | Agora (MVP) | Futuro (intenção) |
 | --- | --- | --- |
-| Logs | Pino → coletor (Loki/CloudWatch/Better Stack) | JSON com `requestId`, `tenantId`, `userId`, `route`, `durationMs`, `statusCode`; **sem** dado clínico |
-| Erros | Sentry | Stack + `requestId`, com scrubbing de PII |
-| Métricas | Prometheus/OpenTelemetry | Latência p50/p95/p99 por rota, erros 5xx, fila (tamanho, idade, falhas), envios de WhatsApp por resultado, jobs atrasados |
-| Tracing | OpenTelemetry (fase 2) | HTTP → use case → SQL → provedor externo |
-| Métricas de negócio | Painel interno | Tenants ativos, agendamentos/dia, taxa de no-show, mensagens enviadas, custo por tenant |
-| Uptime | Verificador externo | `/api/v1/health` a cada minuto |
+| Logs | Pino JSON → stdout/arquivo na VPS (`requestId`, `tenantId`, `userId`; **sem** dado clínico) | Agregar com Loki/Grafana self-hosted na VPS |
+| Erros | **Sentry** cloud + scrubbing de PII | GlitchTip / Sentry self-host na VPS |
+| Métricas | Health, filas, alertas básicos | Prometheus + Grafana na VPS |
+| Tracing | — (fase 2) | OpenTelemetry |
+
+Decisão: [ADR-0012](./adr/0012-observabilidade-sentry-logs.md). Instrumentar via ports para facilitar a migração self-hosted.
 
 Alertas (com dono definido): 5xx > 1% em 5 min · p95 > 1s em 10 min · fila com idade > 10 min · falha de envio WhatsApp > 10% · erro de migração · uso de disco/conexões > 80% · falha de backup · pico anômalo de leitura de prontuários (possível incidente de privacidade).
 
@@ -188,17 +188,15 @@ Cenários de contingência documentados: perda do primário (promoção de répl
 
 ## 10. Estimativa de custo mensal (ordem de grandeza, ano 1)
 
+Com hospedagem em VPS própria ([ADR-0008](./adr/0008-hospedagem-vps-hostinger-s3.md)), o custo fixo de compute/DB/Redis é o da VPS Hostinger (já contratada). Itens variáveis/externos:
+
 | Item | Cenário inicial (≤ 50 tenants) | Cenário 500 tenants |
 | --- | --- | --- |
-| Postgres gerenciado | US$ 25–50 | US$ 200–400 |
-| API + worker (2–4 instâncias) | US$ 30–60 | US$ 150–300 |
-| Web (Vercel) | US$ 0–20 | US$ 20–100 |
-| Redis | US$ 10–20 | US$ 40–80 |
-| Object storage + egress | US$ 5–20 | US$ 50–200 |
+| VPS Hostinger (app + Postgres + Redis) | conforme plano Hostinger | upgrade de VPS conforme carga |
+| Object storage S3 `sa-east-1` + egress | US$ 5–20 | US$ 50–200 |
 | Observabilidade (logs/erros) | US$ 0–30 | US$ 50–150 |
-| E-mail transacional | US$ 0–10 | US$ 20–50 |
+| E-mail transacional (Resend) | US$ 0–20 | US$ 20–50 |
 | WhatsApp (templates) | repassado ao cliente | repassado ao cliente |
-| **Total infra** | **~US$ 70–200** | **~US$ 530–1.280** |
 
 Implicação: a infraestrutura não é o gargalo de margem; o custo variável relevante é **mensagem de WhatsApp** e **armazenamento de imagem**. Ambos precisam de medição por tenant desde o MVP (`usage_counter`).
 

@@ -13,7 +13,7 @@ Candidatos: Prisma, Drizzle, TypeORM, Kysely e `pg` puro com SQL escrito à mão
 
 **Prisma** como ORM principal, com três regras que limitam seu alcance:
 
-1. Prisma existe **apenas** em `modules/<dominio>/repositories/prisma-*.ts` e em `shared/database/`. Nenhum tipo gerado pelo Prisma cruza para `models/` ou `services/` — os repositórios mapeiam para entidades de domínio (lint proíbe o import).
+1. Prisma existe **apenas** em `modules/<dominio>/repositories/` e em `shared/database/`. Nenhum tipo gerado pelo Prisma cruza para `models/` ou `services/` — os repositórios mapeiam para entidades de domínio (lint proíbe o import). Um arquivo por operação, classe curta (`CreateRepository`, `ListRepository`) — ver [doc 16](../16-estrutura-de-pastas.md).
 2. Todo acesso passa pelo wrapper `TenantPrisma` (contexto de tenant por transação, ADR-0002). Uso direto do `PrismaClient` fora do wrapper é erro de lint.
 3. O que o Prisma não expressa bem é escrito em **SQL** dentro de migrações ou em `$queryRaw` parametrizado, encapsulado em métodos de repositório: RLS/policies, `EXCLUDE USING gist`, índices GIN/parciais, triggers, views e consultas analíticas com CTE/window functions.
 
@@ -51,23 +51,34 @@ Migrações: `prisma migrate` com SQL editado à mão quando necessário (o Pris
 ## Padrão de repositório adotado
 
 ```ts
-export class PrismaAppointmentRepository implements AppointmentRepository {
+// modules/scheduling/repositories/appointment/appointment_create.repository.ts
+export class CreateRepository {
   constructor(private readonly db: TenantPrisma) {}
 
-  async save(ctx: RequestContext, appointment: Appointment): Promise<void> {
+  async execute(ctx: RequestContext, appointment: Appointment): Promise<void> {
     await this.db.runInTenantContext(ctx, async (tx) => {
-      const data = AppointmentMapper.toPersistence(appointment);   // entidade → row
-      await tx.appointment.upsert({ where: { id: data.id }, create: data, update: data });
+      const data = AppointmentMapper.toPersistence(appointment);
+      try {
+        await tx.appointment.create({ data });
+      } catch (error) {
+        if (isPgError(error, '23P01')) throw new SlotUnavailableError(appointment.slot);
+        throw error;
+      }
     });
   }
+}
 
-  async findOverlapping(ctx: RequestContext, professionalId: string, slot: TimeSlot): Promise<Appointment[]> {
+// modules/scheduling/repositories/appointment/appointment_list.repository.ts
+export class ListRepository {
+  constructor(private readonly db: TenantPrisma) {}
+
+  async execute(ctx: RequestContext, query: AppointmentListQuery): Promise<Appointment[]> {
     return this.db.runInTenantContext(ctx, async (tx) => {
       const rows = await tx.$queryRaw<AppointmentRow[]>`
         SELECT * FROM appointment
-        WHERE professional_id = ${professionalId}::uuid
+        WHERE professional_id = ${query.professionalId}::uuid
           AND status NOT IN ('CANCELLED', 'NO_SHOW')
-          AND period && tstzrange(${slot.start}, ${slot.end}, '[)')
+          AND period && tstzrange(${query.from}, ${query.to}, '[)')
       `;
       return rows.map(AppointmentMapper.toDomain);
     });
@@ -77,7 +88,7 @@ export class PrismaAppointmentRepository implements AppointmentRepository {
 
 ## Verificação
 
-- Lint: `@prisma/client` importável apenas em `repositories/prisma-*.ts` e `shared/database/`.
+- Lint: `@prisma/client` importável apenas em `repositories/` e `shared/database/`.
 - Teste de integração (Testcontainers) para cada repositório, cobrindo mapeamento e constraints.
 - Teste que verifica que toda tabela com `tenant_id` tem RLS habilitada.
 - Migração que não pode ser aplicada em banco limpo falha no CI.

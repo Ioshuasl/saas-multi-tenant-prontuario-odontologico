@@ -22,88 +22,69 @@
 
 ## 2. Estrutura de pastas
 
-Mantém a convenção dos outros projetos do time (`packages/<área>` por domínio + `shared/` transversal), com uma diferença imposta pelo Next.js: **`app/` substitui `pages/` + `routes/`**, porque o roteamento do App Router é o próprio sistema de arquivos (não existe arquivo de configuração de rotas para manter). A regra "1 arquivo ≈ 1 rota" continua valendo: cada `page.tsx` é fino e só compõe o que vem de `packages/`. Racional completo em [16 — Estrutura de Pastas](./16-estrutura-de-pastas.md).
+Mantém o padrão Orius do time (`packages/<área>` + camadas `components/data/services/hooks/types/enum/schemas` por entidade), com `app/` no lugar de `pages/` + `routes/` (App Router). Cada `page.tsx` é fino e só compõe o que vem de `packages/`. Racional completo e exemplo `Patient` em [16 — Estrutura de Pastas](./16-estrutura-de-pastas.md).
 
 ```
 frontend/src/
-├── app/                                 # ROTAS (equivalente ao pages/ + routes/)
-│   ├── (public)/                        # sem autenticação
-│   │   ├── login/page.tsx
-│   │   ├── signup/page.tsx
-│   │   ├── recuperar-senha/page.tsx
-│   │   ├── agendar/[slug]/page.tsx      # autoagendamento (SSR, indexável)
-│   │   ├── anamnese/[token]/page.tsx
-│   │   ├── orcamento/[token]/page.tsx
-│   │   └── confirmar/[token]/page.tsx
+├── app/                                 # ROTAS (App Router)
+│   ├── (public)/                        # login, signup, agendar/[slug], …
 │   ├── (app)/                           # área autenticada
-│   │   ├── layout.tsx                   # shell: sidebar, seletor de unidade, busca global
+│   │   ├── layout.tsx
 │   │   ├── page.tsx                     # dashboard
-│   │   ├── agenda/
-│   │   │   ├── page.tsx
-│   │   │   └── _components/{DayGrid,AppointmentCard,SlotPicker,WaitlistPanel}.tsx
+│   │   ├── agenda/page.tsx
 │   │   ├── pacientes/
-│   │   │   ├── page.tsx
-│   │   │   └── [id]/
-│   │   │       ├── page.tsx             # visão geral + timeline
-│   │   │       ├── prontuario/page.tsx
-│   │   │       ├── odontograma/page.tsx
-│   │   │       ├── orcamentos/page.tsx
-│   │   │       ├── financeiro/page.tsx
-│   │   │       └── anexos/page.tsx
-│   │   ├── atendimento/[appointmentId]/page.tsx   # tela de atendimento (foco do dentista)
+│   │   │   ├── page.tsx                 # compõe PatientIndex
+│   │   │   └── [id]/…                  # timeline, prontuário, …
+│   │   ├── atendimento/[appointmentId]/page.tsx
 │   │   ├── orcamentos/
-│   │   ├── financeiro/
-│   │   │   ├── receber/page.tsx
-│   │   │   ├── pagar/page.tsx
-│   │   │   ├── caixa/page.tsx
-│   │   │   └── fluxo-de-caixa/page.tsx
-│   │   ├── whatsapp/page.tsx            # inbox
+│   │   ├── financeiro/…
+│   │   ├── whatsapp/page.tsx
 │   │   ├── relatorios/
-│   │   └── configuracoes/
-│   │       ├── clinica/page.tsx
-│   │       ├── usuarios/page.tsx
-│   │       ├── procedimentos/page.tsx
-│   │       ├── horarios/page.tsx
-│   │       ├── whatsapp/page.tsx
-│   │       └── assinatura/page.tsx
-│   ├── api/auth/[...]/route.ts          # rotas BFF mínimas (cookie de refresh)
+│   │   └── configuracoes/…
+│   ├── api/auth/[...]/route.ts
 │   ├── layout.tsx
 │   └── error.tsx / not-found.tsx
-├── packages/                            # DOMÍNIO: agrupado por área de uso, espelha os módulos do backend
-│   ├── operacional/                     # dia a dia da recepção
-│   │   ├── scheduling/{api,hooks,components,types}
-│   │   └── patients/{api,hooks,components,types}
-│   ├── clinico/                         # uso do dentista
-│   │   ├── clinical-records/…            # anamnese, odontograma, evolução, anexos
-│   │   └── treatments/…                  # orçamento, plano de tratamento
-│   ├── financeiro/
-│   │   └── billing/…                     # receber, pagar, caixa, fluxo de caixa
-│   ├── admin/                           # dono da clínica
-│   │   ├── clinic/…                      # unidades, horários, procedimentos, usuários
-│   │   ├── subscription/…                # plano, faturas, créditos
-│   │   └── reporting/…                   # dashboards e relatórios
-│   ├── messaging/                       # inbox WhatsApp (recepção + dono)
-│   └── public/                          # sem sessão: auth, autoagendamento, anamnese/orçamento por token
-├── shared/                              # transversal: usado por 2+ packages
-│   ├── ui/                             # design system (Radix encapsulado + Tailwind)
-│   ├── layout/                         # shell, sidebar, seletor de unidade, busca global
+├── packages/
+│   ├── operacional/                     # padrão Orius por entidade
+│   │   ├── components/Patient/          # Index, Table, Columns, Form, FormDialog, Filter
+│   │   ├── data/Patient/                # PatientListData, PatientCreateData, …
+│   │   ├── services/Patient/            # PatientListService, PatientCreateService, …
+│   │   ├── hooks/Patient/               # usePatientListHook (useQuery), usePatientCreateHook (useMutation)
+│   │   ├── types/Patient/               # tipagens TS (sem pasta interfaces/)
+│   │   ├── enum/Patient/                # enums da entidade
+│   │   └── schemas/Patient/
+│   │   # idem Appointment, …
+│   ├── clinico/                         # ClinicalNote, Odontogram, Quote, …
+│   ├── financeiro/                      # Receivable, Payment, CashSession, …
+│   ├── admin/                           # Clinic, Procedure, Subscription, …
+│   ├── messaging/                       # Conversation, Message, …
+│   └── public/                          # auth, autoagendamento, links por token
+├── shared/
+│   ├── ui/
+│   ├── layout/
 │   ├── api/
-│   │   ├── api-client.ts               # fetch tipado + refresh automático + erro
+│   │   ├── api-client.ts
 │   │   └── query-client.ts
-│   ├── hooks/                          # useTenant, usePermissions, useDebounce…
-│   ├── auth/{session.ts,permissions.ts}
+│   ├── hooks/
+│   ├── auth/
 │   ├── helpers/
-│   │   ├── format/{money.ts,date.ts,cpf.ts,phone.ts}
-│   │   └── dental/{fdi.ts,tooth-map.ts}
 │   └── styles/
 ```
 
+Fluxo obrigatório por ação: **`Data → Service → Hook` (+ TanStack Query no hook)**.
+
 Regras de organização:
 
-1. **Rota é fina.** `page.tsx` cuida de parâmetros, metadata e composição. Zero lógica de dados ou de negócio em arquivo de página.
-2. **`packages/` é dono da lógica.** Cada domínio traz seu `api/` (chamadas + query keys), `hooks/`, `components/` e `types/`.
-3. **Um package não importa de outro package.** Se dois precisam da mesma coisa, ela sobe para `shared/` (mesma disciplina do `_public.ts` no backend). Exceção única e explicitada: `patients` expõe um seletor de paciente reutilizado por `clinico` e `financeiro` — fica em `shared/ui` como componente burro que recebe dados por prop.
-4. **`shared/` é para o que já tem 2+ consumidores reais**, não para o que "talvez seja reutilizado".
+1. **Rota é fina.** `page.tsx` cuida de parâmetros, metadata e composição. Zero fetch na página.
+2. **Data** é o único lugar que chama a API daquela ação.
+3. **Service** só chama Data (thin wrapper; sem montar URL).
+4. **Hook** usa TanStack Query (`useQuery`/`useMutation`) e chama Service.
+5. **Componente** só usa Hooks (e FormHook) — nunca Data/Service direto.
+6. **Um package não importa de outro package.** Compartilhar → `shared/`.
+7. **`shared/` só com 2+ consumidores reais.**
+8. Arquivos frontend em **PascalCase** (`PatientCreateData.ts`); operações alinhadas ao REST: `List` / `Get` / `Create` / `Update` / `Delete`.
+9. Tipagens em `types/`; enums em `enum/` — **sem pasta `interfaces/`**.
+10. `Form` = página; `FormDialog` = modal — não misturar.
 
 ## 3. Cliente de API tipado
 
@@ -202,34 +183,40 @@ Layout de três áreas em uma única rota (sem navegação entre telas durante o
 
 ## 5. Padrões de implementação
 
-### Hook de dados por feature
+### Data → Service → Hook (Patient)
 
 ```ts
-// packages/operacional/scheduling/hooks/use-day-agenda.ts
-export function useDayAgenda(params: { unitId: string; date: string; professionalIds?: string[] }) {
+// data/Patient/PatientListData.ts
+export async function PatientListData(query: PatientListQuery) {
+  return apiClient.request('/patients', { method: 'GET', query });
+}
+
+// services/Patient/PatientListService.ts
+export async function PatientListService(query: PatientListQuery) {
+  return PatientListData(query);
+}
+
+// hooks/Patient/usePatientListHook.ts
+export function usePatientListHook(query: PatientListQuery) {
   return useQuery({
-    queryKey: ['agenda', params],
-    queryFn: () => schedulingApi.listAppointments(params),
+    queryKey: ['patients', 'list', query],
+    queryFn: () => PatientListService(query),
     staleTime: 15_000,
     refetchOnWindowFocus: true,
   });
 }
 
-export function useRescheduleAppointment() {
+// hooks/Patient/usePatientCreateHook.ts
+export function usePatientCreateHook() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: schedulingApi.reschedule,
-    onMutate: async (input) => {
-      await qc.cancelQueries({ queryKey: ['agenda'] });
-      const previous = qc.getQueriesData({ queryKey: ['agenda'] });
-      qc.setQueriesData({ queryKey: ['agenda'] }, (old) => applyReschedule(old, input));
-      return { previous };
-    },
-    onError: (_err, _input, ctx) => ctx?.previous?.forEach(([key, data]) => qc.setQueryData(key, data)),
-    onSettled: () => qc.invalidateQueries({ queryKey: ['agenda'] }),
+    mutationFn: PatientCreateService,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['patients'] }),
   });
 }
 ```
+
+Agenda (mutação otimista) segue o mesmo padrão — Data/Service/Hook por ação (`AppointmentUpdateData`, `useAppointmentUpdateHook`), com `onMutate` / rollback no hook.
 
 ### Permissões na UI
 

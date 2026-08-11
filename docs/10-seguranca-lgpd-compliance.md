@@ -64,13 +64,16 @@ Documentos necessários no lançamento: Termos de Uso, Política de Privacidade,
 
 ### 5.3 Criptografia
 
+Modelo **enterprise** (não E2EE no cliente): detalhe operacional em [17 — Baseline de Segurança](./17-seguranca-baseline.md) e [ADR-0007](./adr/0007-criptografia-envelope-tenant.md).
+
 | Onde | Como |
 | --- | --- |
-| Trânsito | TLS 1.2+ obrigatório, HSTS, redirect 301 de HTTP |
+| Trânsito | TLS 1.2+ obrigatório, HSTS, redirect 301 de HTTP; TLS também para Postgres/Redis/S3/KMS em produção |
 | Repouso (banco) | Criptografia de volume do provedor + backups criptografados |
-| Repouso (anexos) | SSE no object storage; bucket privado, sem acesso público |
-| Segredos | Gerenciador de segredos do provedor; **nunca** no repositório; token do WhatsApp guardado por referência (`access_token_ref`) |
-| Campos ultrassensíveis | Avaliar criptografia em nível de coluna (envelope encryption) na fase 2 para anotações de saúde de terceiros; no MVP, controle de acesso + RLS |
+| Repouso (anexos) | SSE no object storage; bucket privado, sem acesso público; URL pré-assinada de curta duração |
+| Segredos | Env/arquivo na VPS (MVP); Vault depois; **nunca** no repositório; token do WhatsApp por referência (`access_token_ref`) |
+| Campos clínicos (MVP) | **Envelope encryption por tenant** (AES-256-GCM): `clinical_note.content`, `anamnesis_response.answers`, `clinical_alert.description`; DEK wrapped por KEK **local na VPS** ([ADR-0013](./adr/0013-kms-local-vps.md)); intenção futura Vault self-hosted; decrypt só após RLS + RBAC |
+| Expansão | Fase 2: mais campos, CMEK/SSE-C em anexos, rotação de DEK com re-cifra assíncrona |
 
 ### 5.4 Auditoria
 
@@ -87,6 +90,8 @@ Eventos obrigatoriamente auditados:
 - Envio de mensagem ao paciente (quem/qual template/quando).
 
 Retenção: 12 meses em tabela particionada + arquivamento frio por 5 anos. Auditoria é **append-only**; nem o Owner pode apagar.
+
+Detecção de anomalias (rajada de leitura clínica, reuso de refresh, exportação em massa, etc.): regras e alertas em [doc 17 §6](./17-seguranca-baseline.md).
 
 ### 5.5 Integridade do registro clínico
 

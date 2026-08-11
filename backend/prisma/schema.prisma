@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Clínica (tenant). DDL completo em docs/07 — expandido nas próximas migrações.
+model Tenant {
+  id         String            @id @db.Uuid
+  name       String
+  slug       String            @unique
+  status     String            @default("TRIAL")
+  timezone   String            @default("America/Sao_Paulo")
+  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  cryptoKeys TenantCryptoKey[]
+  auditLogs  AuditLog[]
+
+  @@map("tenant")
+}
+
+/// DEK wrapped por tenant (envelope). Ver docs/07 §14.
+model TenantCryptoKey {
+  id          String    @id @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  keyVersion  Int       @default(1) @map("key_version")
+  algorithm   String    @default("AES-256-GCM")
+  wrappedDek  String    @map("wrapped_dek")
+  kekProvider String    @default("local_vps") @map("kek_provider")
+  status      String    @default("ACTIVE")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  retiredAt   DateTime? @map("retired_at") @db.Timestamptz
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, keyVersion])
+  @@map("tenant_crypto_key")
+}
+
+/// Esqueleto de auditoria (docs/07 / doc 17). Expandido na S1+.
+model AuditLog {
+  id           String   @id @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  actorId      String?  @map("actor_id") @db.Uuid
+  actorType    String   @map("actor_type")
+  action       String
+  resourceType String   @map("resource_type")
+  resourceId   String?  @map("resource_id") @db.Uuid
+  patientId    String?  @map("patient_id") @db.Uuid
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_audit_tenant_time")
+  @@map("audit_log")
+}
