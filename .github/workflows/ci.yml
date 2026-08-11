@@ -33,6 +33,12 @@ jobs:
       - name: Build contracts
         run: pnpm --filter @repo/contracts build
 
+      - name: Prisma generate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://app_user:app@localhost:5432/odonto_dev?schema=public
+        run: pnpm exec prisma generate
+
       - name: Typecheck
         run: pnpm typecheck
 
