@@ -134,6 +134,26 @@ async function main() {
   });
   console.log('hours-exception', exception.status);
   if (exception.status !== 201) failed = true;
+  const exceptionConflicts = dataOf(exception).conflicts;
+  if (!Array.isArray(exceptionConflicts)) failed = true;
+
+  const sundayHours = await request('/api/v1/clinic/business-hours', {
+    method: 'PUT',
+    headers: { ...authHeaders(token, tenantId), 'content-type': 'application/json' },
+    body: JSON.stringify({
+      unitId: defaultUnitId,
+      slots: [
+        { weekday: 1, startsAt: '08:00', endsAt: '12:00' },
+        { weekday: 1, startsAt: '13:00', endsAt: '18:00' },
+        { weekday: 7, startsAt: '09:00', endsAt: '12:00' },
+      ],
+    }),
+  });
+  console.log('hours-put-sunday', sundayHours.status, (dataOf(sundayHours) as unknown[]).length);
+  if (sundayHours.status !== 200) failed = true;
+  if (!((dataOf(sundayHours) as Array<{ weekday: number }>).some((s) => s.weekday === 7))) {
+    failed = true;
+  }
 
   const mondayWindows = await getWorkingWindows({
     tenantId,

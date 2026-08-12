@@ -12,7 +12,7 @@ export function useBusinessHoursReplaceHook() {
     mutationFn: (input: BusinessHoursReplaceInput) => BusinessHoursReplaceService(input),
     onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({
-        queryKey: adminQueryKeys.businessHours(variables.unitId),
+        queryKey: ['business-hours', variables.unitId],
       });
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.onboarding });
     },

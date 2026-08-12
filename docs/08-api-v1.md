@@ -103,8 +103,8 @@ GET    /api/v1/clinic/units/:id/chairs
 POST   /api/v1/clinic/units/:id/chairs
 PATCH  /api/v1/clinic/units/:id/chairs/:chairId
 GET    /api/v1/clinic/business-hours       ?unitId=&professionalId=
-PUT    /api/v1/clinic/business-hours       substitui a grade semanal
-POST   /api/v1/clinic/business-hours/exceptions
+PUT    /api/v1/clinic/business-hours       substitui a grade semanal (weekday ISO 1=Mon…7=Sun)
+POST   /api/v1/clinic/business-hours/exceptions  body → data inclui `conflicts[]` (não cancela agendamentos)
 GET    /api/v1/clinic/professionals
 POST   /api/v1/clinic/professionals
 PATCH  /api/v1/clinic/professionals/:id
@@ -121,10 +121,10 @@ GET    /api/v1/patients                    ?search=&cursor=&limit=&active=
 POST   /api/v1/patients
 GET    /api/v1/patients/:id
 PATCH  /api/v1/patients/:id
-DELETE /api/v1/patients/:id                inativação (soft delete)
+DELETE /api/v1/patients/:id                inativação (soft delete); ?confirmFutureAppointments=true se houver agenda futura
 GET    /api/v1/patients/:id/timeline       consultas, evoluções, orçamentos, pagamentos, mensagens
 GET    /api/v1/patients/:id/consents
-POST   /api/v1/patients/:id/consents
+POST   /api/v1/patients/:id/consents       grant ou revoke (`granted: false`)
 POST   /api/v1/patients/:id/guardians
 GET    /api/v1/patients/check-duplicate    ?cpf=&phone=
 ```

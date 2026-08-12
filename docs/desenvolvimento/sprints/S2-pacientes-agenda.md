@@ -72,66 +72,66 @@ Não misturar: um bloco é **só backend** ou **só frontend**, salvo Bloco 0 (c
 
 **Backend (se necessário)**
 
-- [ ] Alinhar weekday 1–7 ISO em clinic + docs/07 (comentário/migração se divergir)
-- [ ] Ao criar `business_hours_exception`, retornar lista de conflitos de `appointment` (vazio até Bloco 2 existir; depois real)
+- [x] Alinhar weekday 1–7 ISO em clinic + docs/07 (comentário/migração se divergir)
+- [x] Ao criar `business_hours_exception`, retornar lista real de conflitos de `appointment` (não cancela)
 
 **Frontend (`admin`)**
 
-- [ ] UI de exceções de horário (feriado/férias)
-- [ ] UI de horário por profissional (`professionalId` na grade)
-- [ ] Exibir conflitos retornados ao salvar exceção (não cancela agendamentos)
+- [x] UI de exceções de horário (feriado/férias)
+- [x] UI de horário por profissional (`professionalId` na grade)
+- [x] Exibir conflitos retornados ao salvar exceção (não cancela agendamentos)
 
 ### Bloco 1 — Backend: patients (E3 Must)
 
-- [ ] Migração Prisma + RLS: `patient`, `legal_guardian`, `consent`
-- [ ] Código de ficha sequencial por tenant, imutável (RF-E3-13)
-- [ ] CRUD + soft-delete / inativação (RF-E3-01, E3-11)
-- [ ] CPF validado quando informado; duplicado → `409` + referência (RF-E3-02)
-- [ ] Aviso de possível duplicata por telefone (não bloqueia) (RF-E3-03)
-- [ ] Busca: nome (sem acento), telefone (últimos 4), CPF, código (RF-E3-04)
-- [ ] Responsável legal (menores) (RF-E3-05..06 — bloqueio de orçamento fica para S5)
-- [ ] Consentimentos versionados grant/revoke (RF-E3-07..08)
-- [ ] Inativar com agendamento futuro → confirmação explícita (RF-E3-12 parcial)
-- [ ] Módulo `backend/src/modules/patients/` + `patients_public.ts`
-- [ ] Smoke `test:patients` + RLS patients no CI
+- [x] Migração Prisma + RLS: `patient`, `legal_guardian`, `consent`
+- [x] Código de ficha sequencial por tenant, imutável (RF-E3-13)
+- [x] CRUD + soft-delete / inativação (RF-E3-01, E3-11)
+- [x] CPF validado quando informado; duplicado → `409` + referência (RF-E3-02)
+- [x] Aviso de possível duplicata por telefone (não bloqueia) (RF-E3-03)
+- [x] Busca: nome (sem acento), telefone (últimos 4), CPF, código (RF-E3-04)
+- [x] Responsável legal (menores) (RF-E3-05..06 — bloqueio de orçamento fica para S5)
+- [x] Consentimentos versionados grant/revoke (RF-E3-07..08)
+- [x] Inativar com agendamento futuro → confirmação explícita (RF-E3-12 parcial)
+- [x] Módulo `backend/src/modules/patients/` + `patients_public.ts`
+- [x] Smoke `test:patients` + RLS patients no CI
 
 ### Bloco 2 — Backend: scheduling core (E4a)
 
-- [ ] Migração + RLS: `appointment` (tstzrange + **EXCLUDE gist**), `appointment_history`, `schedule_block`, `appointment_series`
-- [ ] `GET /availability` via `clinic.getWorkingWindows` + appointments/blocks
-- [ ] Create / update / move / resize; `Idempotency-Key`; `409 SLOT_UNAVAILABLE` + sugestões (RF-E4-06..07)
-- [ ] Máquina de estados + `POST .../status`; `409 INVALID_STATE_TRANSITION` (RF-E4-16..17)
-- [ ] Histórico append-only (RF-E4-05)
-- [ ] Duração padrão do procedimento, ajustável (RF-E4-04)
-- [ ] Origin `INTERNAL`; status default alinhado à API
-- [ ] Módulo `backend/src/modules/scheduling/` + `scheduling_public.ts`
-- [ ] Smoke: 20 creates concorrentes no mesmo slot → 1 sucesso
+- [x] Migração + RLS: `appointment` (tstzrange + **EXCLUDE gist**), `appointment_history`, `schedule_block`, `appointment_series`
+- [x] `GET /availability` via `clinic.getWorkingWindows` + appointments/blocks
+- [x] Create / update / move / resize; `Idempotency-Key`; `409 SLOT_UNAVAILABLE` + sugestões (RF-E4-06..07)
+- [x] Máquina de estados + `POST .../status`; `409 INVALID_STATE_TRANSITION` (RF-E4-16..17)
+- [x] Histórico append-only (RF-E4-05)
+- [x] Duração padrão do procedimento, ajustável (RF-E4-04)
+- [x] Origin `INTERNAL`; status default alinhado à API
+- [x] Módulo `backend/src/modules/scheduling/` + `scheduling_public.ts`
+- [x] Smoke: 20 creates concorrentes no mesmo slot → 1 sucesso
 
 ### Bloco 3 — Backend: bloqueios, recorrência, timeline
 
-- [ ] Schedule blocks (profissional / cadeira / unidade); lista conflitos; não cancela (RF-E4-08..09)
-- [ ] Recorrência + delete scope `THIS|FUTURE|ALL` (RF-E4-10); máx. 12 ocorrências futuras (módulo)
-- [ ] `GET /patients/:id/timeline` — itens de agenda reais; demais fontes vazias tipadas (RF-E3-09..10 parcial)
-- [ ] Timeline da recepção omite/clínica: sem itens clínicos (ainda inexistentes)
+- [x] Schedule blocks (profissional / cadeira / unidade); lista conflitos; não cancela (RF-E4-08..09)
+- [x] Recorrência + delete scope `THIS|FUTURE|ALL` (RF-E4-10); máx. 12 ocorrências futuras (módulo)
+- [x] `GET /patients/:id/timeline` — itens de agenda reais; demais fontes vazias tipadas (RF-E3-09..10 parcial)
+- [x] Timeline da recepção omite/clínica: sem itens clínicos (ainda inexistentes)
 
 ### Bloco 4 — Frontend: pacientes (`operacional`)
 
-- [ ] Rotas `(app)/pacientes` (+ detail)
-- [ ] Index / Table / busca / Form / FormDialog
-- [ ] Guardians + consents na ficha
-- [ ] Detail com timeline parcial
-- [ ] Check-duplicate UX (CPF bloqueante; telefone aviso)
-- [ ] Fluxo Page → Hook → Service → Data → API
+- [x] Rotas `(app)/pacientes` (+ detail)
+- [x] Index / Table / busca / Form / FormDialog
+- [x] Guardians + consents na ficha
+- [x] Detail com timeline parcial
+- [x] Check-duplicate UX (CPF bloqueante; telefone aviso)
+- [x] Fluxo Page → Hook → Service → Data → API
 
 ### Bloco 5 — Frontend: agenda (`operacional`)
 
-- [ ] Rota `(app)/agenda` — visão dia/semana por profissional e/ou cadeira (RF-E4-01)
-- [ ] Grade com slots configuráveis (10/15/20/30/60)
-- [ ] Status coloridos (7 estados) (RF-E4-02)
-- [ ] Criar a partir de slot livre em ≤ 3 interações (RF-E4-03)
-- [ ] Drag / resize otimista + rollback em `409` (RF-E4-05)
-- [ ] UI de bloqueios + conflitos
-- [ ] UI mínima de recorrência (criar série / excluir com escopo)
+- [x] Rota `(app)/agenda` — visão dia/semana por profissional e/ou cadeira (RF-E4-01)
+- [x] Grade com slots configuráveis (10/15/20/30/60)
+- [x] Status coloridos (7 estados) (RF-E4-02)
+- [x] Criar a partir de slot livre em ≤ 3 interações (RF-E4-03)
+- [x] Drag / resize otimista + rollback em `409` (RF-E4-05)
+- [x] UI de bloqueios + conflitos
+- [x] UI mínima de recorrência (criar série / excluir com escopo)
 
 ## Endpoints-alvo (docs/08)
 
@@ -154,17 +154,17 @@ POST|DELETE       /api/v1/appointment-series[/:id]?scope=THIS|FUTURE|ALL
 
 **Backend**
 
-- [ ] Paciente: CRUD + busca + dedupe CPF/telefone + consents + guardian + soft-delete
-- [ ] Appointment: anti-conflito DB (EXCLUDE) + app; status machine; history
-- [ ] Availability coerente com `getWorkingWindows`
-- [ ] Bloqueios sem cancelamento automático; recorrência com escopo
-- [ ] Timeline parcial (agenda)
+- [x] Paciente: CRUD + busca + dedupe CPF/telefone + consents + guardian + soft-delete
+- [x] Appointment: anti-conflito DB (EXCLUDE) + app; status machine; history
+- [x] Availability coerente com `getWorkingWindows`
+- [x] Bloqueios sem cancelamento automático; recorrência com escopo
+- [x] Timeline parcial (agenda)
 
 **Frontend**
 
-- [ ] Pacientes ponta a ponta em local
-- [ ] Agenda dia/semana usável (M1): criar, mover, status, bloqueio
-- [ ] Carry-over S1: exceções + horário por profissional
+- [x] Pacientes ponta a ponta em local
+- [x] Agenda dia/semana usável (M1): criar, mover, status, bloqueio
+- [x] Carry-over S1: exceções + horário por profissional
 
 ## Qualidade
 

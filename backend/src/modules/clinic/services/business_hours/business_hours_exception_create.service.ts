@@ -39,6 +39,7 @@ export class CreateService {
       }
     }
 
-    return this.create.execute(ctx, exceptionSchema);
+    const created = await this.create.execute(ctx, exceptionSchema);
+    return created;
   }
 }

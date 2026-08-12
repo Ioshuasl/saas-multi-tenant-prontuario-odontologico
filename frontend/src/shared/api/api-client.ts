@@ -21,10 +21,20 @@ type RequestOptions = RequestInit & {
   skipAuth?: boolean;
 };
 
+type Envelope<T> = {
+  data: T;
+  meta?: Record<string, unknown>;
+};
+
 class ApiClient {
   private refreshing: Promise<string | null> | null = null;
 
   async request<T>(path: string, init: RequestOptions = {}): Promise<T> {
+    const envelope = await this.requestEnvelope<T>(path, init);
+    return envelope.data;
+  }
+
+  async requestEnvelope<T>(path: string, init: RequestOptions = {}): Promise<Envelope<T>> {
     const { tenantId, skipAuth, headers, ...rest } = init;
     const activeTenant = tenantId ?? tokenStore.getTenantId();
     const token = skipAuth ? null : tokenStore.getAccessToken();
@@ -45,11 +55,11 @@ class ApiClient {
         this.refreshing = null;
       }));
       if (refreshed) {
-        return this.request<T>(path, init);
+        return this.requestEnvelope<T>(path, init);
       }
     }
 
-    const body = (await res.json()) as ApiResponse<T>;
+    const body = (await res.json()) as ApiResponse<T> & { meta?: Record<string, unknown> };
 
     if (!res.ok || isApiError(body)) {
       if (isApiError(body)) {
@@ -63,7 +73,10 @@ class ApiClient {
       throw new ApiClientError('HTTP_ERROR', `HTTP ${res.status}`, res.status);
     }
 
-    return body.data;
+    return {
+      data: body.data,
+      meta: body.meta,
+    };
   }
 
   async refresh(): Promise<string | null> {

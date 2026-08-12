@@ -19,7 +19,7 @@ Pasta **somente** para acompanhamento do desenvolvimento (scaffold, sprints, dec
 
 ## Status atual
 
-- **Fase:** Sprint 2 — Pacientes e Agenda interna — **planejada** (próximo: Bloco 0 carry-over horários / Bloco 1 patients)
+- **Fase:** Sprint 2 — Pacientes e Agenda interna — **Must fechado** (Blocos 0–5); próximo: S3 canal paciente / polish M1
 - **Anterior:** Sprint 1 — Identidade e Clínica — **fechada** (E1+E2 Must + Qualidade)
 - **Código base:** Sprint 0 concluída (monorepo, CI, RLS, KeyManagementPort)
 - **Especificação:** [`../README.md`](../README.md)

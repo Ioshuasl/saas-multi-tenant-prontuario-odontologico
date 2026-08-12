@@ -2,6 +2,7 @@ import type { RequestContext } from '../../../../shared/domain/request_context.j
 import { getTenantPrisma } from '../../../../shared/database/tenant_prisma.js';
 import { idGenerator } from '../../../../shared/helpers/id_generator.js';
 import { formatTime, parseTime } from '../../helpers/time.helper.js';
+import { wallTimeToUtc } from '../../helpers/working_windows.helper.js';
 import type {
   BusinessHoursExceptionSummary,
   BusinessHoursSlot,
@@ -79,6 +80,12 @@ export class ReplaceHoursRepository {
   }
 }
 
+function nextYmd(dateYmd: string): string {
+  const [year, month, day] = dateYmd.split('-').map(Number);
+  const utc = new Date(Date.UTC(year!, month! - 1, day! + 1));
+  return utc.toISOString().slice(0, 10);
+}
+
 export class CreateExceptionRepository {
   async execute(
     ctx: RequestContext,
@@ -94,6 +101,12 @@ export class CreateExceptionRepository {
   ): Promise<BusinessHoursExceptionSummary> {
     const tenantPrisma = getTenantPrisma();
     return tenantPrisma.runInTenantContext(ctx, async (tx) => {
+      const tenant = await tx.tenant.findFirst({
+        where: { id: ctx.tenantId },
+        select: { timezone: true },
+      });
+      const timezone = tenant?.timezone ?? 'America/Sao_Paulo';
+
       const row = await tx.businessHoursException.create({
         data: {
           id: idGenerator.next(),
@@ -117,6 +130,38 @@ export class CreateExceptionRepository {
           reason: true,
         },
       });
+
+      const dayStart = wallTimeToUtc(input.date, '00:00', timezone);
+      const dayEnd = wallTimeToUtc(nextYmd(input.date), '00:00', timezone);
+      const appointments = await tx.appointment.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          unitId: input.unitId,
+          ...(input.professionalId ? { professionalId: input.professionalId } : {}),
+          status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+          startsAt: { lt: dayEnd },
+          endsAt: { gt: dayStart },
+        },
+        select: { id: true, startsAt: true, endsAt: true },
+        orderBy: { startsAt: 'asc' },
+        take: 100,
+      });
+
+      let conflicts = appointments.map((a) => ({
+        appointmentId: a.id,
+        startsAt: a.startsAt.toISOString(),
+        endsAt: a.endsAt.toISOString(),
+      }));
+
+      if (!input.closed && input.startsAt && input.endsAt) {
+        const openStart = wallTimeToUtc(input.date, input.startsAt, timezone);
+        const openEnd = wallTimeToUtc(input.date, input.endsAt, timezone);
+        conflicts = conflicts.filter(
+          (c) =>
+            new Date(c.startsAt) < openStart || new Date(c.endsAt) > openEnd,
+        );
+      }
+
       return {
         id: row.id,
         unitId: row.unitId,
@@ -126,6 +171,7 @@ export class CreateExceptionRepository {
         startsAt: row.startsAt ? formatTime(row.startsAt) : null,
         endsAt: row.endsAt ? formatTime(row.endsAt) : null,
         reason: row.reason,
+        conflicts,
       };
     });
   }

@@ -4,6 +4,126 @@ Append-only. Entradas mais recentes no topo.
 
 ---
 
+## 2026-08-12 — Sprint 2 Bloco 5: frontend agenda (`operacional`, Notion)
+
+### Feito
+
+- Design via **ui-ux-pro-max** + tokens Notion já no `globals.css`: grade densa, bordas `#E9E9E7`, status pastel com rótulo (a11y), motion 150–200ms, sem sombra pesada
+- `/app/agenda` — Dia/Semana, slots 10/15/20/30/60, filtro profissional
+- Criar em ≤3 interações (slot → paciente → Agendar); série WEEKLY/MONTHLY
+- Drag/resize otimista + rollback em `409`; detalhes: status, cancelar, escopo série
+- Bloqueio com alerta de conflitos; nav Agenda
+
+### Validação
+
+- `pnpm --filter @repo/frontend exec tsc --noEmit` → OK
+
+### Próximo
+
+- Polish M1 / S3 canal paciente; visão por cadeira quando a API filtrar `chairId`
+
+---
+
+## 2026-08-12 — Sprint 2 Bloco 4: frontend pacientes (`operacional`)
+
+### Feito
+
+- Package `frontend/src/packages/operacional/` — Patient (types/enum/schema/data/service/hooks/components)
+- Rotas `/app/pacientes` (Index + busca + FormDialog) e `/app/pacientes/[id]` (ficha: dados, guardians, consents, timeline)
+- Check-duplicate UX: CPF bloqueia create; telefone só avisa
+- Nav: item Pacientes; `apiClient.requestEnvelope` para lista com `meta.nextCursor`
+
+### Validação
+
+- `pnpm --filter @repo/frontend exec tsc --noEmit` → OK
+
+### Próximo
+
+- S2 Bloco 5: frontend agenda (`operacional`)
+
+---
+
+## 2026-08-12 — Sprint 2 Bloco 3: bloqueios, recorrência, timeline
+
+### Feito
+
+- `POST|DELETE /schedule-blocks` — bloqueio por unidade/profissional/cadeira; retorna `conflicts` sem cancelar (RF-E4-08..09)
+- `POST|DELETE /appointment-series` — RRULE `DAILY|WEEKLY|MONTHLY`, máx. 12 ocorrências; delete `?scope=THIS|FUTURE|ALL` (+ `appointmentId` para THIS/FUTURE)
+- `GET /patients/:id/timeline` — itens de agenda via `scheduling_public`; fontes CLINICAL/QUOTE/PAYMENT/MESSAGE tipadas vazias conforme permissão (RF-E3-09/10)
+- Smoke scheduling estendido (block, series, timeline)
+
+### Validação
+
+- `tsc` · `arch:check` · `test:scheduling` → **smoke-scheduling OK**
+
+### Próximo
+
+- S2 Bloco 4: frontend pacientes (`operacional`)
+
+---
+
+## 2026-08-12 — Sprint 2 Bloco 2: scheduling core (E4a)
+
+### Feito
+
+- Migração `20260812190000_s2_scheduling`: `appointment` (EXCLUDE gist profissional/cadeira), `appointment_history`, `schedule_block`, `appointment_series` + RLS + GRANT
+- Módulo `backend/src/modules/scheduling/`: CRUD, status machine, history, `GET /availability` via `clinic.getWorkingWindows`, `Idempotency-Key`, `409 SLOT_UNAVAILABLE` + sugestões
+- `scheduling_public.ts` (`listFutureAppointmentIds`, `getAppointmentById`); patients deixa de stubar futuros
+- Exceção de horário (`clinic`) passa a retornar conflitos reais de `appointment`
+- Smoke `pnpm test:scheduling` (20 concorrentes → 1 sucesso) + passo no CI
+- docs/07: `appointment_series` + FK `recurrence_id`
+
+### Validação
+
+- `db:migrate` · `tsc` · `arch:check` · `test:scheduling` → **smoke-scheduling OK**
+
+### Próximo
+
+- S2 Bloco 3: bloqueios HTTP, recorrência com escopo, timeline parcial
+
+---
+
+## 2026-08-12 — Sprint 2 Bloco 1: patients (E3 Must backend)
+
+### Feito
+
+- Migrações `20260812180000_s2_patients` + `…_grants`: `patient`, `patient_code_counter`, `legal_guardian`, `consent` + RLS + GRANT `app_user`
+- Módulo `backend/src/modules/patients/`: CRUD, busca (unaccent/telefone/código/CPF), check-duplicate, guardians, consents grant/revoke, soft-delete
+- Nº de ficha sequencial por tenant (`patient_code_counter`); CPF único por tenant; telefone só aviso
+- `patients_public.ts` (`getPatientById`, `hasMarketingConsent`); futuro appointments stub até Bloco 2
+- Smoke `pnpm test:patients` + passo no CI Integration
+- docs/07: `code` por tenant (não IDENTITY global)
+
+### Validação
+
+- `db:migrate` · `tsc` · `arch:check` · `test:patients` → **smoke-patients OK**
+
+### Próximo
+
+- S2 Bloco 2: scheduling core (appointment + EXCLUDE + availability)
+
+---
+
+## 2026-08-12 — Sprint 2 Bloco 0: horários (carry-over S1)
+
+### Feito
+
+- Migração `20260812160000_s2_weekday_iso`: CHECK weekday **1–7 ISO**; docs/07 e comentário Prisma alinhados
+- `POST .../business-hours/exceptions` retorna `conflicts: []` (lista real no Bloco 2 com `appointment`)
+- Admin UI: grade semanal com escopo unidade **ou** profissional; formulário de exceções + alerta de conflitos
+- Smoke clinic: asserts `conflicts` array + weekday 7 (domingo)
+
+### Validação
+
+- Lint IDE nos arquivos tocados ok
+- `db:migrate` / `test:clinic` / typecheck — rodar com Postgres no ar
+
+### Próximo
+
+- S2 Bloco 1: patients DDL + API
+
+---
+
 ## 2026-08-12 — Planejamento Sprint 2 e Sprint 3
 
 ### Feito

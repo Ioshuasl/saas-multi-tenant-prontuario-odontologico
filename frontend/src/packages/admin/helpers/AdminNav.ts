@@ -2,7 +2,9 @@ import type { LucideIcon } from 'lucide-react';
 import {
   ArmchairIcon,
   Building2Icon,
+  CalendarDaysIcon,
   ClockIcon,
+  ContactIcon,
   HomeIcon,
   ListChecksIcon,
   StethoscopeIcon,
@@ -21,6 +23,8 @@ export type AdminNavItem = {
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: '/app', label: 'Início', icon: HomeIcon, group: 'main' },
+  { href: '/app/pacientes', label: 'Pacientes', icon: ContactIcon, group: 'main' },
+  { href: '/app/agenda', label: 'Agenda', icon: CalendarDaysIcon, group: 'main' },
   { href: '/app/onboarding', label: 'Onboarding', icon: ListChecksIcon, group: 'main' },
   {
     href: '/app/configuracoes/clinica',

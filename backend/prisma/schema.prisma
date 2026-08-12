@@ -32,6 +32,14 @@ model Tenant {
   businessHours   BusinessHours[]
   hoursExceptions BusinessHoursException[]
   procedures      Procedure[]
+  patients        Patient[]
+  patientCodeCounters PatientCodeCounter[]
+  legalGuardians  LegalGuardian[]
+  consents        Consent[]
+  appointments    Appointment[]
+  appointmentHistory AppointmentHistory[]
+  appointmentSeries AppointmentSeries[]
+  scheduleBlocks  ScheduleBlock[]
 
   @@map("tenant")
 }
@@ -179,6 +187,10 @@ model Unit {
   memberships  Membership[]
   businessHours BusinessHours[]
   hoursExceptions BusinessHoursException[]
+  patients     Patient[]
+  appointments Appointment[]
+  appointmentSeries AppointmentSeries[]
+  scheduleBlocks ScheduleBlock[]
 
   @@map("unit")
 }
@@ -192,6 +204,9 @@ model Chair {
   active    Boolean @default(true)
   tenant    Tenant  @relation(fields: [tenantId], references: [id])
   unit      Unit    @relation(fields: [unitId], references: [id])
+  appointments Appointment[]
+  appointmentSeries AppointmentSeries[]
+  scheduleBlocks ScheduleBlock[]
 
   @@map("chair")
 }
@@ -209,6 +224,9 @@ model Professional {
   membership   Membership               @relation(fields: [membershipId], references: [id])
   businessHours BusinessHours[]
   hoursExceptions BusinessHoursException[]
+  appointments Appointment[]
+  appointmentSeries AppointmentSeries[]
+  scheduleBlocks ScheduleBlock[]
 
   @@unique([tenantId, membershipId])
   @@map("professional")
@@ -219,6 +237,7 @@ model BusinessHours {
   tenantId       String        @map("tenant_id") @db.Uuid
   unitId         String        @map("unit_id") @db.Uuid
   professionalId String?       @map("professional_id") @db.Uuid
+  /// ISO weekday: 1=Mon … 7=Sun
   weekday        Int           @db.SmallInt
   startsAt       DateTime      @map("starts_at") @db.Time(0)
   endsAt         DateTime      @map("ends_at") @db.Time(0)
@@ -259,7 +278,185 @@ model Procedure {
   active          Boolean  @default(true)
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  appointments    Appointment[]
+  appointmentSeries AppointmentSeries[]
 
   @@unique([tenantId, code])
   @@map("procedure")
+}
+
+/// Contador de nº de ficha por tenant (RF-E3-13).
+model PatientCodeCounter {
+  tenantId String @id @map("tenant_id") @db.Uuid
+  lastCode BigInt @default(0) @map("last_code")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("patient_code_counter")
+}
+
+/// Paciente. docs/07 §3 · RF E3
+model Patient {
+  id             String          @id @db.Uuid
+  tenantId       String          @map("tenant_id") @db.Uuid
+  unitId         String          @map("unit_id") @db.Uuid
+  code           BigInt
+  name           String
+  socialName     String?         @map("social_name")
+  cpf            String?         @db.Char(11)
+  birthDate      DateTime?       @map("birth_date") @db.Date
+  sex            String?
+  phonePrimary   String          @map("phone_primary")
+  phoneSecondary String?         @map("phone_secondary")
+  email          String?         @db.Citext
+  address        Json?
+  howFoundUs     String?         @map("how_found_us")
+  notes          String?
+  photoKey       String?         @map("photo_key")
+  active         Boolean         @default(true)
+  deletedAt      DateTime?       @map("deleted_at") @db.Timestamptz
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  unit           Unit            @relation(fields: [unitId], references: [id])
+  guardians      LegalGuardian[]
+  consents       Consent[]
+  appointments   Appointment[]
+  appointmentSeries AppointmentSeries[]
+
+  @@unique([tenantId, code], map: "uq_patient_tenant_code")
+  @@index([tenantId, name], map: "idx_patient_name")
+  @@index([tenantId, phonePrimary], map: "idx_patient_phone")
+  @@map("patient")
+}
+
+model LegalGuardian {
+  id           String  @id @db.Uuid
+  tenantId     String  @map("tenant_id") @db.Uuid
+  patientId    String  @map("patient_id") @db.Uuid
+  name         String
+  cpf          String? @db.Char(11)
+  relationship String?
+  phone        String?
+  email        String? @db.Citext
+  tenant       Tenant  @relation(fields: [tenantId], references: [id])
+  patient      Patient @relation(fields: [patientId], references: [id])
+
+  @@index([tenantId, patientId], map: "idx_legal_guardian_patient")
+  @@map("legal_guardian")
+}
+
+model Consent {
+  id              String    @id @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  patientId       String    @map("patient_id") @db.Uuid
+  type            String
+  granted         Boolean
+  documentVersion String    @map("document_version")
+  channel         String
+  ipAddress       String?   @map("ip_address")
+  userAgent       String?   @map("user_agent")
+  grantedAt       DateTime  @default(now()) @map("granted_at") @db.Timestamptz
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  patient         Patient   @relation(fields: [patientId], references: [id])
+
+  @@index([tenantId, patientId, type], map: "idx_consent_patient")
+  @@map("consent")
+}
+
+/// Série de recorrência (API completa no Bloco 3).
+model AppointmentSeries {
+  id               String        @id @db.Uuid
+  tenantId         String        @map("tenant_id") @db.Uuid
+  unitId           String        @map("unit_id") @db.Uuid
+  patientId        String        @map("patient_id") @db.Uuid
+  professionalId   String        @map("professional_id") @db.Uuid
+  chairId          String?       @map("chair_id") @db.Uuid
+  procedureId      String?       @map("procedure_id") @db.Uuid
+  rrule            String
+  startsAt         DateTime      @map("starts_at") @db.Timestamptz
+  durationMinutes  Int           @map("duration_minutes") @db.SmallInt
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  tenant           Tenant        @relation(fields: [tenantId], references: [id])
+  unit             Unit          @relation(fields: [unitId], references: [id])
+  patient          Patient       @relation(fields: [patientId], references: [id])
+  professional     Professional  @relation(fields: [professionalId], references: [id])
+  chair            Chair?        @relation(fields: [chairId], references: [id])
+  procedure        Procedure?    @relation(fields: [procedureId], references: [id])
+  appointments     Appointment[]
+
+  @@map("appointment_series")
+}
+
+/// Agendamento. docs/07 §4 · EXCLUDE gist no SQL.
+model Appointment {
+  id              String              @id @db.Uuid
+  tenantId        String              @map("tenant_id") @db.Uuid
+  unitId          String              @map("unit_id") @db.Uuid
+  patientId       String              @map("patient_id") @db.Uuid
+  professionalId  String              @map("professional_id") @db.Uuid
+  chairId         String?             @map("chair_id") @db.Uuid
+  procedureId     String?             @map("procedure_id") @db.Uuid
+  startsAt        DateTime            @map("starts_at") @db.Timestamptz
+  endsAt          DateTime            @map("ends_at") @db.Timestamptz
+  status          String              @default("SCHEDULED")
+  origin          String              @default("INTERNAL")
+  confirmedAt     DateTime?           @map("confirmed_at") @db.Timestamptz
+  arrivedAt       DateTime?           @map("arrived_at") @db.Timestamptz
+  cancelledAt     DateTime?           @map("cancelled_at") @db.Timestamptz
+  cancelReason    String?             @map("cancel_reason")
+  recurrenceId    String?             @map("recurrence_id") @db.Uuid
+  notes           String?
+  idempotencyKey  String?             @map("idempotency_key")
+  createdBy       String?             @map("created_by") @db.Uuid
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  tenant          Tenant              @relation(fields: [tenantId], references: [id])
+  unit            Unit                @relation(fields: [unitId], references: [id])
+  patient         Patient             @relation(fields: [patientId], references: [id])
+  professional    Professional        @relation(fields: [professionalId], references: [id])
+  chair           Chair?              @relation(fields: [chairId], references: [id])
+  procedure       Procedure?          @relation(fields: [procedureId], references: [id])
+  series          AppointmentSeries?  @relation(fields: [recurrenceId], references: [id])
+  history         AppointmentHistory[]
+
+  @@index([tenantId, unitId, startsAt], map: "idx_appointment_agenda")
+  @@index([tenantId, patientId, startsAt(sort: Desc)], map: "idx_appointment_patient")
+  @@map("appointment")
+}
+
+model AppointmentHistory {
+  id            String      @id @db.Uuid
+  tenantId      String      @map("tenant_id") @db.Uuid
+  appointmentId String      @map("appointment_id") @db.Uuid
+  action        String
+  fromValue     Json?       @map("from_value")
+  toValue       Json?       @map("to_value")
+  actorId       String?     @map("actor_id") @db.Uuid
+  actorType     String      @map("actor_type")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  tenant        Tenant      @relation(fields: [tenantId], references: [id])
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+
+  @@index([tenantId, appointmentId, createdAt], map: "idx_appointment_history")
+  @@map("appointment_history")
+}
+
+model ScheduleBlock {
+  id             String        @id @db.Uuid
+  tenantId       String        @map("tenant_id") @db.Uuid
+  unitId         String        @map("unit_id") @db.Uuid
+  professionalId String?       @map("professional_id") @db.Uuid
+  chairId        String?       @map("chair_id") @db.Uuid
+  startsAt       DateTime      @map("starts_at") @db.Timestamptz
+  endsAt         DateTime      @map("ends_at") @db.Timestamptz
+  reason         String
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  tenant         Tenant        @relation(fields: [tenantId], references: [id])
+  unit           Unit          @relation(fields: [unitId], references: [id])
+  professional   Professional? @relation(fields: [professionalId], references: [id])
+  chair          Chair?        @relation(fields: [chairId], references: [id])
+
+  @@index([tenantId, unitId, startsAt], map: "idx_schedule_block_unit")
+  @@map("schedule_block")
 }

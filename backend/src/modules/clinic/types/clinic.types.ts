@@ -48,6 +48,13 @@ export type BusinessHoursSlot = {
   endsAt: string;
 };
 
+/** Conflito de agenda ao criar exceção (RF-E2-06). */
+export type ScheduleConflictSummary = {
+  appointmentId: string;
+  startsAt: string;
+  endsAt: string;
+};
+
 export type BusinessHoursExceptionSummary = {
   id: string;
   unitId: string;
@@ -57,6 +64,8 @@ export type BusinessHoursExceptionSummary = {
   startsAt: string | null;
   endsAt: string | null;
   reason: string | null;
+  /** Agendamentos afetados; exceção não cancela automaticamente. */
+  conflicts: ScheduleConflictSummary[];
 };
 
 export type ProfessionalSummary = {
