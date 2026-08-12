@@ -7,17 +7,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Clínica (tenant). DDL completo em docs/07 — expandido nas próximas migrações.
+/// Clínica (tenant). docs/07 §2
 model Tenant {
-  id         String            @id @db.Uuid
-  name       String
-  slug       String            @unique
-  status     String            @default("TRIAL")
-  timezone   String            @default("America/Sao_Paulo")
-  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt  DateTime          @updatedAt @map("updated_at") @db.Timestamptz
-  cryptoKeys TenantCryptoKey[]
-  auditLogs  AuditLog[]
+  id              String             @id @db.Uuid
+  name            String
+  slug            String             @unique @db.Citext
+  legalName       String?            @map("legal_name")
+  taxId           String?            @map("tax_id")
+  responsibleCro  String?            @map("responsible_cro")
+  timezone        String             @default("America/Sao_Paulo")
+  acceptedPaymentMethods String[]    @default(["CASH", "PIX", "CREDIT_CARD", "DEBIT_CARD"]) @map("accepted_payment_methods")
+  onboarding      Json               @default("{\"skippedSteps\":[]}")
+  status          String             @default("TRIAL")
+  trialEndsAt     DateTime?          @map("trial_ends_at") @db.Timestamptz
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+  cryptoKeys      TenantCryptoKey[]
+  auditLogs       AuditLog[]
+  memberships     Membership[]
+  invitations     Invitation[]
+  units           Unit[]
+  chairs          Chair[]
+  professionals   Professional[]
+  businessHours   BusinessHours[]
+  hoursExceptions BusinessHoursException[]
+  procedures      Procedure[]
 
   @@map("tenant")
 }
@@ -39,7 +53,7 @@ model TenantCryptoKey {
   @@map("tenant_crypto_key")
 }
 
-/// Esqueleto de auditoria (docs/07 / doc 17). Expandido na S1+.
+/// Esqueleto de auditoria (docs/07 / doc 17).
 model AuditLog {
   id           String   @id @db.Uuid
   tenantId     String   @map("tenant_id") @db.Uuid
@@ -57,4 +71,195 @@ model AuditLog {
 
   @@index([tenantId, createdAt(sort: Desc)], map: "idx_audit_tenant_time")
   @@map("audit_log")
+}
+
+/// Usuário global (sem RLS de tenant). docs/07 §2 · módulo identity
+model User {
+  id              String         @id @db.Uuid
+  email           String         @unique @db.Citext
+  passwordHash    String         @map("password_hash")
+  name            String
+  phone           String?
+  emailVerifiedAt DateTime?      @map("email_verified_at") @db.Timestamptz
+  lastLoginAt     DateTime?      @map("last_login_at") @db.Timestamptz
+  failedAttempts  Int            @default(0) @map("failed_attempts") @db.SmallInt
+  lockedUntil     DateTime?      @map("locked_until") @db.Timestamptz
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  memberships          Membership[]
+  refreshTokens        RefreshToken[]
+  invitationsSent      Invitation[]          @relation("InvitationInviter")
+  passwordResetTokens  PasswordResetToken[]
+
+  @@map("user")
+}
+
+model Membership {
+  id            String        @id @db.Uuid
+  tenantId      String        @map("tenant_id") @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
+  role          String
+  defaultUnitId String?       @map("default_unit_id") @db.Uuid
+  permissions   Json          @default("{}")
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+  defaultUnit   Unit?         @relation(fields: [defaultUnitId], references: [id])
+  professional   Professional?
+  refreshTokens  RefreshToken[]
+
+  @@unique([tenantId, userId])
+  @@map("membership")
+}
+
+/// Convite de membro (token de uso único, 7 dias). DDL derivado de docs/modulos/01.
+model Invitation {
+  id              String    @id @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  email           String    @db.Citext
+  role            String
+  tokenHash       String    @unique @map("token_hash")
+  invitedByUserId String    @map("invited_by_user_id") @db.Uuid
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz
+  acceptedAt      DateTime? @map("accepted_at") @db.Timestamptz
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  invitedBy       User      @relation("InvitationInviter", fields: [invitedByUserId], references: [id])
+
+  @@index([tenantId, email])
+  @@map("invitation")
+}
+
+/// Refresh token opaco com família rotativa (sem RLS — escopo user). docs/modulos/01.
+model RefreshToken {
+  id           String      @id @db.Uuid
+  userId       String      @map("user_id") @db.Uuid
+  membershipId String?     @map("membership_id") @db.Uuid
+  familyId     String      @map("family_id") @db.Uuid
+  tokenHash    String      @unique @map("token_hash")
+  expiresAt    DateTime    @map("expires_at") @db.Timestamptz
+  revokedAt    DateTime?   @map("revoked_at") @db.Timestamptz
+  replacedById String?     @map("replaced_by_id") @db.Uuid
+  ipAddress    String?     @map("ip_address")
+  userAgent    String?     @map("user_agent")
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  user         User        @relation(fields: [userId], references: [id])
+  membership   Membership? @relation(fields: [membershipId], references: [id])
+
+  @@index([userId, familyId])
+  @@map("refresh_token")
+}
+
+/// Token de reset de senha (uso único, 1h). Global, sem RLS de tenant. RF-E1-08.
+model PasswordResetToken {
+  id        String    @id @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  usedAt    DateTime? @map("used_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("password_reset_token")
+}
+
+model Unit {
+  id           String                   @id @db.Uuid
+  tenantId     String                   @map("tenant_id") @db.Uuid
+  name         String
+  isDefault    Boolean                  @default(false) @map("is_default")
+  phone        String?
+  address      Json?
+  createdAt    DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  tenant       Tenant                   @relation(fields: [tenantId], references: [id])
+  chairs       Chair[]
+  memberships  Membership[]
+  businessHours BusinessHours[]
+  hoursExceptions BusinessHoursException[]
+
+  @@map("unit")
+}
+
+model Chair {
+  id        String  @id @db.Uuid
+  tenantId  String  @map("tenant_id") @db.Uuid
+  unitId    String  @map("unit_id") @db.Uuid
+  name      String
+  color     String?
+  active    Boolean @default(true)
+  tenant    Tenant  @relation(fields: [tenantId], references: [id])
+  unit      Unit    @relation(fields: [unitId], references: [id])
+
+  @@map("chair")
+}
+
+model Professional {
+  id           String                   @id @db.Uuid
+  tenantId     String                   @map("tenant_id") @db.Uuid
+  membershipId String                   @unique @map("membership_id") @db.Uuid
+  croNumber    String?                  @map("cro_number")
+  croState     String?                  @map("cro_state") @db.Char(2)
+  specialties  String[]                 @default([])
+  color        String?
+  active       Boolean                  @default(true)
+  tenant       Tenant                   @relation(fields: [tenantId], references: [id])
+  membership   Membership               @relation(fields: [membershipId], references: [id])
+  businessHours BusinessHours[]
+  hoursExceptions BusinessHoursException[]
+
+  @@unique([tenantId, membershipId])
+  @@map("professional")
+}
+
+model BusinessHours {
+  id             String        @id @db.Uuid
+  tenantId       String        @map("tenant_id") @db.Uuid
+  unitId         String        @map("unit_id") @db.Uuid
+  professionalId String?       @map("professional_id") @db.Uuid
+  weekday        Int           @db.SmallInt
+  startsAt       DateTime      @map("starts_at") @db.Time(0)
+  endsAt         DateTime      @map("ends_at") @db.Time(0)
+  tenant         Tenant        @relation(fields: [tenantId], references: [id])
+  unit           Unit          @relation(fields: [unitId], references: [id])
+  professional   Professional? @relation(fields: [professionalId], references: [id])
+
+  @@map("business_hours")
+}
+
+model BusinessHoursException {
+  id             String        @id @db.Uuid
+  tenantId       String        @map("tenant_id") @db.Uuid
+  unitId         String        @map("unit_id") @db.Uuid
+  professionalId String?       @map("professional_id") @db.Uuid
+  date           DateTime      @db.Date
+  closed         Boolean       @default(true)
+  startsAt       DateTime?     @map("starts_at") @db.Time(0)
+  endsAt         DateTime?     @map("ends_at") @db.Time(0)
+  reason         String?
+  tenant         Tenant        @relation(fields: [tenantId], references: [id])
+  unit           Unit          @relation(fields: [unitId], references: [id])
+  professional   Professional? @relation(fields: [professionalId], references: [id])
+
+  @@map("business_hours_exception")
+}
+
+model Procedure {
+  id              String   @id @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  code            String
+  name            String
+  specialty       String?
+  defaultMinutes  Int      @default(30) @map("default_minutes") @db.SmallInt
+  priceCents      BigInt   @default(0) @map("price_cents")
+  requiresTooth   Boolean  @default(false) @map("requires_tooth")
+  requiresFace    Boolean  @default(false) @map("requires_face")
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, code])
+  @@map("procedure")
 }

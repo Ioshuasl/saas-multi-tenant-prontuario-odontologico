@@ -38,6 +38,25 @@ Só segue sem perguntar o que já está **explícito** na instrução do usuári
 3. Implementar: types/enum/schema → data → service → hooks (Query/Mutation) → components → page.
 4. Checklist + lint se disponível.
 
+## Kit UI (shadcn em `shared/ui`)
+
+Path normativo: `frontend/src/shared/ui/` — imports via alias:
+
+```ts
+import { Button } from '@/shared/ui/button'
+import { Input } from '@/shared/ui/input'
+import { cn } from '@/shared/helpers/utils'
+```
+
+| Regra | Detalhe |
+|-------|---------|
+| **Compor, não recriar** | Usar primitivos já instalados em `shared/ui` antes de escrever UI custom |
+| **Sem `@/components/ui`** | Não usar path default do shadcn; o projeto fixou `shared/ui` em `components.json` |
+| **Componentes de domínio** | Ficam em `packages/<package>/components/`; importam de `@/shared/ui/*` |
+| **Dúvida de primitivo** | Shard [07-ui-components-map.md](../../docs/ui/07-ui-components-map.md) (máx. 1 por turno) |
+| **Adicionar/ajustar primitivo shadcn** | Skill `shadcn` (CLI/registry) — não no meio de um CRUD de tela |
+| **Decisão visual/UX ampla** | Skill `ui-ux-pro-max` (paleta, tipografia, a11y) — opcional no início de telas novas |
+
 ## Rules
 
 Ver `rules/frontend.mdc` e `frontend-*.mdc`.
@@ -51,6 +70,7 @@ Ver `rules/frontend.mdc` e `frontend-*.mdc`.
 - PascalCase nos arquivos; `*Form` vs `*FormDialog`.
 - Package não importa outro package.
 - UI não duplica invariantes de domínio do backend.
+- Primitivos visuais só de `@/shared/ui/*`; compor variantes existentes (`variant`, `size`) antes de CSS ad hoc.
 
 ## Saída
 

@@ -15,9 +15,15 @@ Pasta **somente** para acompanhamento do desenvolvimento (scaffold, sprints, dec
 1. Atualizar `PROGRESSO.md` ao fechar um bloco de trabalho (scaffold, feature, correção relevante).
 2. Não duplicar RF/ADR aqui — linkar para `docs/…`.
 3. Bloqueios e perguntas abertas ficam no log da sprint até resolvidos.
+4. **Toda sprint** deve detalhar **Backend** e **Frontend** em seções separadas (o que entra, o que não entra, e em qual bloco). Se um lado não tiver entrega, escrever explicitamente “nenhuma tela / nenhum endpoint nesta sprint”.
 
 ## Status atual
 
-- **Fase:** Sprint 0 — Fundação técnica
-- **Código:** monorepo `backend/` + `frontend/` + `contracts/` em construção
-- **Especificação:** completa em [`../README.md`](../README.md)
+- **Fase:** Sprint 2 — Pacientes e Agenda interna — **planejada** (próximo: Bloco 0 carry-over horários / Bloco 1 patients)
+- **Anterior:** Sprint 1 — Identidade e Clínica — **fechada** (E1+E2 Must + Qualidade)
+- **Código base:** Sprint 0 concluída (monorepo, CI, RLS, KeyManagementPort)
+- **Especificação:** [`../README.md`](../README.md)
+- **Checklist S2:** [`sprints/S2-pacientes-agenda.md`](./sprints/S2-pacientes-agenda.md)
+- **Checklist S3 (planejada):** [`sprints/S3-canal-paciente.md`](./sprints/S3-canal-paciente.md)
+- **Checklist S1 (fechada):** [`sprints/S1-identidade-clinica.md`](./sprints/S1-identidade-clinica.md)
+- **Checklist S0 (fechada):** [`sprints/S0-fundacao.md`](./sprints/S0-fundacao.md)

@@ -16,6 +16,7 @@
 - [ ] Index não chama API; modais condicionais
 - [ ] Form vs FormDialog corretos
 - [ ] Page só compõe
+- [ ] UI composta de `@/shared/ui/*` (sem recriar primitivos; sem `@/components/ui`)
 
 ## Final
 

@@ -1,4 +1,5 @@
-import { PrismaClient, type Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import type { DbTransaction } from './db_transaction.js';
 import type { RequestContext } from '../domain/request_context.js';
 
 /**
@@ -8,9 +9,13 @@ import type { RequestContext } from '../domain/request_context.js';
 export class TenantPrisma {
   constructor(private readonly prisma: PrismaClient) {}
 
+  async setTenantId(tx: DbTransaction, tenantId: string): Promise<void> {
+    await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+  }
+
   async runInTenantContext<T>(
     ctx: RequestContext,
-    fn: (tx: Prisma.TransactionClient) => Promise<T>,
+    fn: (tx: DbTransaction) => Promise<T>,
   ): Promise<T> {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.tenant_id', ${ctx.tenantId}, true)`;
@@ -21,7 +26,7 @@ export class TenantPrisma {
   }
 
   /** Signup / create tenant — liga flag de provisioning na mesma transação. */
-  async runProvisioning<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  async runProvisioning<T>(fn: (tx: DbTransaction) => Promise<T>): Promise<T> {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.provisioning', 'on', true)`;
       return fn(tx);

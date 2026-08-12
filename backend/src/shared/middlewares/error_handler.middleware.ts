@@ -35,6 +35,25 @@ export function errorHandler(
     return;
   }
 
+  if (
+    typeof err === 'object' &&
+    err !== null &&
+    'status' in err &&
+    (err as { status?: number }).status === 400 &&
+    'type' in err &&
+    (err as { type?: string }).type === 'entity.parse.failed'
+  ) {
+    const body: ApiErrorBody = {
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'JSON inválido.',
+        requestId,
+      },
+    };
+    res.status(400).json(body);
+    return;
+  }
+
   logger.error({ err, requestId }, 'unhandled_error');
   const body: ApiErrorBody = {
     error: {

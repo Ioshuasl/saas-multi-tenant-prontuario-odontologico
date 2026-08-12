@@ -1,4 +1,10 @@
 import type { ReactNode } from 'react';
+import { Geist } from 'next/font/google';
+import { cn } from '@/shared/helpers/utils';
+import { AppProviders } from '@/shared/providers/AppProviders';
+import './globals.css';
+
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata = {
   title: 'SaaS Odontológico',
@@ -7,17 +13,9 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR">
-      <body
-        style={{
-          margin: 0,
-          fontFamily:
-            'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
-          background: '#f6f7f9',
-          color: '#111827',
-        }}
-      >
-        {children}
+    <html lang="pt-BR" className={cn('font-sans', geist.variable)}>
+      <body className="min-h-dvh bg-background text-foreground antialiased">
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

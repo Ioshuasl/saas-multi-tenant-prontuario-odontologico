@@ -5,6 +5,14 @@ import { z } from 'zod';
 config({ path: resolve(process.cwd(), '../.env') });
 config({ path: resolve(process.cwd(), '.env') });
 
+/** Decodifica chave PEM de env (Base64 ou PEM literal com \\n). */
+export function decodePemKey(value: string): string {
+  if (value.includes('BEGIN')) {
+    return value.replace(/\\n/g, '\n');
+  }
+  return Buffer.from(value, 'base64').toString('utf8');
+}
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(3333),
@@ -22,6 +30,7 @@ const envSchema = z.object({
   WHATSAPP_APP_SECRET: z.string().min(1),
   WHATSAPP_VERIFY_TOKEN: z.string().min(1),
   MAIL_DSN: z.string().min(1),
+  MAIL_FROM: z.string().min(1).default('noreply@localhost'),
   RESEND_API_KEY: z.string().optional(),
   APP_PUBLIC_URL: z.string().url(),
   CORS_ORIGINS: z.string().min(1),
@@ -32,3 +41,6 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 export const env: Env = envSchema.parse(process.env);
+
+export const jwtPrivateKey = decodePemKey(env.JWT_PRIVATE_KEY);
+export const jwtPublicKey = decodePemKey(env.JWT_PUBLIC_KEY);

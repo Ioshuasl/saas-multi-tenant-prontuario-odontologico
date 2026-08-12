@@ -4,6 +4,136 @@ Append-only. Entradas mais recentes no topo.
 
 ---
 
+## 2026-08-12 — Planejamento Sprint 2 e Sprint 3
+
+### Feito
+
+- Checklist [`sprints/S2-pacientes-agenda.md`](./sprints/S2-pacientes-agenda.md) — E3 + E4a, Blocos 0–5, M1, carry-over S1
+- Checklist [`sprints/S3-canal-paciente.md`](./sprints/S3-canal-paciente.md) — E4b + E8a, Blocos 1–6, M2, riscos WABA
+- README de desenvolvimento atualizado (fase = S2 planejada)
+
+### Não feito (propositadamente)
+
+- Nenhuma implementação de código — aguarda início do Bloco 0/1 da S2
+
+### Próximo
+
+- S2 Bloco 0 (UI exceções / horário profissional) ou Bloco 1 (patients DDL + API)
+- Em paralelo: iniciar onboarding WABA/templates Meta (R1 → M2)
+
+---
+
+## 2026-08-12 — Sprint 1: fechamento Must E1/E2 + Qualidade
+
+### Feito
+
+- `getWorkingWindows` em `clinic_public` (unidade ∩ profissional ∩ exceções; TZ do tenant)
+- `PATCH /clinic/units/:id/chairs/:chairId` + UI admin (editar/inativar)
+- CI Integration: `test:identity` + `test:clinic` (JWT efêmero + env de smoke)
+- Checklist S1 atualizado; carry-over S2 documentado (UI exceções/horário profissional; conflitos reais)
+
+### Validação
+
+- `typecheck` · `arch:check` · `test:clinic` ok
+
+### Próximo
+
+- Sprint 2 (pacientes + agenda), começando com o carry-over de horários na UI se necessário
+
+---
+
+## 2026-08-12 — Sprint 1 Bloco 3: clínica E2 Must (backend)
+
+### Feito
+
+- Migração `20260812140000_s1_clinic_block3`: `tenant.accepted_payment_methods`, `tenant.onboarding`
+- Módulo `clinic` completo: perfil, units/chairs, business-hours + exceptions, professionals, procedures, import-catalog, onboarding wizard
+- Catálogo padrão centralizado em `procedure_catalog.helper.ts` (reutilizado no signup seed e import-catalog)
+- Rotas registradas em `buildClinicRouter()` (`/clinic`, `/procedures`)
+- Script `pnpm test:clinic` (`smoke-clinic.ts`)
+
+### Validação
+
+- `typecheck` · `arch:check` · `db:migrate` · `test:clinic` ok
+
+### Próximo
+
+- Bloco 4 (frontend): UI mínima signup/login/clínica/wizard
+
+---
+
+### Feito
+
+- Convite create / list / resend / revoke / accept (7 dias, token de uso único); e-mail via Mailpit (SMTP) em local e Resend em production (ADR-0009)
+- `GET /auth/me`, `POST /auth/switch-tenant`, `X-Tenant-Id` validado contra memberships (`403 TENANT_NOT_ALLOWED`)
+- `GET|PATCH /users` (papel/ativo/overrides); último Owner não pode ser rebaixado nem desativado
+- Reset de senha (`forgot` 202 sem enumeração; token 1h); lockout 5 falhas / 10 min progressivo + rate limit HTTP
+- `audit_log`: LOGIN, LOGIN_FAILED, LOGOUT, PASSWORD_RESET, MEMBER_INVITED, ROLE_CHANGED, MEMBER_DEACTIVATED, PERMISSION_DENIED, REFRESH_REUSE_DETECTED
+- Script `pnpm test:identity` (`smoke-identity.ts`): convite, me, switch, último Owner, RECEPTION → 403 em prontuário + audit
+
+### Validação
+
+- `typecheck` · `arch:check` · `lint` backend ok
+- `db:migrate` / `test:identity` / `test:rls` exigem Postgres no ar (Docker Desktop estava parado neste ambiente)
+
+### Próximo
+
+- Bloco 3 (backend): clínica E2 Must (perfil, units/chairs, horários, procedimentos, profissionais, wizard)
+
+---
+
+## 2026-08-12 — Convenção: sprints separam Backend e Frontend
+
+### Feito
+
+- `docs/desenvolvimento/README.md`: toda sprint deve detalhar Backend vs Frontend (se um lado não entra, dizer explicitamente)
+- `sprints/S1-identidade-clinica.md`: seção de camadas + blocos rotulados (1–3 backend, 4 frontend) + aceite separado
+
+### Próximo
+
+- Bloco 2 (backend): convite, RBAC/`me`, reset senha, rate limit, audit
+
+---
+
+## 2026-08-11 — Sprint 1 Bloco 1: identity + auth core
+
+### Feito
+
+- Migração `20260811200000_s1_identity_clinic`: identity/clinic DDL + RLS (membership SELECT por `app.user_id`; tenant SELECT via membership ativo)
+- Módulo `identity`: signup/login/refresh/logout/logout-all (JWT RS256, Argon2id, cookie refresh rotativo)
+- Seed clínica no signup via `clinic_public.seedClinicOnSignup` (unidade + horários seg–sex + catálogo procedimentos)
+- Middlewares `authenticate`, `tenantContext`, `authorize`
+- JWT em env como Base64(PEM); script `backend/scripts/smoke-auth.ts`
+
+### Validação
+
+- `pnpm db:migrate` · `typecheck` · `arch:check` · `test:rls` · `smoke-auth` (signup/login/refresh/logout/logout-all/409 duplicado) ok
+- Lint backend ok após fixes
+
+### Próximo
+
+- Bloco 2: convite, RBAC/`me`, reset senha, rate limit, audit
+
+---
+
+## 2026-08-11 — Sprint 1: documentação do plano (sem código)
+
+### Feito
+
+- Checklist [`sprints/S1-identidade-clinica.md`](./sprints/S1-identidade-clinica.md) — blocos 1–4, RFs E1/E2, endpoints, aceite
+- Atualizado [`README.md`](./README.md) (fase = S1, docs prontas)
+- Escopo: Must completo E1+E2 + UI mínima (decisão 1A / 2A)
+
+### Não feito (propositadamente)
+
+- Nenhuma implementação de código nesta entrada — aguarda início do Bloco 1
+
+### Próximo
+
+- Bloco 1: migração identity/clinic + signup + login/refresh/logout
+
+---
+
 ## 2026-08-11 — Sprint 0: ESLint real + push CI
 
 ### Feito

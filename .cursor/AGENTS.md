@@ -20,7 +20,9 @@ Configura agents para `backend/` e `frontend/`.
 |-------|--------|
 | `backend-orchestrator` | CRUD / casos de uso em `backend/` — checklist no **fim** |
 | `frontend-orchestrator` | CRUD / telas em `frontend/` + 1 shard UI — checklist no **fim** |
-| `ui-ux-systems` | Cheat sheet UI (sem codar um tipo) |
+| `shadcn` | CLI/registry shadcn: adicionar, buscar, corrigir ou estilizar primitivos em `shared/ui` |
+| `ui-ux-pro-max` | Decisões visuais/UX amplas (paleta, tipografia, layout, a11y, motion) — telas novas ou review |
+| `ui-ux-systems` | Cheat sheet UI do projeto (sem codar um tipo) |
 | `ui-refactor` | Refator visual com 1 shard |
 | `designer-ui` | Pencil: **1 frame** + `01-tokens-kit` (galeria Orius — futura) |
 | `designer-ux` | Fluxo/tipo de tela (+ `02` ou `05` se preciso) |

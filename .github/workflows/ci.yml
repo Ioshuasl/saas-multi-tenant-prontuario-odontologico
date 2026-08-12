@@ -116,3 +116,55 @@ jobs:
         env:
           DATABASE_URL: postgresql://app_user:app@localhost:5432/odonto_dev?schema=public
         run: pnpm exec tsx scripts/check-rls.ts
+
+      - name: Generate JWT keys for smoke
+        id: jwt
+        run: |
+          openssl genrsa -out /tmp/jwt-private.pem 2048
+          openssl rsa -in /tmp/jwt-private.pem -pubout -out /tmp/jwt-public.pem
+          {
+            echo "JWT_PRIVATE_KEY=$(base64 -w0 /tmp/jwt-private.pem)"
+            echo "JWT_PUBLIC_KEY=$(base64 -w0 /tmp/jwt-public.pem)"
+          } >> "$GITHUB_ENV"
+
+      - name: Identity smoke
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://app_user:app@localhost:5432/odonto_dev?schema=public
+          DATABASE_MIGRATION_URL: postgresql://postgres:postgres@localhost:5432/odonto_dev?schema=public
+          REDIS_URL: redis://localhost:6379
+          APP_PUBLIC_URL: http://localhost:3000
+          CORS_ORIGINS: http://localhost:3000
+          STORAGE_ENDPOINT: http://localhost:9000
+          STORAGE_BUCKET: odonto-dev
+          STORAGE_REGION: sa-east-1
+          STORAGE_ACCESS_KEY: minioadmin
+          STORAGE_SECRET_KEY: minioadmin
+          MAIL_DSN: smtp://localhost:1025
+          MAIL_FROM: noreply@localhost
+          WHATSAPP_APP_SECRET: ci-whatsapp-secret
+          WHATSAPP_VERIFY_TOKEN: ci-verify-token
+          KEK_LOCAL_BASE64: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+          NODE_ENV: test
+        run: pnpm test:identity
+
+      - name: Clinic smoke
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://app_user:app@localhost:5432/odonto_dev?schema=public
+          DATABASE_MIGRATION_URL: postgresql://postgres:postgres@localhost:5432/odonto_dev?schema=public
+          REDIS_URL: redis://localhost:6379
+          APP_PUBLIC_URL: http://localhost:3000
+          CORS_ORIGINS: http://localhost:3000
+          STORAGE_ENDPOINT: http://localhost:9000
+          STORAGE_BUCKET: odonto-dev
+          STORAGE_REGION: sa-east-1
+          STORAGE_ACCESS_KEY: minioadmin
+          STORAGE_SECRET_KEY: minioadmin
+          MAIL_DSN: smtp://localhost:1025
+          MAIL_FROM: noreply@localhost
+          WHATSAPP_APP_SECRET: ci-whatsapp-secret
+          WHATSAPP_VERIFY_TOKEN: ci-verify-token
+          KEK_LOCAL_BASE64: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+          NODE_ENV: test
+        run: pnpm test:clinic

@@ -1,5 +1,6 @@
 import type { ApiResponse } from '@repo/contracts';
 import { isApiError } from '@repo/contracts';
+import { tokenStore } from '@/shared/auth/token-store';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
 
@@ -8,32 +9,76 @@ export class ApiClientError extends Error {
     public readonly code: string,
     message: string,
     public readonly status: number,
+    public readonly details?: unknown,
   ) {
     super(message);
     this.name = 'ApiClientError';
   }
 }
 
-export async function apiRequest<T>(
-  path: string,
-  init: RequestInit = {},
-): Promise<T> {
-  const res = await fetch(`${API_URL}/api/v1${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init.headers ?? {}),
-    },
-  });
+type RequestOptions = RequestInit & {
+  tenantId?: string;
+  skipAuth?: boolean;
+};
 
-  const body = (await res.json()) as ApiResponse<T>;
+class ApiClient {
+  private refreshing: Promise<string | null> | null = null;
 
-  if (!res.ok || isApiError(body)) {
-    if (isApiError(body)) {
-      throw new ApiClientError(body.error.code, body.error.message, res.status);
+  async request<T>(path: string, init: RequestOptions = {}): Promise<T> {
+    const { tenantId, skipAuth, headers, ...rest } = init;
+    const activeTenant = tenantId ?? tokenStore.getTenantId();
+    const token = skipAuth ? null : tokenStore.getAccessToken();
+
+    const res = await fetch(`${API_URL}/api/v1${path}`, {
+      ...rest,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(activeTenant ? { 'X-Tenant-Id': activeTenant } : {}),
+        ...(headers ?? {}),
+      },
+    });
+
+    if (res.status === 401 && !skipAuth && !path.startsWith('/auth/refresh')) {
+      const refreshed = await (this.refreshing ??= this.refresh().finally(() => {
+        this.refreshing = null;
+      }));
+      if (refreshed) {
+        return this.request<T>(path, init);
+      }
     }
-    throw new ApiClientError('HTTP_ERROR', `HTTP ${res.status}`, res.status);
+
+    const body = (await res.json()) as ApiResponse<T>;
+
+    if (!res.ok || isApiError(body)) {
+      if (isApiError(body)) {
+        throw new ApiClientError(
+          body.error.code,
+          body.error.message,
+          res.status,
+          body.error.details,
+        );
+      }
+      throw new ApiClientError('HTTP_ERROR', `HTTP ${res.status}`, res.status);
+    }
+
+    return body.data;
   }
 
-  return body.data;
+  async refresh(): Promise<string | null> {
+    try {
+      const data = await this.request<{ accessToken: string }>('/auth/refresh', {
+        method: 'POST',
+        skipAuth: true,
+      });
+      tokenStore.setAccessToken(data.accessToken);
+      return data.accessToken;
+    } catch {
+      tokenStore.clear();
+      return null;
+    }
+  }
 }
+
+export const apiClient = new ApiClient();

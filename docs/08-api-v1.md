@@ -101,6 +101,7 @@ POST   /api/v1/clinic/units
 PATCH  /api/v1/clinic/units/:id
 GET    /api/v1/clinic/units/:id/chairs
 POST   /api/v1/clinic/units/:id/chairs
+PATCH  /api/v1/clinic/units/:id/chairs/:chairId
 GET    /api/v1/clinic/business-hours       ?unitId=&professionalId=
 PUT    /api/v1/clinic/business-hours       substitui a grade semanal
 POST   /api/v1/clinic/business-hours/exceptions
