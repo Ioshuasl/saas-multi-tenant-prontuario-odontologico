@@ -39,16 +39,25 @@ class ApiClient {
     const activeTenant = tenantId ?? tokenStore.getTenantId();
     const token = skipAuth ? null : tokenStore.getAccessToken();
 
-    const res = await fetch(`${API_URL}/api/v1${path}`, {
-      ...rest,
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(activeTenant ? { 'X-Tenant-Id': activeTenant } : {}),
-        ...(headers ?? {}),
-      },
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API_URL}/api/v1${path}`, {
+        ...rest,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(activeTenant ? { 'X-Tenant-Id': activeTenant } : {}),
+          ...(headers ?? {}),
+        },
+      });
+    } catch {
+      throw new ApiClientError(
+        'NETWORK_ERROR',
+        `Não foi possível conectar à API (${API_URL}). Confirme se o backend está rodando (pnpm dev:api).`,
+        0,
+      );
+    }
 
     if (res.status === 401 && !skipAuth && !path.startsWith('/auth/refresh')) {
       const refreshed = await (this.refreshing ??= this.refresh().finally(() => {
