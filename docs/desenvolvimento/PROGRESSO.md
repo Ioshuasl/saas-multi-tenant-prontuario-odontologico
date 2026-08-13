@@ -4,6 +4,158 @@ Append-only. Entradas mais recentes no topo.
 
 ---
 
+## 2026-08-13 — S3 Bloco 6: frontend waitlist + WhatsApp ops
+
+### Feito
+
+- Agenda (`operacional`): painel Fila de espera + FormDialog criar/remover + oferta manual opcional
+- Badge `REQUESTED` (cinza tracejado / Solicitado) vs `SCHEDULED`/`CONFIRMED` na grade e na legenda
+- Remarcação PENDING: sem endpoint `/messaging/conversations*` (S7) — não inventado
+- Package `messaging`: wizard Form `/app/whatsapp` (conectar → test → CONNECTED/ERROR + `lastError`)
+- Kill switch, usage (cortesia/consumo/saldo) e logs mínimos (template/resultado/horário)
+- Onboarding passo WHATSAPP → `/app/whatsapp` (pulável); link público absoluto `/agendar/{slug}`
+- E2E `e2e/waitlist.spec.ts` + `e2e/messaging.spec.ts` (fake; sem Meta)
+
+### Validação
+
+- `pnpm --filter @repo/frontend typecheck` — ok
+- ESLint dos arquivos novos (waitlist + messaging + agenda/onboarding/nav/whatsapp) — ok
+- `pnpm --filter @repo/frontend lint` (repo inteiro) — falha pré-existente fora deste bloco
+- E2E `e2e/waitlist.spec.ts` + `e2e/messaging.spec.ts` — specs criadas; não executadas aqui (precisa API + fake WA)
+
+### Próximo
+
+- Sprint 3 aceite E2E local (public-booking + waitlist + messaging) · Marco M2 número real separado
+
+---
+
+## 2026-08-13 — S3 Bloco 5: frontend public booking (`public`)
+
+### Feito
+
+- Rotas `(public)/agendar/[slug]`, `/agendar/[slug]/confirmar/[token]`, `/fila/[token]` (sem AppShell)
+- Package `public`: Booking / BookingConfirm / WaitlistAccept — Page → Component → Hook (TanStack) → Service → Data
+- Wizard mobile-first (serviço → profissional se >1 → data/hora → identidade+consents → OTP → sucesso)
+- Estados: skeleton, slug 404, sem slots, `409 SLOT_UNAVAILABLE` + recarregar, `429`, OTP inválido/expirado
+- Confirmação por link e aceite de fila por token
+- E2E `e2e/public-booking.spec.ts` (slug seed via login API; OTP `debugOtp` ou Mailpit)
+
+### Validação
+
+- `pnpm --filter @repo/frontend typecheck` — ok
+- ESLint dos arquivos novos (`packages/public` Booking/Confirm/Waitlist + rotas) — ok
+- `pnpm --filter @repo/frontend lint` (repo inteiro) — falha pré-existente (operacional unused import + `shared/ui/chart.tsx`), fora deste bloco
+- E2E `e2e/public-booking.spec.ts` — spec criada; não executada aqui (precisa API + Mailpit)
+
+### Próximo
+
+- S3 Bloco 6 — frontend waitlist (operacional) + WhatsApp ops (messaging)
+
+---
+
+## 2026-08-13 — S3 Bloco 4: messaging E8a (WhatsApp)
+
+### Feito
+
+- Módulo `messaging/` + `messaging_public.ts` (leitura de account + seed signup + schedule notifications)
+- Port `MessagingProvider`: Fake (test/dev) + WhatsApp Cloud (production); token WABA no KMS (`sealSecret`)
+- Account connect/test/disconnect + kill switch (`PATCH /messaging/account`); templates globais agenda; automations D-1/H-3/WAITLIST_OFFER
+- Quiet hours 21–08 reagendam; create/move agenda jobs; cancel/move remove jobIds `${appointmentId}:{KEY}`
+- Webhook HMAC raw body → `process-whatsapp-webhook` (`jobId=wamid`); CONFIRM/CANCEL/WAITLIST/REBOOK; débito no delivery
+- Marketing `BLOCKED_NO_CONSENT`; cortesia 50; agenda nunca consome crédito
+- Smoke `test:messaging` (fake + wamid duplicado + confirm → CONFIRMED) + CI + docs/07–08
+
+### Validação
+
+- `pnpm db:migrate` — ok
+- `pnpm --filter @repo/backend exec tsc --noEmit` — ok
+- `pnpm arch:check` — ok
+- `pnpm test:kms` / `test:rls` — ok
+- `pnpm test:messaging` — ok (3 sends + confirm → CONFIRMED + wamid duplicado = 1 inbound)
+
+### Próximo
+
+- S3 Bloco 5 — frontend public booking
+
+---
+
+## 2026-08-13 — S3 Bloco 3: fila de espera (E4b)
+
+### Feito
+
+- DDL `waitlist_entry` + RLS; CRUD autenticado `GET|POST|DELETE /waitlist` (`agenda.write`)
+- `POST /waitlist/:id/offer` (`appointmentId` cancelado/NO_SHOW, token 30 min, `Idempotency-Key`)
+- `POST /public/waitlist/:token/accept` first-accept-wins (EXCLUDE); origin `WAITLIST`
+- Job `offer-waitlist-slot` via outbox em cancel/NO_SHOW; lote 3, máx. 3 lotes, delay 30 min
+- Outbox `waitlist_offer_sent` com `template=waitlist_offer` + `buttonPayload=WAITLIST_<offerId>` (envio WA no Bloco 4)
+- `scheduling_public.applyWaitlistAccept` / `applyWaitlistAcceptByOfferId` para messaging
+- Smoke `test:waitlist` (2 aceites concorrentes → 1 appointment) + CI + docs/08
+
+### Validação
+
+- `pnpm db:migrate` — ok
+- `pnpm --filter @repo/backend typecheck` — ok
+- `pnpm arch:check` — ok
+- `pnpm test:rls` — ok
+- `pnpm test:waitlist` — ok (2 aceites concorrentes → 1×200 + 1×409)
+
+### Próximo
+
+- S3 Bloco 4 — messaging E8a
+
+---
+
+## 2026-08-13 — S3 Bloco 2: autoagendamento público (E4b)
+
+### Feito
+
+- DDL `public_booking_token` + RLS, `procedure.publicly_bookable`, `tenant.booking_settings`, `patient.origin`
+- Middleware `publicTenantContext` (slug → tenant; 404) + rate limits públicos
+- `GET /public/clinics/:slug` + availability (reusa S2 + lead min/max + só `publicly_bookable`)
+- `POST bookings` / `verify` (OTP 6 dígitos, 5 min, 3 tentativas, e-mail; sem WABA neste bloco)
+- `GET /public/appointments/:token/confirm` (`SCHEDULED→CONFIRMED`, idempotente; `REQUESTED` recusa)
+- `patients_public.findOrCreateFromPublicBooking` + consents `PUBLIC_BOOKING`; origin `PUBLIC_BOOKING`
+- Outbox `scheduling.appointment_scheduled|_confirmed` + stub de job; docs/07 e docs/08 alinhados
+- Smoke `test:public-booking` + CI
+
+### Validação
+
+- `pnpm db:migrate` — ok
+- `pnpm --filter @repo/backend typecheck` — ok (`tsc --noEmit`; `prisma generate` pode falhar com EPERM no Windows se o query engine estiver lockado)
+- `pnpm arch:check` — ok
+- `pnpm test:rls` — ok
+- `pnpm test:public-booking` — ok
+
+### Próximo
+
+- S3 Bloco 3 — fila de espera
+
+---
+
+## 2026-08-13 — S3 Bloco 1: filas, outbox e worker
+
+### Feito
+
+- Prisma `outbox_event` + RLS (`tenant_isolation` + policy `outbox_dispatch_select`) e `TenantPrisma.runOutboxDispatch`
+- `UnitOfWork` grava eventos na mesma transação; `OutboxDispatcher` a cada 5s (jobId = event.id); Redis down deixa pendente sem incrementar `attempts`
+- `shared/queue/`: nomes docs/11, payload Zod (`tenantId`+`requestId`), port, BullMQ+DLQ, fake in-memory
+- `worker.ts` real + `pnpm dev:worker` (raiz e `@repo/backend`); health opcional `:3334`
+- Smoke `test:outbox` (fake drain + API `/health` sem Redis) + `test:rls` cobre outbox; CI integration inclui o smoke
+
+### Validação
+
+- `pnpm db:migrate`
+- `pnpm --filter @repo/backend typecheck`
+- `pnpm arch:check`
+- `pnpm test:rls`
+- `pnpm test:outbox`
+
+### Próximo
+
+- S3 Bloco 2 — autoagendamento público (E4b)
+
+---
+
 ## 2026-08-13 — S3 planejada: detalhamento técnico do canal do paciente
 
 ### Feito

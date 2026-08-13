@@ -7,6 +7,8 @@ import {
   buildAppointmentSeriesRoutes,
   buildScheduleBlockRoutes,
 } from './routes/v1/schedule_extras.routes.js';
+import { buildPublicBookingRoutes } from './routes/v1/public_booking.routes.js';
+import { buildWaitlistRoutes } from './routes/v1/waitlist.routes.js';
 
 export function buildSchedulingRouter(): Router {
   const router = Router();
@@ -14,5 +16,10 @@ export function buildSchedulingRouter(): Router {
   router.use('/availability', buildAvailabilityRoutes());
   router.use('/schedule-blocks', buildScheduleBlockRoutes());
   router.use('/appointment-series', buildAppointmentSeriesRoutes());
+  router.use('/waitlist', buildWaitlistRoutes());
   return router;
+}
+
+export function buildPublicRouter(): Router {
+  return buildPublicBookingRoutes();
 }

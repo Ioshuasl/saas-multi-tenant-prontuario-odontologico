@@ -29,6 +29,13 @@ export class AppointmentNotFoundError extends AppError {
   }
 }
 
+export class WaitlistNotFoundError extends AppError {
+  constructor() {
+    super('NOT_FOUND', 'Entrada da fila não encontrada.', 404);
+    this.name = 'WaitlistNotFoundError';
+  }
+}
+
 export class CancelReasonRequiredError extends AppError {
   constructor() {
     super('VALIDATION_ERROR', 'Cancelamento exige motivo.', 400);

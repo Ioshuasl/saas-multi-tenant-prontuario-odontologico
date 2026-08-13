@@ -57,6 +57,7 @@ CREATE TABLE tenant (
   tax_id            text,                            -- CNPJ/CPF
   responsible_cro   text,                            -- CRO do responsável técnico
   timezone          text NOT NULL DEFAULT 'America/Sao_Paulo',
+  booking_settings  jsonb NOT NULL DEFAULT '{"minLeadMinutes":120,"maxLeadDays":60,"publicStatus":"REQUESTED","courtesyTransactionalMessages":50}',
   status            text NOT NULL DEFAULT 'TRIAL',    -- TRIAL|ACTIVE|PAST_DUE|SUSPENDED|CANCELLED|DELETED
   trial_ends_at     timestamptz,
   created_at        timestamptz NOT NULL DEFAULT now(),
@@ -154,6 +155,7 @@ CREATE TABLE procedure (
   price_cents        bigint NOT NULL DEFAULT 0,
   requires_tooth     boolean NOT NULL DEFAULT false,
   requires_face      boolean NOT NULL DEFAULT false,
+  publicly_bookable  boolean NOT NULL DEFAULT false,
   active             boolean NOT NULL DEFAULT true,
   created_at         timestamptz NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, code)
@@ -180,6 +182,7 @@ CREATE TABLE patient (
   how_found_us     text,                              -- origem/indicação (base do CRM futuro)
   notes            text,
   photo_key        text,                              -- chave no object storage
+  origin           text NOT NULL DEFAULT 'INTERNAL',  -- INTERNAL|PUBLIC_BOOKING
   active           boolean NOT NULL DEFAULT true,
   deleted_at       timestamptz,
   created_at       timestamptz NOT NULL DEFAULT now(),
@@ -214,7 +217,7 @@ CREATE TABLE consent (
   type          text NOT NULL,        -- DATA_PROCESSING|WHATSAPP_MARKETING|IMAGE_USE|TERMS
   granted       boolean NOT NULL,
   document_version text NOT NULL,
-  channel       text NOT NULL,        -- IN_PERSON|LINK|WHATSAPP
+  channel       text NOT NULL,        -- IN_PERSON|LINK|WHATSAPP|PUBLIC_BOOKING
   ip_address    inet,
   granted_at    timestamptz NOT NULL DEFAULT now(),
   revoked_at    timestamptz
@@ -252,7 +255,7 @@ CREATE TABLE appointment (
   ends_at          timestamptz NOT NULL,
   period           tstzrange GENERATED ALWAYS AS (tstzrange(starts_at, ends_at, '[)')) STORED,
   status           text NOT NULL DEFAULT 'SCHEDULED', -- REQUESTED|SCHEDULED|CONFIRMED|IN_SERVICE|COMPLETED|NO_SHOW|CANCELLED
-  origin           text NOT NULL DEFAULT 'INTERNAL',  -- INTERNAL|PUBLIC_LINK|WAITLIST|RECURRENCE
+  origin           text NOT NULL DEFAULT 'INTERNAL',  -- INTERNAL|PUBLIC_BOOKING|WAITLIST|RECURRENCE
   confirmed_at     timestamptz,
   arrived_at       timestamptz,
   cancelled_at     timestamptz,
@@ -320,11 +323,12 @@ CREATE INDEX idx_waitlist_active ON waitlist_entry (tenant_id, status, priority 
 CREATE TABLE public_booking_token (     -- também usado para anamnese/orçamento por link
   id           uuid PRIMARY KEY,
   tenant_id    uuid NOT NULL,
-  purpose      text NOT NULL,           -- BOOKING|ANAMNESIS|QUOTE|CONFIRMATION
+  purpose      text NOT NULL,           -- BOOKING|CONFIRMATION|WAITLIST_OFFER (ANAMNESIS|QUOTE depois)
   target_id    uuid,
   token_hash   text NOT NULL,
   expires_at   timestamptz NOT NULL,
   used_at      timestamptz,
+  meta         jsonb,                   -- attempts, otp hash, snapshot de booking (IDs; sem clínico)
   created_at   timestamptz NOT NULL DEFAULT now()
 );
 CREATE UNIQUE INDEX uq_booking_token_hash ON public_booking_token (token_hash);
@@ -655,18 +659,20 @@ CREATE TABLE whatsapp_account (
   waba_id            text NOT NULL,
   phone_number_id    text NOT NULL,
   display_phone      text NOT NULL,
-  access_token_ref   text NOT NULL,      -- referência no gerenciador de segredos, NUNCA o token
+  access_token_ref   text NOT NULL,      -- KMS sealSecret (KEK), NUNCA o token em plaintext
   webhook_verified_at timestamptz,
   status             text NOT NULL DEFAULT 'PENDING',  -- PENDING|CONNECTED|ERROR|DISCONNECTED
+  kill_switch        boolean NOT NULL DEFAULT false,   -- S3 RF-E8-15 (além do status)
   last_error         text,
   created_at         timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (tenant_id, phone_number_id)
+  UNIQUE (tenant_id),                    -- 1 conta / tenant no MVP
+  UNIQUE (phone_number_id)               -- lookup webhook (SECURITY DEFINER)
 );
 
 CREATE TABLE message_template (
   id            uuid PRIMARY KEY,
   tenant_id     uuid,                  -- NULL = template global da plataforma
-  key           text NOT NULL,         -- APPOINTMENT_CONFIRMATION|APPOINTMENT_REMINDER|RECEIPT|...
+  key           text NOT NULL,         -- appointment_created|appointment_confirmation|appointment_reminder|appointment_cancelled|waitlist_offer
   category      text NOT NULL,         -- MARKETING|UTILITY|AUTHENTICATION
   language      text NOT NULL DEFAULT 'pt_BR',
   provider_name text NOT NULL,         -- nome aprovado na Meta
@@ -737,7 +743,7 @@ CREATE TABLE automation_run (
   executed_at    timestamptz,
   result         text,                 -- SENT|SKIPPED_NO_CONSENT|SKIPPED_NO_CREDIT|SKIPPED_CANCELLED|FAILED
   message_id     uuid REFERENCES message(id),
-  UNIQUE (tenant_id, automation_id, target_type, target_id)   -- idempotência
+  UNIQUE (tenant_id, automation_id, target_type, target_id)   -- idempotência (sem scheduled_for — alinhado a este doc; reschedule faz UPDATE do run)
 );
 
 CREATE TABLE message_credit_ledger (
@@ -750,6 +756,8 @@ CREATE TABLE message_credit_ledger (
   created_at   timestamptz NOT NULL DEFAULT now()
 );
 ```
+
+Notas S3: `message_template` usa unique parcial (`key` WHERE `tenant_id IS NULL`; `(tenant_id, key)` WHERE `tenant_id IS NOT NULL`) — `UNIQUE (tenant_id, key)` do Postgres não cobre globais. RLS de template: `SELECT` permite `tenant_id IS NULL` (catálogo da plataforma) + o tenant atual; escrita só do próprio tenant. `automation_run` unique **sem** `scheduled_for` (reschedule = UPDATE). Lookup webhook: `platform.resolve_whatsapp_account_by_phone_number_id` (SECURITY DEFINER).
 
 ## 9. Tabelas — platform e subscription
 

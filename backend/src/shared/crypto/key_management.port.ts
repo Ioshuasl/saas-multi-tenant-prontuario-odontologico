@@ -11,4 +11,10 @@ export type KeyManagementPort = {
 
   /** Decifra wrapped DEK (Base64) → Buffer 32 bytes. */
   unwrapDek(wrappedDekBase64: string): Promise<Buffer>;
+
+  /** Cifra segredo arbitrário (ex.: token WABA) com a KEK → Base64. */
+  sealSecret(plaintext: string): Promise<string>;
+
+  /** Decifra segredo selado com a KEK. */
+  unsealSecret(sealedBase64: string): Promise<string>;
 };

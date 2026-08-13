@@ -156,15 +156,80 @@ Rotas públicas (sem autenticação de usuário, com rate limit agressivo):
 
 ```
 GET    /api/v1/public/clinics/:slug                    dados públicos + serviços
-GET    /api/v1/public/clinics/:slug/availability       ?serviceId=&from=&to=
+GET    /api/v1/public/clinics/:slug/availability       ?procedureId=&professionalId=&from=&to=
 POST   /api/v1/public/clinics/:slug/bookings           solicita OTP
 POST   /api/v1/public/clinics/:slug/bookings/verify    confirma com OTP → cria agendamento
-GET    /api/v1/public/anamnesis/:token
-POST   /api/v1/public/anamnesis/:token
-GET    /api/v1/public/quotes/:token
-POST   /api/v1/public/quotes/:token/decision
 GET    /api/v1/public/appointments/:token/confirm      confirmação por link
+GET    /api/v1/public/anamnesis/:token                 (S4)
+POST   /api/v1/public/anamnesis/:token                 (S4)
+GET    /api/v1/public/quotes/:token                    (depois)
+POST   /api/v1/public/quotes/:token/decision           (depois)
+POST   /api/v1/public/waitlist/:token/accept           (S3 Bloco 3)
 ```
+
+**GET `/public/clinics/:slug`** — só procedimentos `publicly_bookable` e profissionais ativos. Sem preço, CRO ou telefone interno. Slug inválido → `404 NOT_FOUND`.
+
+```json
+{
+  "data": {
+    "name": "Clínica Teste",
+    "slug": "clinica-teste-xxxxxxxx",
+    "timezone": "America/Sao_Paulo",
+    "procedures": [{ "id": "…", "name": "Consulta", "defaultMinutes": 30 }],
+    "professionals": [{ "id": "…", "name": "Dra. Ana Souza" }]
+  }
+}
+```
+
+**POST `/public/clinics/:slug/bookings`**
+
+```json
+{
+  "procedureId": "…",
+  "professionalId": "…",
+  "startsAt": "2026-08-20T14:00:00-03:00",
+  "name": "João Paciente",
+  "phone": "62999990000",
+  "email": "joao@example.com",
+  "consentDataProcessing": true,
+  "consentTerms": true,
+  "consentWhatsappMarketing": false
+}
+```
+
+Resposta: `{ "data": { "bookingId": "…", "otpSentVia": "EMAIL"|"WHATSAPP", "expiresInSeconds": 300 } }`.  
+Erros: `409 SLOT_UNAVAILABLE`, `422 BUSINESS_RULE_VIOLATION` (lead time / procedimento não público / consentimento obrigatório / e-mail ausente sem WABA), `429 RATE_LIMITED`.
+
+**POST `.../bookings/verify`:** `{ "bookingId", "code": "123456" }` → appointment (`origin=PUBLIC_BOOKING`) + patient. OTP 6 dígitos, 5 min, 3 tentativas. Sem WABA no Bloco 2, OTP vai por e-mail.
+
+**GET `/public/appointments/:token/confirm`:** one-shot; segunda chamada → `200` com status atual. `REQUESTED` ou cancelado → `409 INVALID_STATE_TRANSITION`. Só `SCHEDULED → CONFIRMED`.
+
+**Waitlist autenticado (`agenda.write`):**
+
+```
+GET    /api/v1/waitlist?status=&professionalId=&procedureId=
+POST   /api/v1/waitlist
+DELETE /api/v1/waitlist/:id
+POST   /api/v1/waitlist/:id/offer
+```
+
+**POST `/waitlist`**
+
+```json
+{
+  "patientId": "…",
+  "professionalId": null,
+  "procedureId": "…",
+  "preferredPeriods": [{ "weekday": 1, "from": "08:00", "to": "12:00" }],
+  "priority": 0
+}
+```
+
+`priority`: `0` NORMAL, `1` URGENT. `professionalId` omitido/null = qualquer profissional. `preferredPeriods` vazio = qualquer horário. Weekday ISO 1–7.
+
+**POST `/waitlist/:id/offer`** (`Idempotency-Key` opcional): `{ "appointmentId": "<CANCELLED|NO_SHOW>" }` → marca `OFFERED`, token 30 min, outbox `scheduling.waitlist_offer_sent` com `template=waitlist_offer` e `buttonPayload=WAITLIST_<offerId>`. Em `NODE_ENV=test` a resposta inclui `acceptToken`.
+
+**POST `/public/waitlist/:token/accept`:** first-accept-wins (EXCLUDE). Vencedor → appointment `origin=WAITLIST` `SCHEDULED`. Perdedor → `409 SLOT_UNAVAILABLE` + entrada `EXPIRED`. Segunda chamada no mesmo token → `200` idempotente.
 
 ### 2.5 Prontuário (`clinical-records`)
 
@@ -236,26 +301,26 @@ POST   /api/v1/financial-categories
 
 ```
 GET    /api/v1/messaging/account
-POST   /api/v1/messaging/account            conecta WABA/número
-POST   /api/v1/messaging/account/test
-DELETE /api/v1/messaging/account
-
-GET    /api/v1/messaging/conversations      ?status=&assignedTo=&search=
-GET    /api/v1/messaging/conversations/:id/messages
-POST   /api/v1/messaging/conversations/:id/messages     (Idempotency-Key)
-POST   /api/v1/messaging/conversations/:id/assign
-POST   /api/v1/messaging/conversations/:id/close
-POST   /api/v1/messaging/conversations/:id/link-patient
+POST   /api/v1/messaging/account            { wabaId, phoneNumberId, displayPhone, accessToken }
+PATCH  /api/v1/messaging/account            { killSwitch }   (S3)
+POST   /api/v1/messaging/account/test       Idempotency-Key
+DELETE /api/v1/messaging/account            disconnect + kill switch + disable automations
 
 GET    /api/v1/messaging/templates
 GET    /api/v1/messaging/automations
-PATCH  /api/v1/messaging/automations/:key   { enabled, config }
-GET    /api/v1/messaging/usage              consumo e custo do período
-GET    /api/v1/messaging/logs               ?from=&to=&result=
+PATCH  /api/v1/messaging/automations/:key   { enabled?, config? }  keys: CONFIRMATION_D1|REMINDER_H3|WAITLIST_OFFER
+GET    /api/v1/messaging/usage              cortesia + saldo + consumed + flags low/exhausted
+GET    /api/v1/messaging/logs               ?from=&to=&result=&cursor=&limit=  (sem body clínico)
 
-POST   /api/v1/webhooks/whatsapp            público, validado por assinatura
-GET    /api/v1/webhooks/whatsapp            handshake de verificação da Meta
+POST   /api/v1/webhooks/whatsapp            público, HMAC SHA-256 (raw body, 2 MB)
+GET    /api/v1/webhooks/whatsapp            handshake hub.verify_token → hub.challenge
 ```
+
+**S3 (E8a):** inbox (`/messaging/conversations*`) **não** entra — S7. Token WABA vai para KMS (`access_token_ref`); resposta de account nunca devolve o token. Teste fake em `NODE_ENV=test|development`. Débito de crédito no **delivery** (webhook status), não no send. Agenda (created/confirmation/reminder/cancelled) nunca consome crédito; utility (waitlist) usa cortesia; marketing exige consentimento (`BLOCKED_NO_CONSENT`).
+
+**Account POST → test:** status `PENDING` → `CONNECTED` (ou `ERROR` + `lastError`). Kill switch: `PATCH { killSwitch: true }` ou `DELETE`.
+
+**Automations config (exemplo):** `{ "sendAtLocalTime": "12:00", "onlyForStatuses": ["SCHEDULED","CONFIRMED"], "templateKey": "appointment_confirmation" }`.
 
 ### 2.9 Relatórios (`reporting`)
 
@@ -454,7 +519,17 @@ X-Hub-Signature-256: sha256=...
 }
 ```
 
-Processamento: verificar assinatura → responder `200` imediatamente → enfileirar. Idempotência por `messages[].id` (`wamid`). `CONFIRM_<appointmentId>` dispara transição para `CONFIRMED`; payload desconhecido cai na inbox como mensagem comum.
+Processamento: verificar assinatura (HMAC-SHA256 de `X-Hub-Signature-256` sobre o **raw body**) → `401` se inválida → enfileirar `process-whatsapp-webhook` com `jobId=wamid` → responder `200`. Redis down → `503` (Meta retenta). Idempotência por `messages[].id` (`wamid`): unique parcial em `message.provider_message_id`.
+
+| payload / texto | Efeito |
+| --- | --- |
+| `CONFIRM_<appointmentId>` | `CONFIRMED` (somente a partir de `SCHEDULED`) + outbox `messaging.confirmation_received` |
+| `CANCEL_<appointmentId>` | cancel + motivo "paciente via WhatsApp" + waitlist via outbox |
+| `WAITLIST_<offerId>` | first-accept-wins (`applyWaitlistAcceptByOfferId`) |
+| `REBOOK_<id>` ou texto “Remarcar” | `conversation.status=PENDING` (sem inbox UI na S3) |
+| outro | persiste inbound; sem efeito de domínio |
+
+Status webhook (`delivered`) debita crédito se `message.billable`.
 
 ### 3.6 Upload de anexo (URL pré-assinada)
 

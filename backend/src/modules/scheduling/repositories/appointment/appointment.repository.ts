@@ -105,6 +105,7 @@ export class CreateAppointmentRepository {
       notes?: string | null;
       idempotencyKey?: string | null;
       createdBy?: string | null;
+      actorType?: string;
     },
   ): Promise<AppointmentSummary> {
     const tenantPrisma = getTenantPrisma();
@@ -125,7 +126,7 @@ export class CreateAppointmentRepository {
           origin: input.origin,
           notes: input.notes ?? null,
           idempotencyKey: input.idempotencyKey ?? null,
-          createdBy: input.createdBy ?? ctx.userId ?? null,
+          createdBy: input.createdBy ?? (ctx.userId || null),
         },
         include: appointmentInclude,
       });
@@ -144,8 +145,8 @@ export class CreateAppointmentRepository {
             professionalId: row.professionalId,
             chairId: row.chairId,
           },
-          actorId: ctx.userId ?? null,
-          actorType: 'USER',
+          actorId: ctx.userId || null,
+          actorType: input.actorType ?? 'USER',
         },
       });
 
@@ -175,6 +176,7 @@ export class UpdateAppointmentRepository {
       action: string;
       fromValue: unknown;
       toValue: unknown;
+      actorType?: string;
     },
   ): Promise<AppointmentSummary | null> {
     const tenantPrisma = getTenantPrisma();
@@ -213,8 +215,8 @@ export class UpdateAppointmentRepository {
           action: history.action,
           fromValue: history.fromValue as Prisma.InputJsonValue,
           toValue: history.toValue as Prisma.InputJsonValue,
-          actorId: ctx.userId ?? null,
-          actorType: 'USER',
+          actorId: ctx.userId || null,
+          actorType: history.actorType ?? 'USER',
         },
       });
 
@@ -411,6 +413,29 @@ export class AssertRefsRepository {
       }
 
       return { ok: true };
+    });
+  }
+}
+
+export class FindActiveByPatientStartRepository {
+  async execute(
+    ctx: RequestContext,
+    input: { patientId: string; startsAt: Date; origin?: string },
+  ) {
+    const tenantPrisma = getTenantPrisma();
+    return tenantPrisma.runInTenantContext(ctx, async (tx) => {
+      const row = await tx.appointment.findFirst({
+        where: {
+          tenantId: ctx.tenantId,
+          patientId: input.patientId,
+          startsAt: input.startsAt,
+          status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+          ...(input.origin ? { origin: input.origin } : {}),
+        },
+        include: appointmentInclude,
+        orderBy: { createdAt: 'desc' },
+      });
+      return row ? mapAppointment(row) : null;
     });
   }
 }

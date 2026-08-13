@@ -7,6 +7,7 @@ import {
   ContactIcon,
   HomeIcon,
   ListChecksIcon,
+  MessageCircleIcon,
   StethoscopeIcon,
   SyringeIcon,
   UsersIcon,
@@ -60,6 +61,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     href: '/app/configuracoes/membros',
     label: 'Membros',
     icon: UsersIcon,
+    group: 'settings',
+  },
+  {
+    href: '/app/whatsapp',
+    label: 'WhatsApp',
+    icon: MessageCircleIcon,
     group: 'settings',
   },
 ];

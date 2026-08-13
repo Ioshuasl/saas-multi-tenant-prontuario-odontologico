@@ -43,7 +43,7 @@ export function OnboardingWizard() {
           <AlertDescription>
             Onboarding concluído. Link público:{' '}
             <code className="rounded bg-muted px-1 py-0.5 text-xs">
-              {status.publicBookingPath}
+              {`${window.location.origin}/agendar/${status.publicBookingPath.split('/').filter(Boolean).pop() ?? ''}`}
             </code>
           </AlertDescription>
         </Alert>

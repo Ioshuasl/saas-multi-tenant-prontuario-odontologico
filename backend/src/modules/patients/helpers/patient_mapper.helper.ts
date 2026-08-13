@@ -23,6 +23,7 @@ type PatientRow = {
   address: unknown;
   howFoundUs: string | null;
   notes: string | null;
+  origin?: string;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -65,6 +66,7 @@ export function mapPatientSummary(row: PatientRow): PatientSummary {
     address: (row.address as PatientAddress | null) ?? null,
     howFoundUs: row.howFoundUs,
     notes: row.notes,
+    origin: row.origin ?? 'INTERNAL',
     active: row.active,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

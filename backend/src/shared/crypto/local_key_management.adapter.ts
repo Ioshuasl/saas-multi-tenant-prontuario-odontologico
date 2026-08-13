@@ -28,17 +28,33 @@ export class LocalKeyManagementAdapter implements KeyManagementPort {
     if (plaintextDek.length !== DEK_LENGTH) {
       throw new Error('DEK deve ter 32 bytes.');
     }
+    return this.seal(plaintextDek);
+  }
+
+  async unwrapDek(wrappedDekBase64: string): Promise<Buffer> {
+    return this.open(wrappedDekBase64, 'wrapped_dek inválido.');
+  }
+
+  async sealSecret(plaintext: string): Promise<string> {
+    return this.seal(Buffer.from(plaintext, 'utf8'));
+  }
+
+  async unsealSecret(sealedBase64: string): Promise<string> {
+    return (await this.open(sealedBase64, 'segredo selado inválido.')).toString('utf8');
+  }
+
+  private seal(plaintext: Buffer): string {
     const nonce = randomBytes(NONCE_LENGTH);
     const cipher = createCipheriv(ALGORITHM, this.kek, nonce);
-    const ciphertext = Buffer.concat([cipher.update(plaintextDek), cipher.final()]);
+    const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
     const tag = cipher.getAuthTag();
     return Buffer.concat([nonce, ciphertext, tag]).toString('base64');
   }
 
-  async unwrapDek(wrappedDekBase64: string): Promise<Buffer> {
-    const blob = Buffer.from(wrappedDekBase64, 'base64');
+  private async open(wrappedBase64: string, invalidMessage: string): Promise<Buffer> {
+    const blob = Buffer.from(wrappedBase64, 'base64');
     if (blob.length < NONCE_LENGTH + TAG_LENGTH + 1) {
-      throw new Error('wrapped_dek inválido.');
+      throw new Error(invalidMessage);
     }
     const nonce = blob.subarray(0, NONCE_LENGTH);
     const tag = blob.subarray(blob.length - TAG_LENGTH);

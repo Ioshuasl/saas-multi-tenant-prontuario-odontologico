@@ -1,4 +1,6 @@
 import type { RequestContext } from '../../../../shared/domain/request_context.js';
+import { appendOutboxEvent } from '../../../../shared/database/outbox.js';
+import { getTenantPrisma } from '../../../../shared/database/tenant_prisma.js';
 import { AppError } from '../../../../shared/middlewares/error_handler.middleware.js';
 import { getWorkingWindows } from '../../../clinic/clinic_public.js';
 import {
@@ -16,6 +18,12 @@ import {
 } from '../../repositories/appointment/appointment.repository.js';
 import type { AppointmentCreateSchema } from '../../schemas/scheduling.schema.js';
 import type { AppointmentSummary } from '../../types/scheduling.types.js';
+
+export type AppointmentCreateOptions = {
+  origin?: string;
+  status?: string;
+  actorType?: string;
+};
 import {
   formatYmdInTz,
   overlaps,
@@ -44,6 +52,7 @@ export class CreateService {
     ctx: RequestContext,
     appointmentSchema: AppointmentCreateSchema,
     idempotencyKey?: string | null,
+    options?: AppointmentCreateOptions,
   ): Promise<AppointmentSummary> {
     if (idempotencyKey) {
       const existing = await this.findIdempotency.execute(ctx, idempotencyKey);
@@ -125,7 +134,7 @@ export class CreateService {
     }
 
     try {
-      return await this.create.execute(ctx, {
+      const created = await this.create.execute(ctx, {
         unitId,
         patientId: appointmentSchema.patientId,
         professionalId: appointmentSchema.professionalId,
@@ -133,11 +142,24 @@ export class CreateService {
         procedureId: appointmentSchema.procedureId,
         startsAt,
         endsAt,
-        status: 'SCHEDULED',
-        origin: 'INTERNAL',
+        status: options?.status ?? 'SCHEDULED',
+        origin: options?.origin ?? 'INTERNAL',
+        actorType: options?.actorType,
         notes: appointmentSchema.notes,
         idempotencyKey: idempotencyKey ?? null,
       });
+      if (created.status === 'SCHEDULED') {
+        await getTenantPrisma().runInTenantContext(ctx, async (tx) => {
+          await appendOutboxEvent(tx, {
+            tenantId: ctx.tenantId,
+            event: {
+              name: 'scheduling.appointment_scheduled',
+              payload: { appointmentId: created.id, requestId: ctx.requestId },
+            },
+          });
+        });
+      }
+      return created;
     } catch (err) {
       if (isExclusionViolation(err)) {
         const suggested = await this.suggestSlots(

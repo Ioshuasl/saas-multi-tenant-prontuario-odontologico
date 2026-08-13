@@ -2,10 +2,20 @@ import type { RequestContext } from '../../shared/domain/request_context.js';
 import { ListFutureByPatientRepository } from './repositories/appointment/appointment.repository.js';
 import { ListPatientTimelineAppointmentsRepository } from './repositories/appointment_series/appointment_series.repository.js';
 import { GetService } from './services/appointment/appointment_get.service.js';
+import { CreateService as AppointmentCreateService } from './services/appointment/appointment_create.service.js';
+import { ConfirmService } from './services/public_booking/public_appointment_confirm.service.js';
+import { StatusService } from './services/appointment/appointment_status.service.js';
+import { AcceptService as WaitlistAcceptService } from './services/waitlist/waitlist_accept.service.js';
+import type { AppointmentCreateSchema } from './schemas/scheduling.schema.js';
+import type { AppointmentCreateOptions } from './services/appointment/appointment_create.service.js';
 
 const listFuture = new ListFutureByPatientRepository();
 const getAppointment = new GetService();
 const listTimeline = new ListPatientTimelineAppointmentsRepository();
+const createAppointment = new AppointmentCreateService();
+const confirmFromPublic = new ConfirmService();
+const statusService = new StatusService();
+const waitlistAccept = new WaitlistAcceptService();
 
 /** Agendamentos futuros ativos do paciente (patients RF-E3-12). */
 export async function listFutureAppointmentIds(
@@ -25,6 +35,50 @@ export async function listPatientTimelineAppointments(
   patientId: string,
 ) {
   return listTimeline.execute(ctx, patientId);
+}
+
+export async function createFromPublic(
+  ctx: RequestContext,
+  appointmentSchema: AppointmentCreateSchema,
+  options?: AppointmentCreateOptions,
+) {
+  return createAppointment.execute(ctx, appointmentSchema, null, {
+    origin: 'PUBLIC_BOOKING',
+    status: options?.status ?? 'REQUESTED',
+    actorType: 'PATIENT',
+    ...options,
+  });
+}
+
+export async function confirmFromToken(requestId: string, token: string) {
+  return confirmFromPublic.execute(requestId, token);
+}
+
+export async function applyWaitlistAccept(requestId: string, token: string) {
+  return waitlistAccept.executeFromToken(requestId, token);
+}
+
+export async function applyWaitlistAcceptByOfferId(ctx: RequestContext, waitlistEntryId: string) {
+  return waitlistAccept.executeFromOfferId(ctx, waitlistEntryId);
+}
+
+/** Botão WhatsApp CONFIRM_ → CONFIRMED (só a partir de SCHEDULED). */
+export async function applyConfirmationFromPatient(ctx: RequestContext, appointmentId: string) {
+  const current = await getAppointment.execute(ctx, appointmentId);
+  if (!current) return null;
+  if (current.status === 'CONFIRMED') return current;
+  if (current.status !== 'SCHEDULED') return null;
+  return statusService.execute(ctx, appointmentId, { status: 'CONFIRMED' }, { actorType: 'PATIENT' });
+}
+
+/** Botão WhatsApp CANCEL_ → cancel + waitlist via outbox. */
+export async function applyCancellationFromPatient(ctx: RequestContext, appointmentId: string) {
+  return statusService.execute(
+    ctx,
+    appointmentId,
+    { status: 'CANCELLED', reason: 'paciente via WhatsApp' },
+    { actorType: 'PATIENT' },
+  );
 }
 
 export type {

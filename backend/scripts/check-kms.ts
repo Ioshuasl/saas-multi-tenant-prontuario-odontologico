@@ -15,6 +15,10 @@ async function main() {
   const unwrapped = await kms.unwrapDek(wrapped);
   assert.ok(dek.equals(unwrapped), 'unwrap deve recuperar a DEK');
 
+  const sealed = await kms.sealSecret('waba-token-secret');
+  const unsealed = await kms.unsealSecret(sealed);
+  assert.equal(unsealed, 'waba-token-secret');
+
   const other = kms.generateDek();
   const wrappedOther = await kms.wrapDek(other);
   assert.notEqual(wrapped, wrappedOther);

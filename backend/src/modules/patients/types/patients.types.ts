@@ -25,6 +25,7 @@ export type PatientSummary = {
   address: PatientAddress | null;
   howFoundUs: string | null;
   notes: string | null;
+  origin: string;
   active: boolean;
   createdAt: string;
   updatedAt: string;

@@ -1,11 +1,15 @@
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import express, { type Application, type Router } from 'express';
+import express, { type Application, type Request, type Router } from 'express';
 import helmet from 'helmet';
 import { env } from './shared/config/env.js';
 import { errorHandler } from './shared/middlewares/error_handler.middleware.js';
 import { requestIdMiddleware } from './shared/middlewares/request_id.middleware.js';
 import { buildApiRouter } from './routes/index.js';
+
+function attachRawBody(req: Request, _res: unknown, buf: Buffer): void {
+  req.rawBody = buf;
+}
 
 export function createApp(options?: { registerApi?: (api: Router) => void }): Application {
   const app = express();
@@ -19,7 +23,11 @@ export function createApp(options?: { registerApi?: (api: Router) => void }): Ap
       credentials: true,
     }),
   );
-  app.use(express.json({ limit: '1mb' }));
+  app.use(
+    '/api/v1/webhooks/whatsapp',
+    express.json({ limit: '2mb', verify: attachRawBody }),
+  );
+  app.use(express.json({ limit: '1mb', verify: attachRawBody }));
   app.use(cookieParser());
   app.use(requestIdMiddleware);
 

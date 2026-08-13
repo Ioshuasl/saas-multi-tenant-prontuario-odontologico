@@ -32,6 +32,14 @@ export function normalizePhone(raw: string): string {
   return digitsOnly(raw);
 }
 
+/** E.164 BR (`55` + DDD + número). */
+export function toE164Br(raw: string): string {
+  const digits = digitsOnly(raw);
+  if (digits.startsWith('55') && digits.length >= 12) return digits;
+  if (digits.length >= 10 && digits.length <= 11) return `55${digits}`;
+  return digits;
+}
+
 export function assertPatientName(name: string): void {
   const trimmed = name.trim().replace(/\s+/g, ' ');
   const words = trimmed.split(' ').filter(Boolean);

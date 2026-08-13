@@ -4,6 +4,7 @@ import { idGenerator } from '../../../../shared/helpers/id_generator.js';
 import { hashPassword } from '../../../../shared/helpers/password.js';
 import { getTenantPrisma } from '../../../../shared/database/tenant_prisma.js';
 import { seedClinicOnSignup } from '../../../clinic/clinic_public.js';
+import { seedMessagingOnSignup } from '../../../messaging/messaging_public.js';
 import { Role } from '../../enum/role/role.enum.js';
 import { addDays, buildTenantSlug } from '../../helpers/slug.helper.js';
 import { SignupProvisionRepository } from '../../repositories/signup/signup_provision.repository.js';
@@ -58,6 +59,11 @@ export class CreateAction {
       const { unitId } = await seedClinicOnSignup(tx, {
         tenantId,
         clinicName: input.clinicName,
+        idNext: () => this.ids.next(),
+      });
+
+      await seedMessagingOnSignup(tx, {
+        tenantId,
         idNext: () => this.ids.next(),
       });
 

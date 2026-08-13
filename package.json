@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "pnpm -r --parallel --filter @repo/backend --filter @repo/frontend run dev",
     "dev:api": "pnpm --filter @repo/backend dev",
+    "dev:worker": "pnpm --filter @repo/backend dev:worker",
     "dev:web": "pnpm --filter @repo/frontend dev",
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",
@@ -17,6 +18,10 @@
     "test:rls": "pnpm --filter @repo/backend test:rls",
     "test:kms": "pnpm --filter @repo/backend test:kms",
     "test:identity": "pnpm --filter @repo/backend test:identity",
+    "test:outbox": "pnpm --filter @repo/backend test:outbox",
+    "test:public-booking": "pnpm --filter @repo/backend test:public-booking",
+    "test:waitlist": "pnpm --filter @repo/backend test:waitlist",
+    "test:messaging": "pnpm --filter @repo/backend test:messaging",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",

@@ -54,3 +54,8 @@ export function bodyEmailKey(req: Request): string {
   const email = (req.body as { email?: unknown } | undefined)?.email;
   return typeof email === 'string' ? email.toLowerCase() : '';
 }
+
+export function bodyPhoneKey(req: Request): string {
+  const phone = (req.body as { phone?: unknown } | undefined)?.phone;
+  return typeof phone === 'string' ? phone.replace(/\D/g, '') : '';
+}

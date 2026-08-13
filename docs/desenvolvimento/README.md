@@ -19,7 +19,7 @@ Pasta **somente** para acompanhamento do desenvolvimento (scaffold, sprints, dec
 
 ## Status atual
 
-- **Fase:** Sprint 3 — Canal do paciente — planejada
+- **Fase:** Sprint 3 — Canal do paciente — Bloco 6 (waitlist + WhatsApp ops) fechado
 - **Anterior:** Sprint 2 — Pacientes e Agenda interna — **fechada** (E3+E4a Must + Qualidade)
 - **Código base:** Sprint 0 concluída (monorepo, CI, RLS, KeyManagementPort)
 - **Especificação:** [`../README.md`](../README.md)

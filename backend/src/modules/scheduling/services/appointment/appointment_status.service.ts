@@ -1,4 +1,6 @@
 import type { RequestContext } from '../../../../shared/domain/request_context.js';
+import { appendOutboxEvent } from '../../../../shared/database/outbox.js';
+import { getTenantPrisma } from '../../../../shared/database/tenant_prisma.js';
 import type { AppointmentStatus } from '../../enum/appointment/appointment.enum.js';
 import {
   AppointmentNotFoundError,
@@ -23,6 +25,7 @@ export class StatusService {
     ctx: RequestContext,
     appointmentId: string,
     statusSchema: AppointmentStatusSchema,
+    options?: { actorType?: string },
   ): Promise<AppointmentSummary> {
     const current = await this.get.execute(ctx, appointmentId);
     if (!current) throw new AppointmentNotFoundError();
@@ -66,9 +69,31 @@ export class StatusService {
         action: to === 'CANCELLED' ? 'CANCELLED' : 'STATUS_CHANGED',
         fromValue: { status: from },
         toValue: { status: to, reason: statusSchema.reason ?? null },
+        actorType: options?.actorType,
       },
     );
     if (!updated) throw new AppointmentNotFoundError();
+
+    if (to === 'CANCELLED' || to === 'NO_SHOW' || to === 'CONFIRMED' || (to === 'SCHEDULED' && from === 'REQUESTED')) {
+      await getTenantPrisma().runInTenantContext(ctx, async (tx) => {
+        const name =
+          to === 'NO_SHOW'
+            ? 'scheduling.appointment_no_show'
+            : to === 'CANCELLED'
+              ? 'scheduling.appointment_cancelled'
+              : to === 'CONFIRMED'
+                ? 'scheduling.appointment_confirmed'
+                : 'scheduling.appointment_scheduled';
+        await appendOutboxEvent(tx, {
+          tenantId: ctx.tenantId,
+          event: {
+            name,
+            payload: { appointmentId: updated.id, requestId: ctx.requestId },
+          },
+        });
+      });
+    }
+
     return updated;
   }
 }

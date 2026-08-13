@@ -36,6 +36,7 @@ const patientSelect = {
   address: true,
   howFoundUs: true,
   notes: true,
+  origin: true,
   active: true,
   createdAt: true,
   updatedAt: true,
@@ -54,6 +55,7 @@ type CreatePatientInput = {
   address?: Prisma.InputJsonValue | null;
   howFoundUs?: string | null;
   notes?: string | null;
+  origin?: string;
   guardians?: Array<{
     name: string;
     cpf?: string | null;
@@ -199,6 +201,7 @@ export class CreatePatientRepository {
           address: input.address === null ? Prisma.JsonNull : input.address,
           howFoundUs: input.howFoundUs ?? null,
           notes: input.notes ?? null,
+          origin: input.origin ?? 'INTERNAL',
         },
         select: patientSelect,
       });

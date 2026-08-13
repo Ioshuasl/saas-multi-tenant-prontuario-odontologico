@@ -31,8 +31,9 @@ docker compose up -d
 pnpm --filter @repo/contracts build
 pnpm db:migrate
 pnpm db:seed    # tenant de demo + dados por módulo
-pnpm dev:api    # http://localhost:3333/health
-pnpm dev:web    # http://localhost:3001/login
+pnpm dev:api     # http://localhost:3333/health
+pnpm dev:worker  # outbox + BullMQ (http://localhost:3334/health)
+pnpm dev:web     # http://localhost:3001/login
 pnpm test:e2e   # Playwright (sobe API+web se não estiverem no ar)
 ```
 

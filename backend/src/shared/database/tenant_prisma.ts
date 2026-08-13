@@ -19,7 +19,10 @@ export class TenantPrisma {
   ): Promise<T> {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.tenant_id', ${ctx.tenantId}, true)`;
-      await tx.$executeRaw`SELECT set_config('app.user_id', ${ctx.userId}, true)`;
+      if (ctx.userId) {
+        await tx.$executeRaw`SELECT set_config('app.user_id', ${ctx.userId}, true)`;
+      }
+
       await tx.$executeRaw`SELECT set_config('app.provisioning', 'off', true)`;
       return fn(tx);
     });
@@ -29,6 +32,15 @@ export class TenantPrisma {
   async runProvisioning<T>(fn: (tx: DbTransaction) => Promise<T>): Promise<T> {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.provisioning', 'on', true)`;
+      return fn(tx);
+    });
+  }
+
+  /** Dispatcher do outbox: SELECT cross-tenant controlado (policy `outbox_dispatch_select`). */
+  async runOutboxDispatch<T>(fn: (tx: DbTransaction) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.outbox_dispatch', 'on', true)`;
+      await tx.$executeRaw`SELECT set_config('app.provisioning', 'off', true)`;
       return fn(tx);
     });
   }

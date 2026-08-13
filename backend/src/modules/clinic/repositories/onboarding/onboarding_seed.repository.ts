@@ -50,6 +50,7 @@ export class OnboardingSeedRepository {
           priceCents: BigInt(0),
           requiresTooth: procedure.requiresTooth,
           requiresFace: procedure.requiresFace ?? false,
+          publiclyBookable: procedure.code === 'CONS-01' || procedure.code === 'PROF-01',
         },
       });
     }

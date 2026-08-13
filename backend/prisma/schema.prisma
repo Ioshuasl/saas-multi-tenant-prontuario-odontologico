@@ -18,6 +18,7 @@ model Tenant {
   timezone        String             @default("America/Sao_Paulo")
   acceptedPaymentMethods String[]    @default(["CASH", "PIX", "CREDIT_CARD", "DEBIT_CARD"]) @map("accepted_payment_methods")
   onboarding      Json               @default("{\"skippedSteps\":[]}")
+  bookingSettings Json               @default("{\"minLeadMinutes\":120,\"maxLeadDays\":60,\"publicStatus\":\"REQUESTED\",\"courtesyTransactionalMessages\":50}") @map("booking_settings")
   status          String             @default("TRIAL")
   trialEndsAt     DateTime?          @map("trial_ends_at") @db.Timestamptz
   createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz
@@ -40,6 +41,16 @@ model Tenant {
   appointmentHistory AppointmentHistory[]
   appointmentSeries AppointmentSeries[]
   scheduleBlocks  ScheduleBlock[]
+  waitlistEntries WaitlistEntry[]
+  outboxEvents    OutboxEvent[]
+  publicBookingTokens PublicBookingToken[]
+  whatsappAccounts WhatsappAccount[]
+  messageTemplates MessageTemplate[]
+  conversations   Conversation[]
+  messages        Message[]
+  automations     Automation[]
+  automationRuns  AutomationRun[]
+  messageCreditLedger MessageCreditLedger[]
 
   @@map("tenant")
 }
@@ -191,6 +202,8 @@ model Unit {
   appointments Appointment[]
   appointmentSeries AppointmentSeries[]
   scheduleBlocks ScheduleBlock[]
+  waitlistEntries WaitlistEntry[]
+  whatsappAccounts WhatsappAccount[]
 
   @@map("unit")
 }
@@ -227,6 +240,7 @@ model Professional {
   appointments Appointment[]
   appointmentSeries AppointmentSeries[]
   scheduleBlocks ScheduleBlock[]
+  waitlistEntries WaitlistEntry[]
 
   @@unique([tenantId, membershipId])
   @@map("professional")
@@ -275,11 +289,13 @@ model Procedure {
   priceCents      BigInt   @default(0) @map("price_cents")
   requiresTooth   Boolean  @default(false) @map("requires_tooth")
   requiresFace    Boolean  @default(false) @map("requires_face")
+  publiclyBookable Boolean @default(false) @map("publicly_bookable")
   active          Boolean  @default(true)
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
   appointments    Appointment[]
   appointmentSeries AppointmentSeries[]
+  waitlistEntries WaitlistEntry[]
 
   @@unique([tenantId, code])
   @@map("procedure")
@@ -312,6 +328,7 @@ model Patient {
   howFoundUs     String?         @map("how_found_us")
   notes          String?
   photoKey       String?         @map("photo_key")
+  origin         String          @default("INTERNAL")
   active         Boolean         @default(true)
   deletedAt      DateTime?       @map("deleted_at") @db.Timestamptz
   createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
@@ -322,6 +339,8 @@ model Patient {
   consents       Consent[]
   appointments   Appointment[]
   appointmentSeries AppointmentSeries[]
+  waitlistEntries WaitlistEntry[]
+  conversations   Conversation[]
 
   @@unique([tenantId, code], map: "uq_patient_tenant_code")
   @@index([tenantId, name], map: "idx_patient_name")
@@ -459,4 +478,207 @@ model ScheduleBlock {
 
   @@index([tenantId, unitId, startsAt], map: "idx_schedule_block_unit")
   @@map("schedule_block")
+}
+
+/// Fila de espera. docs/07 §4 · RF-E4-14/15
+model WaitlistEntry {
+  id               String        @id @db.Uuid
+  tenantId         String        @map("tenant_id") @db.Uuid
+  unitId           String        @map("unit_id") @db.Uuid
+  patientId        String        @map("patient_id") @db.Uuid
+  professionalId   String?       @map("professional_id") @db.Uuid
+  procedureId      String?       @map("procedure_id") @db.Uuid
+  preferredPeriods Json          @default("[]") @map("preferred_periods")
+  priority         Int           @default(0) @db.SmallInt
+  status           String        @default("WAITING")
+  offeredAt        DateTime?     @map("offered_at") @db.Timestamptz
+  expiresAt        DateTime?     @map("expires_at") @db.Timestamptz
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  tenant           Tenant        @relation(fields: [tenantId], references: [id])
+  unit             Unit          @relation(fields: [unitId], references: [id])
+  patient          Patient       @relation(fields: [patientId], references: [id])
+  professional     Professional? @relation(fields: [professionalId], references: [id])
+  procedure        Procedure?    @relation(fields: [procedureId], references: [id])
+
+  @@index([tenantId, status, priority(sort: Desc), createdAt], map: "idx_waitlist_active")
+  @@map("waitlist_entry")
+}
+
+/// Token opaco de booking / confirmação / waitlist (só hash no banco). S3 E4b
+model PublicBookingToken {
+  id        String    @id @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  purpose   String
+  targetId  String?   @map("target_id") @db.Uuid
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  usedAt    DateTime? @map("used_at") @db.Timestamptz
+  meta      Json?
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@unique([tokenHash], map: "uq_booking_token_hash")
+  @@index([tenantId, purpose, expiresAt], map: "idx_public_booking_token_tenant")
+  @@map("public_booking_token")
+}
+
+/// Conta WABA (1 por tenant no MVP). docs/07 §8
+model WhatsappAccount {
+  id                String         @id @db.Uuid
+  tenantId          String         @map("tenant_id") @db.Uuid
+  unitId            String?        @map("unit_id") @db.Uuid
+  wabaId            String         @map("waba_id")
+  phoneNumberId     String         @map("phone_number_id")
+  displayPhone      String         @map("display_phone")
+  accessTokenRef    String         @map("access_token_ref")
+  webhookVerifiedAt DateTime?      @map("webhook_verified_at") @db.Timestamptz
+  status            String         @default("PENDING")
+  killSwitch        Boolean        @default(false) @map("kill_switch")
+  lastError         String?        @map("last_error")
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  tenant            Tenant         @relation(fields: [tenantId], references: [id])
+  unit              Unit?          @relation(fields: [unitId], references: [id])
+  conversations     Conversation[]
+
+  @@unique([tenantId], map: "uq_whatsapp_account_tenant")
+  @@unique([phoneNumberId], map: "uq_whatsapp_account_phone_number_id")
+  @@map("whatsapp_account")
+}
+
+/// Templates globais (tenantId null) + override por clínica. docs/07 §8
+model MessageTemplate {
+  id           String    @id @db.Uuid
+  tenantId     String?   @map("tenant_id") @db.Uuid
+  key          String
+  category     String
+  language     String    @default("pt_BR")
+  providerName String    @map("provider_name")
+  body         String
+  variables    Json      @default("[]")
+  status       String    @default("PENDING")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  tenant       Tenant?   @relation(fields: [tenantId], references: [id])
+  messages     Message[]
+
+  @@index([tenantId, key])
+  @@map("message_template")
+}
+
+/// Stub de conversa (inbox E8b na S7). docs/07 §8
+model Conversation {
+  id                     String    @id @db.Uuid
+  tenantId               String    @map("tenant_id") @db.Uuid
+  whatsappAccountId      String    @map("whatsapp_account_id") @db.Uuid
+  patientId              String?   @map("patient_id") @db.Uuid
+  contactPhone           String    @map("contact_phone")
+  contactName            String?   @map("contact_name")
+  status                 String    @default("OPEN")
+  assignedTo             String?   @map("assigned_to") @db.Uuid
+  serviceWindowExpiresAt DateTime? @map("service_window_expires_at") @db.Timestamptz
+  lastMessageAt          DateTime? @map("last_message_at") @db.Timestamptz
+  unreadCount            Int       @default(0) @map("unread_count")
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  tenant                 Tenant    @relation(fields: [tenantId], references: [id])
+  whatsappAccount        WhatsappAccount @relation(fields: [whatsappAccountId], references: [id])
+  patient                Patient?  @relation(fields: [patientId], references: [id])
+  messages               Message[]
+
+  @@unique([tenantId, whatsappAccountId, contactPhone], map: "uq_conversation_contact")
+  @@index([tenantId, status, lastMessageAt(sort: Desc)], map: "idx_conversation_inbox")
+  @@map("conversation")
+}
+
+model Message {
+  id                String    @id @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  conversationId    String    @map("conversation_id") @db.Uuid
+  direction         String
+  type              String
+  templateId        String?   @map("template_id") @db.Uuid
+  body              String?
+  mediaKey          String?   @map("media_key")
+  providerMessageId String?   @map("provider_message_id")
+  status            String    @default("QUEUED")
+  errorCode         String?   @map("error_code")
+  errorMessage      String?   @map("error_message")
+  billable          Boolean   @default(false)
+  costCents         Int?      @map("cost_cents")
+  relatedType       String?   @map("related_type")
+  relatedId         String?   @map("related_id") @db.Uuid
+  sentBy            String?   @map("sent_by") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  tenant            Tenant    @relation(fields: [tenantId], references: [id])
+  conversation      Conversation @relation(fields: [conversationId], references: [id])
+  template          MessageTemplate? @relation(fields: [templateId], references: [id])
+  automationRuns    AutomationRun[]
+  creditEntries     MessageCreditLedger[]
+
+  @@index([tenantId, conversationId, createdAt], map: "idx_message_conversation")
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_message_logs")
+  @@map("message")
+}
+
+model Automation {
+  id        String          @id @db.Uuid
+  tenantId  String          @map("tenant_id") @db.Uuid
+  key       String
+  enabled   Boolean         @default(true)
+  config    Json
+  updatedAt DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  tenant    Tenant          @relation(fields: [tenantId], references: [id])
+  runs      AutomationRun[]
+
+  @@unique([tenantId, key], map: "uq_automation_tenant_key")
+  @@map("automation")
+}
+
+model AutomationRun {
+  id            String     @id @db.Uuid
+  tenantId      String     @map("tenant_id") @db.Uuid
+  automationId  String     @map("automation_id") @db.Uuid
+  targetType    String     @map("target_type")
+  targetId      String     @map("target_id") @db.Uuid
+  scheduledFor  DateTime   @map("scheduled_for") @db.Timestamptz
+  executedAt    DateTime?  @map("executed_at") @db.Timestamptz
+  result        String?
+  messageId     String?    @map("message_id") @db.Uuid
+  tenant        Tenant     @relation(fields: [tenantId], references: [id])
+  automation    Automation @relation(fields: [automationId], references: [id])
+  message       Message?   @relation(fields: [messageId], references: [id])
+
+  @@unique([tenantId, automationId, targetType, targetId], map: "uq_automation_run_target")
+  @@index([tenantId, scheduledFor], map: "idx_automation_run_scheduled")
+  @@map("automation_run")
+}
+
+model MessageCreditLedger {
+  id                 String   @id @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  kind               String
+  amountCents        BigInt   @map("amount_cents")
+  messageId          String?  @map("message_id") @db.Uuid
+  balanceAfterCents  BigInt   @map("balance_after_cents")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenant             Tenant   @relation(fields: [tenantId], references: [id])
+  message            Message? @relation(fields: [messageId], references: [id])
+
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_credit_ledger_tenant")
+  @@map("message_credit_ledger")
+}
+
+/// Eventos de domínio (outbox transacional). docs/07 §9 · ADR-0006
+model OutboxEvent {
+  id          String    @id @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  name        String
+  payload     Json
+  occurredAt  DateTime  @default(now()) @map("occurred_at") @db.Timestamptz
+  processedAt DateTime? @map("processed_at") @db.Timestamptz
+  attempts    Int       @default(0) @db.SmallInt
+  lastError   String?   @map("last_error")
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@map("outbox_event")
 }

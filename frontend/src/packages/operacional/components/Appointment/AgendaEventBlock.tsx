@@ -114,6 +114,7 @@ export function AgendaEventBlock({
         meta.bg,
         meta.text,
         meta.border,
+        status === 'REQUESTED' && 'border-dashed',
         AGENDA_NOTION.transition,
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
       )}

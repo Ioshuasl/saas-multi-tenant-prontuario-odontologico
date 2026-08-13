@@ -249,13 +249,21 @@ async function ensureClinic(prisma: PrismaClient, tenantId: string) {
           priceCents,
           requiresTooth: procedure.requiresTooth,
           requiresFace: procedure.requiresFace ?? false,
+          publiclyBookable: procedure.code === 'CONS-01' || procedure.code === 'PROF-01',
         },
       });
-    } else if (PRICED_PROCEDURES[procedure.code] && existing.priceCents === BigInt(0)) {
-      await prisma.procedure.update({
-        where: { id: existing.id },
-        data: { priceCents },
-      });
+    } else {
+      const publiclyBookable = procedure.code === 'CONS-01' || procedure.code === 'PROF-01';
+      const priceUpdate =
+        PRICED_PROCEDURES[procedure.code] && existing.priceCents === BigInt(0)
+          ? { priceCents }
+          : {};
+      if (existing.publiclyBookable !== publiclyBookable || Object.keys(priceUpdate).length > 0) {
+        await prisma.procedure.update({
+          where: { id: existing.id },
+          data: { ...priceUpdate, publiclyBookable },
+        });
+      }
     }
   }
 
@@ -685,6 +693,60 @@ async function ensureScheduling(
   }
 }
 
+async function ensureMessaging(prisma: PrismaClient, tenantId: string) {
+  const automations: Array<{ key: string; config: Record<string, unknown> }> = [
+    {
+      key: 'CONFIRMATION_D1',
+      config: {
+        sendAtLocalTime: '12:00',
+        onlyForStatuses: ['SCHEDULED', 'CONFIRMED'],
+        templateKey: 'appointment_confirmation',
+      },
+    },
+    {
+      key: 'REMINDER_H3',
+      config: {
+        offsetHours: 3,
+        onlyForStatuses: ['SCHEDULED', 'CONFIRMED'],
+        templateKey: 'appointment_reminder',
+      },
+    },
+    {
+      key: 'WAITLIST_OFFER',
+      config: { templateKey: 'waitlist_offer', onlyForStatuses: ['CANCELLED', 'NO_SHOW'] },
+    },
+  ];
+  for (const automation of automations) {
+    const existing = await prisma.automation.findFirst({
+      where: { tenantId, key: automation.key },
+    });
+    if (existing) continue;
+    await prisma.automation.create({
+      data: {
+        id: idGenerator.next(),
+        tenantId,
+        key: automation.key,
+        enabled: true,
+        config: automation.config,
+      },
+    });
+  }
+  const bonus = await prisma.messageCreditLedger.findFirst({
+    where: { tenantId, kind: 'BONUS' },
+  });
+  if (!bonus) {
+    await prisma.messageCreditLedger.create({
+      data: {
+        id: idGenerator.next(),
+        tenantId,
+        kind: 'BONUS',
+        amountCents: BigInt(50),
+        balanceAfterCents: BigInt(50),
+      },
+    });
+  }
+}
+
 async function main() {
   const url = process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL;
   if (!url) {
@@ -720,6 +782,7 @@ async function main() {
       patientIds: patients.map((patient) => patient.id),
       ownerUserId: owner.id,
     });
+    await ensureMessaging(prisma, tenant.id);
 
     console.info('seed: ok');
     console.info(`  login owner     ${OWNER_EMAIL} / ${OWNER_PASSWORD}`);

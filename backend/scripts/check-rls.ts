@@ -122,6 +122,147 @@ async function main() {
     // esperado
   }
 
+  const outboxA = randomUUID();
+  await tenantDb.runInTenantContext(ctxA, async (tx) => {
+    await tx.outboxEvent.create({
+      data: {
+        id: outboxA,
+        tenantId: tenantA,
+        name: 'platform.smoke_ping',
+        payload: { requestId: ctxA.requestId },
+      },
+    });
+  });
+
+  const outboxVisibleA = await tenantDb.runInTenantContext(ctxA, (tx) => tx.outboxEvent.findMany());
+  const outboxVisibleB = await tenantDb.runInTenantContext(ctxB, (tx) => tx.outboxEvent.findMany());
+  const outboxWithoutCtx = await prisma.outboxEvent.findMany();
+  const outboxViaDispatch = await tenantDb.runOutboxDispatch((tx) => tx.outboxEvent.findMany());
+
+  if (outboxVisibleA.length !== 1) {
+    console.error('FAIL: tenant A deveria ver 1 outbox_event, viu', outboxVisibleA.length);
+    failed = true;
+  }
+  if (outboxVisibleB.length !== 0) {
+    console.error('FAIL: tenant B deveria ver 0 outbox_event, viu', outboxVisibleB.length);
+    failed = true;
+  }
+  if (outboxWithoutCtx.length !== 0) {
+    console.error('FAIL: sem tenant_id deveria ver 0 outbox_event; viu', outboxWithoutCtx.length);
+    failed = true;
+  }
+  if (!outboxViaDispatch.some((row) => row.id === outboxA)) {
+    console.error('FAIL: dispatcher (app.outbox_dispatch) deveria ler outbox cross-tenant');
+    failed = true;
+  }
+
+  const tokenA = randomUUID();
+  await tenantDb.runInTenantContext(ctxA, async (tx) => {
+    await tx.publicBookingToken.create({
+      data: {
+        id: tokenA,
+        tenantId: tenantA,
+        purpose: 'BOOKING',
+        tokenHash: `hash-${tokenA}`,
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+  });
+  const tokenVisibleA = await tenantDb.runInTenantContext(ctxA, (tx) =>
+    tx.publicBookingToken.findMany(),
+  );
+  const tokenVisibleB = await tenantDb.runInTenantContext(ctxB, (tx) =>
+    tx.publicBookingToken.findMany(),
+  );
+  const tokenWithoutCtx = await prisma.publicBookingToken.findMany();
+  if (tokenVisibleA.length !== 1) {
+    console.error('FAIL: tenant A deveria ver 1 public_booking_token, viu', tokenVisibleA.length);
+    failed = true;
+  }
+  if (tokenVisibleB.length !== 0) {
+    console.error('FAIL: tenant B deveria ver 0 public_booking_token, viu', tokenVisibleB.length);
+    failed = true;
+  }
+  if (tokenWithoutCtx.length !== 0) {
+    console.error('FAIL: sem tenant_id deveria ver 0 public_booking_token; viu', tokenWithoutCtx.length);
+    failed = true;
+  }
+
+  const unitA = randomUUID();
+  const patientA = randomUUID();
+  const waitlistA = randomUUID();
+  await tenantDb.runInTenantContext(ctxA, async (tx) => {
+    await tx.unit.create({
+      data: { id: unitA, tenantId: tenantA, name: 'Unidade A', isDefault: true },
+    });
+    await tx.patient.create({
+      data: {
+        id: patientA,
+        tenantId: tenantA,
+        unitId: unitA,
+        code: BigInt(1),
+        name: 'Paciente A',
+        phonePrimary: '5562999900001',
+      },
+    });
+    await tx.waitlistEntry.create({
+      data: {
+        id: waitlistA,
+        tenantId: tenantA,
+        unitId: unitA,
+        patientId: patientA,
+        preferredPeriods: [],
+        priority: 0,
+        status: 'WAITING',
+      },
+    });
+  });
+  const waitlistVisibleA = await tenantDb.runInTenantContext(ctxA, (tx) => tx.waitlistEntry.findMany());
+  const waitlistVisibleB = await tenantDb.runInTenantContext(ctxB, (tx) => tx.waitlistEntry.findMany());
+  const waitlistWithoutCtx = await prisma.waitlistEntry.findMany();
+  if (waitlistVisibleA.length !== 1) {
+    console.error('FAIL: tenant A deveria ver 1 waitlist_entry, viu', waitlistVisibleA.length);
+    failed = true;
+  }
+  if (waitlistVisibleB.length !== 0) {
+    console.error('FAIL: tenant B deveria ver 0 waitlist_entry, viu', waitlistVisibleB.length);
+    failed = true;
+  }
+  if (waitlistWithoutCtx.length !== 0) {
+    console.error('FAIL: sem tenant_id deveria ver 0 waitlist_entry; viu', waitlistWithoutCtx.length);
+    failed = true;
+  }
+
+  const waA = randomUUID();
+  await tenantDb.runInTenantContext(ctxA, async (tx) => {
+    await tx.whatsappAccount.create({
+      data: {
+        id: waA,
+        tenantId: tenantA,
+        wabaId: 'waba-a',
+        phoneNumberId: `pn-${waA.slice(0, 8)}`,
+        displayPhone: '5562999900001',
+        accessTokenRef: 'sealed-ref',
+        status: 'PENDING',
+      },
+    });
+  });
+  const waVisibleA = await tenantDb.runInTenantContext(ctxA, (tx) => tx.whatsappAccount.findMany());
+  const waVisibleB = await tenantDb.runInTenantContext(ctxB, (tx) => tx.whatsappAccount.findMany());
+  const waWithoutCtx = await prisma.whatsappAccount.findMany();
+  if (waVisibleA.length !== 1) {
+    console.error('FAIL: tenant A deveria ver 1 whatsapp_account, viu', waVisibleA.length);
+    failed = true;
+  }
+  if (waVisibleB.length !== 0) {
+    console.error('FAIL: tenant B deveria ver 0 whatsapp_account, viu', waVisibleB.length);
+    failed = true;
+  }
+  if (waWithoutCtx.length !== 0) {
+    console.error('FAIL: sem tenant_id deveria ver 0 whatsapp_account; viu', waWithoutCtx.length);
+    failed = true;
+  }
+
   await prisma.$disconnect();
 
   if (failed) {

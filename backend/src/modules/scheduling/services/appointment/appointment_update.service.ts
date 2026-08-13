@@ -1,4 +1,6 @@
 import type { RequestContext } from '../../../../shared/domain/request_context.js';
+import { appendOutboxEvent } from '../../../../shared/database/outbox.js';
+import { getTenantPrisma } from '../../../../shared/database/tenant_prisma.js';
 import { AppError } from '../../../../shared/middlewares/error_handler.middleware.js';
 import { getWorkingWindows } from '../../../clinic/clinic_public.js';
 import {
@@ -164,6 +166,15 @@ export class UpdateService {
         },
       );
       if (!updated) throw new AppointmentNotFoundError();
+      await getTenantPrisma().runInTenantContext(ctx, async (tx) => {
+        await appendOutboxEvent(tx, {
+          tenantId: ctx.tenantId,
+          event: {
+            name: 'scheduling.appointment_rescheduled',
+            payload: { appointmentId: updated.id, requestId: ctx.requestId },
+          },
+        });
+      });
       return updated;
     } catch (err) {
       if (err instanceof SlotUnavailableError || err instanceof AppointmentNotFoundError) {

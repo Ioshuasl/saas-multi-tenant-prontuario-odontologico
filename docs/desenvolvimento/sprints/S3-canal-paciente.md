@@ -418,70 +418,70 @@ Página pública mínima: token → sucesso “Consulta confirmada” / erro “
 
 ### Bloco 1 — Backend: infra filas
 
-- [ ] `shared/queue/` (BullMQ connection via `REDIS_URL`, nomes docs/11, retry/backoff, DLQ)
-- [ ] `outbox_event` + append na UoW + `dispatch-outbox` (5 s)
-- [ ] `worker.ts` real + script `pnpm --filter @repo/backend dev:worker` (+ raiz `dev:worker` se fizer sentido)
-- [ ] Jobs idempotentes: `tenantId` + `requestId`; payload por referência
-- [ ] Smoke: enqueue/process com fake; **API sobe sem Redis** (agenda síncrona ok; outbox acumula; msgs saem quando Redis voltar)
-- [ ] Health worker opcional (`/health` do processo worker ou log periódico)
+- [x] `shared/queue/` (BullMQ connection via `REDIS_URL`, nomes docs/11, retry/backoff, DLQ)
+- [x] `outbox_event` + append na UoW + `dispatch-outbox` (5 s)
+- [x] `worker.ts` real + script `pnpm --filter @repo/backend dev:worker` (+ raiz `dev:worker` se fizer sentido)
+- [x] Jobs idempotentes: `tenantId` + `requestId`; payload por referência
+- [x] Smoke: enqueue/process com fake; **API sobe sem Redis** (agenda síncrona ok; outbox acumula; msgs saem quando Redis voltar)
+- [x] Health worker opcional (`/health` do processo worker ou log periódico)
 
 ### Bloco 2 — Backend: autoagendamento público (E4b)
 
-- [ ] DDL: `public_booking_token`, `procedure.publicly_bookable`, `tenant.booking_settings`, `patient.origin` + RLS
-- [ ] Middleware `publicTenantContext` + rate limits
-- [ ] `GET /public/clinics/:slug` + `.../availability` (reusa scheduling availability)
-- [ ] `POST .../bookings` + `.../verify` (OTP hash, 5 min, 3 tentativas; WA ou e-mail)
-- [ ] Lead time min/max, expediente, procedimento público (RF-E4-11..13)
-- [ ] `GET /public/appointments/:token/confirm`
-- [ ] `patients_public.findOrCreateFromPublicBooking` + consents
-- [ ] Concorrência público + recepção → EXCLUDE / `409 SLOT_UNAVAILABLE`
-- [ ] Estender `scheduling_public` / `clinic_public` o mínimo (sem vazar Prisma)
-- [ ] Alinhar docs/07 origin/consent + docs/08 payloads
-- [ ] Smoke `test:public-booking`
+- [x] DDL: `public_booking_token`, `procedure.publicly_bookable`, `tenant.booking_settings`, `patient.origin` + RLS
+- [x] Middleware `publicTenantContext` + rate limits
+- [x] `GET /public/clinics/:slug` + `.../availability` (reusa scheduling availability)
+- [x] `POST .../bookings` + `.../verify` (OTP hash, 5 min, 3 tentativas; WA ou e-mail)
+- [x] Lead time min/max, expediente, procedimento público (RF-E4-11..13)
+- [x] `GET /public/appointments/:token/confirm`
+- [x] `patients_public.findOrCreateFromPublicBooking` + consents
+- [x] Concorrência público + recepção → EXCLUDE / `409 SLOT_UNAVAILABLE`
+- [x] Estender `scheduling_public` / `clinic_public` o mínimo (sem vazar Prisma)
+- [x] Alinhar docs/07 origin/consent + docs/08 payloads
+- [x] Smoke `test:public-booking`
 
 ### Bloco 3 — Backend: fila de espera
 
-- [ ] DDL + RLS `waitlist_entry`
-- [ ] `GET|POST|DELETE /waitlist` + `POST /waitlist/:id/offer`
-- [ ] `POST /public/waitlist/:token/accept` (+ docs/08)
-- [ ] Job `offer-waitlist-slot` em cancel/NO_SHOW (RF-E4-14..15)
-- [ ] First-accept-wins; token 30 min; até 3 lotes
-- [ ] Integração messaging: template `waitlist_offer` + botão `WAITLIST_<offerId>`
-- [ ] Dois aceites concorrentes → 1 appointment (teste obrigatório)
-- [ ] Smoke `test:waitlist`
+- [x] DDL + RLS `waitlist_entry`
+- [x] `GET|POST|DELETE /waitlist` + `POST /waitlist/:id/offer`
+- [x] `POST /public/waitlist/:token/accept` (+ docs/08)
+- [x] Job `offer-waitlist-slot` em cancel/NO_SHOW (RF-E4-14..15)
+- [x] First-accept-wins; token 30 min; até 3 lotes
+- [x] Integração messaging: template `waitlist_offer` + botão `WAITLIST_<offerId>`
+- [x] Dois aceites concorrentes → 1 appointment (teste obrigatório)
+- [x] Smoke `test:waitlist`
 
 ### Bloco 4 — Backend: messaging E8a
 
-- [ ] Módulo `backend/src/modules/messaging/` + `messaging_public.ts` (só o que outros BCs precisarem **ler**)
-- [ ] Port `MessagingProvider` + `FakeMessagingProvider` + `WhatsAppCloudProvider`
-- [ ] Account connect / test / disconnect; status (RF-E8-01..02); token no KMS
-- [ ] Templates MVP agenda; variáveis só nome/clínica/data/hora; **sem** clínico (RF-E8-12 recorte + RF-E8-13)
-- [ ] Automations D-1 @ 12:00 TZ + H-3; quiet hours; skip cancelados/`REQUESTED` (RF-E8-03..04)
-- [ ] Create/move → agenda jobs; cancel/move → cancela jobs antigos (RF-E4-18)
-- [ ] Webhook: assinatura → 200 → fila; idempotência `wamid` (RF-E8-05, 18)
-- [ ] Confirm → `CONFIRMED`; Remarcar → conversation `PENDING` (RF-E8-06, RF-E4-19)
-- [ ] Marketing gated (`BLOCKED_NO_CONSENT`) (RF-E8-14) — mesmo sem template marketing no recorte, o gate no port
-- [ ] Credits + kill switch mínimos; débito no delivery (RF-E8-11, 15–17)
-- [ ] Audit via `message` + `GET /messaging/logs` (RF-E8-19)
-- [ ] Smoke `test:messaging` (fake) + teste wamid duplicado
+- [x] Módulo `backend/src/modules/messaging/` + `messaging_public.ts` (só o que outros BCs precisarem **ler**)
+- [x] Port `MessagingProvider` + `FakeMessagingProvider` + `WhatsAppCloudProvider`
+- [x] Account connect / test / disconnect; status (RF-E8-01..02); token no KMS
+- [x] Templates MVP agenda; variáveis só nome/clínica/data/hora; **sem** clínico (RF-E8-12 recorte + RF-E8-13)
+- [x] Automations D-1 @ 12:00 TZ + H-3; quiet hours; skip cancelados/`REQUESTED` (RF-E8-03..04)
+- [x] Create/move → agenda jobs; cancel/move → cancela jobs antigos (RF-E4-18)
+- [x] Webhook: assinatura → 200 → fila; idempotência `wamid` (RF-E8-05, 18)
+- [x] Confirm → `CONFIRMED`; Remarcar → conversation `PENDING` (RF-E8-06, RF-E4-19)
+- [x] Marketing gated (`BLOCKED_NO_CONSENT`) (RF-E8-14) — mesmo sem template marketing no recorte, o gate no port
+- [x] Credits + kill switch mínimos; débito no delivery (RF-E8-11, 15–17)
+- [x] Audit via `message` + `GET /messaging/logs` (RF-E8-19)
+- [x] Smoke `test:messaging` (fake) + teste wamid duplicado
 
 ### Bloco 5 — Frontend: public booking
 
-- [ ] Rotas `(public)/agendar/[slug]` (+ confirmar token; opcional `/fila/[token]`)
-- [ ] Camadas Page → Component → Hook (TanStack) → Service → Data → API (`packages/public`)
-- [ ] Fluxo etapas A; mobile-first; 1 primary por passo
-- [ ] `409` / `429` / OTP / slug 404
-- [ ] Confirmação por link
-- [ ] E2E `e2e/public-booking.spec.ts` (OTP fake / Mailpit; seed slug)
+- [x] Rotas `(public)/agendar/[slug]` (+ confirmar token; opcional `/fila/[token]`)
+- [x] Camadas Page → Component → Hook (TanStack) → Service → Data → API (`packages/public`)
+- [x] Fluxo etapas A; mobile-first; 1 primary por passo
+- [x] `409` / `429` / OTP / slug 404
+- [x] Confirmação por link
+- [x] E2E `e2e/public-booking.spec.ts` (OTP fake / Mailpit; seed slug)
 
 ### Bloco 6 — Frontend: waitlist + WhatsApp ops
 
-- [ ] Waitlist na agenda (`operacional`, FormDialog + lista)
-- [ ] Agenda: `REQUESTED` vs `SCHEDULED`/`CONFIRMED`; badge remarcação se houver
-- [ ] Wizard Owner conectar WA + test + erros acionáveis (`messaging`)
-- [ ] Kill switch / usage / logs mínimos
-- [ ] Onboarding: passo WHATSAPP aponta para a rota (continua pulável)
-- [ ] E2E `e2e/waitlist.spec.ts` + `e2e/messaging.spec.ts` (fake; sem Meta real no CI)
+- [x] Waitlist na agenda (`operacional`, FormDialog + lista)
+- [x] Agenda: `REQUESTED` vs `SCHEDULED`/`CONFIRMED`; badge remarcação se houver
+- [x] Wizard Owner conectar WA + test + erros acionáveis (`messaging`)
+- [x] Kill switch / usage / logs mínimos
+- [x] Onboarding: passo WHATSAPP aponta para a rota (continua pulável)
+- [x] E2E `e2e/waitlist.spec.ts` + `e2e/messaging.spec.ts` (fake; sem Meta real no CI)
 
 ---
 
@@ -518,9 +518,9 @@ POST|GET        /api/v1/webhooks/whatsapp
 
 **Frontend — aceite de código**
 
-- [ ] `/agendar/{slug}` ponta a ponta (OTP fake em local)
-- [ ] Conexão WA + waitlist usáveis pelo Owner/Recepção
-- [ ] Agenda distingue `REQUESTED` / `CONFIRMED`
+- [ ] `/agendar/{slug}` ponta a ponta (OTP fake em local) — spec E2E pronta; rodar `pnpm test:e2e e2e/public-booking.spec.ts` com API + Mailpit
+- [ ] Conexão WA + waitlist usáveis pelo Owner/Recepção — UI pronta; rodar `pnpm test:e2e e2e/waitlist.spec.ts e2e/messaging.spec.ts`
+- [x] Agenda distingue `REQUESTED` / `CONFIRMED`
 
 ---
 
