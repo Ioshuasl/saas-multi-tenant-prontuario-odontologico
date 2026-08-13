@@ -4,6 +4,147 @@ Append-only. Entradas mais recentes no topo.
 
 ---
 
+## 2026-08-13 — S3 planejada: detalhamento técnico do canal do paciente
+
+### Feito
+
+- `docs/desenvolvimento/sprints/S3-canal-paciente.md` expandido: herança S2, cortes fechados (OTP no Postgres, `REQUESTED` default, `PUBLIC_BOOKING`, créditos mínimos, waitlist 30 min/3 lotes), DDL delta, jobs/outbox, payloads HTTP (incl. `POST /public/waitlist/:token/accept`), RLS público, pastas, UX (StepNavigator / FormDialog / wizard WA), qualidade + M2 vs código Must
+
+### Validação
+
+- Cruzado com RF E4b/E8a, módulos 04/08, docs/07–09/11/16, ADR-0005/0006, Prisma/código S2
+
+### Próximo
+
+- Implementar S3 pelo Bloco 1 (filas/outbox/worker)
+
+---
+
+## 2026-08-13 — Playwright E2E: base + specs S1/S2
+
+### Feito
+
+- `@playwright/test` na raiz; `playwright.config.ts` (webServer API `:3333` + web `:3001`)
+- Scripts: `pnpm test:e2e` / `test:e2e:ui` / `test:e2e:headed`
+- Specs por módulo já entregue: `e2e/identity.spec.ts` (E1), `clinic.spec.ts` (E2), `patients.spec.ts` (E3), `agenda.spec.ts` (E4a)
+- Login UI: Identity testa o fluxo; clinic/patients/agenda reutilizam 1 contexto por worker (`e2e/helpers/fixtures.ts`) — access token em memória + refresh cookie rotaciona (storageState por teste invalida o token)
+- Rate limit login (5/e-mail/60s): workers=1; specs autenticados não relogam a cada teste
+
+### Validação
+
+- `pnpm test:e2e` — 19 passed (identity, clinic, patients, agenda)
+
+### Próximo
+
+- Sprint 3; incluir job e2e no CI quando o ambiente de Actions tiver browsers + secrets JWT
+
+---
+
+## 2026-08-13 — Sprint 2: fechamento Must E3/E4a + visão por cadeira
+
+### Feito
+
+- `GET /appointments?chairId=` no backend (schema + list repository/service); docs/08 atualizado
+- Agenda (`operacional`): toggle Profissional | Cadeira; listagem, create (cadeira opcional / pré-preenchida), bloqueio e série com `chairId`
+- Smoke `test:scheduling`: create + list por cadeira + bloqueio por cadeira
+- Checklist S2 + README de desenvolvimento: S2 **fechada**; próximo = S3
+
+### Validação
+
+- `pnpm --filter @repo/frontend typecheck`
+- `pnpm --filter @repo/backend exec tsc --noEmit` (se aplicável)
+- `pnpm test:scheduling`
+
+### Não fecha S2 Must (explícito)
+
+- M1 com recepcionista real (docs/13)
+- Recrutamento de clínica-piloto (roadmap §5)
+- Playwright E2E (smoke HTTP no lugar)
+
+### Próximo
+
+- Sprint 3 — canal do paciente
+
+---
+
+## 2026-08-13 — Seed de tenant demo + módulos
+
+### Feito
+- `backend/prisma/seed.ts` idempotente: tenant Clínica Teste (`owner@teste.local` / `SenhaForte!99`) + clínica, horários, cadeiras, profissionais, procedimentos, equipe, convite, pacientes/consentimentos e agenda
+- README: credenciais de login de desenvolvimento
+
+### Validação
+- `pnpm db:seed`
+
+### Próximo
+- Visualizar telas no frontend com os dados seedados
+
+---
+
+## 2026-08-13 — DX compile: sem motion no Index/Form + ban barrel UI
+
+### Feito
+
+- Removidos `FadeIn`/`Stagger`/`MotionTable`/`MotionProvider` do caminho crítico (Index, Form, tabelas, shell)
+- Motion só em `*FormDialog` (`MotionDialogBody`, chunk `next/dynamic`)
+- ESLint `no-restricted-imports` + rules: proibido `@/shared/ui`, `@/shared/ui/index`, `@/shared/ui/sidebar`
+- README: exclusão do Defender na pasta do repo
+
+### Validação
+
+- `pnpm --filter @repo/frontend typecheck`
+
+### Próximo
+
+- Polish M1 / S3
+
+---
+
+## 2026-08-13 — Frontend: compile dev + navegação (Turbopack)
+
+### Feito
+
+- `(app)/layout` virou RSC; `MotionProvider` + `TooltipProvider` só no `AppShell` autenticado
+- Removido `PageTransition` (`AnimatePresence mode="wait"`); `FadeIn` permanece nas páginas; `prefetch={false}` na nav; `loading.tsx` em `(app)/app`
+- `optimizePackageImports` ampliado; combobox via `@base-ui/react/combobox`; `framer-motion` direto removido (`motion` permanece)
+- `sidebar.tsx` fatiado (`sidebar-context` / `sidebar-chrome` / `sidebar-panel` / `sidebar-menu`); header sem popover de notificações placeholder; clinic query não bloqueia children
+- `next/dynamic` nos FormDialogs de Agenda, Pacientes, Chair, Procedure, Professional, Member
+
+### Baseline (antes, terminal `pnpm dev:web`)
+
+| Rota | Compile frio | GET frio | GET quente |
+|---|---|---|---|
+| `/login` | 3.3s | 4.5s | ~0.9s |
+| `/app` | 25.3s | 26.4s | 2.0s |
+| `/app/onboarding` | 12.9s | 15.1s | 2.6s |
+| `/app/pacientes` | 16.5s | 18.1s | 0.25s |
+| `/app/agenda` | 3.0s | 3.3s | 0.33s |
+| config clínicas (média) | 1.0–1.8s | 1.3–2.3s | 0.3–0.6s |
+
+### Depois (`.next` limpo, Turbopack)
+
+| Rota | Compile frio | GET frio | GET quente |
+|---|---|---|---|
+| `/login` | 7.6s* | 10.6s | **394ms** |
+| `/app` | **4.4s** (era 25.3s) | 6.2s | **291ms** |
+| `/app/onboarding` | **1.4s** (era 12.9s) | 1.8s | 435ms |
+| `/app/pacientes` | **2.2s** (era 16.5s) | 3.0s | 396ms |
+| `/app/agenda` | 2.7s | 3.1s | 402ms |
+| config clínicas | 1.1–1.6s | 1.4–1.9s | 380–472ms |
+
+\* `/login` frio agora absorve font/CSS do root (antes pagos em `/` 6.5s + login 3.3s). Quente < 500ms. `/app` e onboarding/pacientes batem as metas de compile.
+
+### Validação
+
+- `pnpm --filter @repo/frontend typecheck` → OK
+- Re-medida após restart com `frontend/.next` limpo
+
+### Próximo
+
+- Polish M1 / S3 canal paciente
+
+---
+
 ## 2026-08-12 — Sprint 2 Bloco 5: frontend agenda (`operacional`, Notion)
 
 ### Feito
