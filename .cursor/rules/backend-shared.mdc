@@ -18,6 +18,8 @@ backend/src/shared/
 ├── database/        # Prisma, TenantPrisma/RLS, UoW, outbox
 ├── middlewares/
 ├── integrations/    # adapters de APIs externas
+├── crypto/          # KeyManagementPort + envelope
+├── storage/         # ObjectStorage port (MinIO/S3 + fake)
 ├── queue/           # BullMQ client / registro de filas
 ├── domain/          # kernel: EntityId, TenantId, DomainEvent, erros base
 └── helpers/

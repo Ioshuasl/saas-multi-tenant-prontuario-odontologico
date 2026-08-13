@@ -9,4 +9,6 @@ export const operacionalQueryKeys = {
   agendaChairs: ['agenda-chairs'] as const,
   waitlist: (professionalId?: string) => ['waitlist', professionalId ?? ''] as const,
   procedures: ['procedures'] as const,
+  medicalRecord: (patientId: string) => ['medical-record', patientId] as const,
+  anamnesis: (patientId: string) => ['anamnesis', patientId] as const,
 };

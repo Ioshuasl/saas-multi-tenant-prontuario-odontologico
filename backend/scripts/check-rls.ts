@@ -233,6 +233,86 @@ async function main() {
     failed = true;
   }
 
+  const recordA = randomUUID();
+  await tenantDb.runInTenantContext(ctxA, async (tx) => {
+    await tx.medicalRecord.create({
+      data: {
+        id: recordA,
+        tenantId: tenantA,
+        patientId: patientA,
+      },
+    });
+  });
+  const recordVisibleA = await tenantDb.runInTenantContext(ctxA, (tx) =>
+    tx.medicalRecord.findMany(),
+  );
+  const recordVisibleB = await tenantDb.runInTenantContext(ctxB, (tx) =>
+    tx.medicalRecord.findMany(),
+  );
+  const recordWithoutCtx = await prisma.medicalRecord.findMany();
+  if (recordVisibleA.length !== 1) {
+    console.error('FAIL: tenant A deveria ver 1 medical_record, viu', recordVisibleA.length);
+    failed = true;
+  }
+  if (recordVisibleB.length !== 0) {
+    console.error('FAIL: tenant B deveria ver 0 medical_record, viu', recordVisibleB.length);
+    failed = true;
+  }
+  if (recordWithoutCtx.length !== 0) {
+    console.error('FAIL: sem tenant_id deveria ver 0 medical_record; viu', recordWithoutCtx.length);
+    failed = true;
+  }
+
+  try {
+    await tenantDb.runInTenantContext(ctxA, async (tx) => {
+      await tx.medicalRecord.create({
+        data: {
+          id: randomUUID(),
+          tenantId: tenantB,
+          patientId: patientA,
+        },
+      });
+    });
+    console.error('FAIL: INSERT medical_record cross-tenant deveria falhar');
+    failed = true;
+  } catch {
+    // esperado
+  }
+
+  const attachA = randomUUID();
+  await tenantDb.runInTenantContext(ctxA, async (tx) => {
+    await tx.attachment.create({
+      data: {
+        id: attachA,
+        tenantId: tenantA,
+        medicalRecordId: recordA,
+        patientId: patientA,
+        category: 'XRAY',
+        fileName: 'rx.jpg',
+        storageKey: `tenants/${tenantA}/patients/${patientA}/rx.jpg`,
+        mimeType: 'image/jpeg',
+        sizeBytes: BigInt(100),
+        checksumSha256: 'b'.repeat(64),
+        uploadedBy: ctxA.userId,
+      },
+    });
+  });
+  const attachVisibleA = await tenantDb.runInTenantContext(ctxA, (tx) => tx.attachment.findMany());
+  const attachVisibleB = await tenantDb.runInTenantContext(ctxB, (tx) => tx.attachment.findMany());
+  const attachWithoutCtx = await prisma.attachment.findMany();
+  if (attachVisibleA.length !== 1) {
+    console.error('FAIL: tenant A deveria ver 1 attachment, viu', attachVisibleA.length);
+    failed = true;
+  }
+  if (attachVisibleB.length !== 0) {
+    console.error('FAIL: tenant B deveria ver 0 attachment, viu', attachVisibleB.length);
+    failed = true;
+  }
+  if (attachWithoutCtx.length !== 0) {
+    console.error('FAIL: sem tenant_id deveria ver 0 attachment; viu', attachWithoutCtx.length);
+    failed = true;
+  }
+
   const waA = randomUUID();
   await tenantDb.runInTenantContext(ctxA, async (tx) => {
     await tx.whatsappAccount.create({

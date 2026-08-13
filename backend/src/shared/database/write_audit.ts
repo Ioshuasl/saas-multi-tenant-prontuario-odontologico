@@ -12,6 +12,7 @@ export const AuditAction = {
   MEMBER_DEACTIVATED: 'MEMBER_DEACTIVATED',
   PERMISSION_DENIED: 'PERMISSION_DENIED',
   REFRESH_REUSE_DETECTED: 'REFRESH_REUSE_DETECTED',
+  READ: 'READ',
 } as const;
 
 export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction];
@@ -23,6 +24,7 @@ export type WriteAuditInput = {
   action: AuditActionName;
   resourceType: string;
   resourceId?: string;
+  patientId?: string;
   ipAddress?: string;
   userAgent?: string;
   metadata?: Record<string, unknown>;
@@ -48,6 +50,7 @@ export async function writeAuditLog(input: WriteAuditInput): Promise<void> {
           action: input.action,
           resourceType: input.resourceType,
           resourceId: input.resourceId,
+          patientId: input.patientId,
           ipAddress: input.ipAddress,
           userAgent: input.userAgent,
           metadata:

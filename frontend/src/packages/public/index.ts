@@ -1,2 +1,2 @@
-/** Package public: auth, autoagendamento (`/agendar/[slug]`), confirmação e fila por token */
+/** Package public: auth, autoagendamento (`/agendar/[slug]`), anamnese (`/anamnese/[token]`), confirmação e fila */
 export {};

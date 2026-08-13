@@ -19,11 +19,13 @@ Pasta **somente** para acompanhamento do desenvolvimento (scaffold, sprints, dec
 
 ## Status atual
 
-- **Fase:** Sprint 3 — Canal do paciente — Bloco 6 (waitlist + WhatsApp ops) fechado
+- **Fase:** Sprint 4 — Prontuário (E5) — Blocos 1–5 backend (anexos + storage fechados)
+- **Próxima:** S4 Bloco 6 — frontend anamnese (public + admin + ficha)
 - **Anterior:** Sprint 2 — Pacientes e Agenda interna — **fechada** (E3+E4a Must + Qualidade)
 - **Código base:** Sprint 0 concluída (monorepo, CI, RLS, KeyManagementPort)
 - **Especificação:** [`../README.md`](../README.md)
-- **Checklist S3 (planejada):** [`sprints/S3-canal-paciente.md`](./sprints/S3-canal-paciente.md)
+- **Checklist S4 (planejada):** [`sprints/S4-prontuario.md`](./sprints/S4-prontuario.md)
+- **Checklist S3 (código Must):** [`sprints/S3-canal-paciente.md`](./sprints/S3-canal-paciente.md)
 - **Checklist S2 (fechada):** [`sprints/S2-pacientes-agenda.md`](./sprints/S2-pacientes-agenda.md)
 - **Checklist S1 (fechada):** [`sprints/S1-identidade-clinica.md`](./sprints/S1-identidade-clinica.md)
 - **Checklist S0 (fechada):** [`sprints/S0-fundacao.md`](./sprints/S0-fundacao.md)

@@ -155,7 +155,7 @@ Layout de três áreas em uma única rota (sem navegação entre telas durante o
 ```
 
 - Alertas clínicos (alergias, condições) sempre visíveis no topo, em vermelho, não dispensáveis.
-- Odontograma em SVG com notação FDI, dentição permanente/decídua, seleção por dente ou por face, legenda de condições, histórico por dente em popover.
+- Odontograma sem lib: permanente = arte FDI de referência + overlay de faces `M|D|V|L|O|C`; decídua = glifos SVG. Legenda de condições e histórico no FormDialog. Detalhe: [frontend/odontograma.md](./frontend/odontograma.md).
 - Editor de evolução com templates/atalhos por procedimento e contador de caracteres; autosave em rascunho local até assinar.
 - Ao assinar: banner de imutabilidade ("esta evolução não pode ser editada; correções geram nova versão").
 

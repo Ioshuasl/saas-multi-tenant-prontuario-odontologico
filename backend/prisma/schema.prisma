@@ -51,6 +51,14 @@ model Tenant {
   automations     Automation[]
   automationRuns  AutomationRun[]
   messageCreditLedger MessageCreditLedger[]
+  medicalRecords  MedicalRecord[]
+  anamnesisForms AnamnesisForm[]
+  anamnesisResponses AnamnesisResponse[]
+  clinicalAlerts  ClinicalAlert[]
+  toothStates     ToothState[]
+  toothStateHistories ToothStateHistory[]
+  clinicalNotes   ClinicalNote[]
+  attachments     Attachment[]
 
   @@map("tenant")
 }
@@ -241,6 +249,7 @@ model Professional {
   appointmentSeries AppointmentSeries[]
   scheduleBlocks ScheduleBlock[]
   waitlistEntries WaitlistEntry[]
+  clinicalNotes ClinicalNote[]
 
   @@unique([tenantId, membershipId])
   @@map("professional")
@@ -341,6 +350,8 @@ model Patient {
   appointmentSeries AppointmentSeries[]
   waitlistEntries WaitlistEntry[]
   conversations   Conversation[]
+  medicalRecord   MedicalRecord?
+  attachments     Attachment[]
 
   @@unique([tenantId, code], map: "uq_patient_tenant_code")
   @@index([tenantId, name], map: "idx_patient_name")
@@ -681,4 +692,162 @@ model OutboxEvent {
   tenant      Tenant    @relation(fields: [tenantId], references: [id])
 
   @@map("outbox_event")
+}
+
+/// Prontuário 1:1 com paciente. docs/07 §5 · S4
+model MedicalRecord {
+  id          String   @id @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  patientId   String   @unique @map("patient_id") @db.Uuid
+  openedAt    DateTime @default(now()) @map("opened_at") @db.Timestamptz
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  anamnesisResponses AnamnesisResponse[]
+  clinicalAlerts ClinicalAlert[]
+  toothStates ToothState[]
+  clinicalNotes ClinicalNote[]
+  attachments Attachment[]
+
+  @@unique([tenantId, patientId], map: "uq_medical_record_patient")
+  @@map("medical_record")
+}
+
+model AnamnesisForm {
+  id         String   @id @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  name       String
+  version    Int      @default(1)
+  questions  Json
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  responses  AnamnesisResponse[]
+
+  @@unique([tenantId, name, version], map: "uq_anamnesis_form_version")
+  @@map("anamnesis_form")
+}
+
+model AnamnesisResponse {
+  id              String   @id @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  medicalRecordId String   @map("medical_record_id") @db.Uuid
+  formId          String   @map("form_id") @db.Uuid
+  formVersion     Int      @map("form_version")
+  answers         String
+  answeredBy      String   @map("answered_by")
+  answeredAt      DateTime @default(now()) @map("answered_at") @db.Timestamptz
+  signature       Json?
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+  form            AnamnesisForm @relation(fields: [formId], references: [id])
+
+  @@index([tenantId, medicalRecordId, answeredAt(sort: Desc)], map: "idx_anamnesis_response_record")
+  @@map("anamnesis_response")
+}
+
+model ClinicalAlert {
+  id              String   @id @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  medicalRecordId String   @map("medical_record_id") @db.Uuid
+  severity        String
+  category        String
+  description     String
+  source          String
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+
+  @@index([tenantId, medicalRecordId, active], map: "idx_clinical_alert_record")
+  @@map("clinical_alert")
+}
+
+model ToothState {
+  id              String   @id @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  medicalRecordId String   @map("medical_record_id") @db.Uuid
+  dentition       String
+  toothCode       String   @map("tooth_code")
+  face            String?
+  condition       String
+  notes           String?
+  recordedBy      String   @map("recorded_by") @db.Uuid
+  recordedAt      DateTime @default(now()) @map("recorded_at") @db.Timestamptz
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+  history         ToothStateHistory[]
+
+  @@unique([tenantId, medicalRecordId, dentition, toothCode, face], map: "uq_tooth_state_current")
+  @@map("tooth_state")
+}
+
+model ToothStateHistory {
+  id           String   @id @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  toothStateId String   @map("tooth_state_id") @db.Uuid
+  fromCondition String? @map("from_condition")
+  toCondition   String  @map("to_condition")
+  source       String
+  sourceId     String?  @map("source_id") @db.Uuid
+  actorId      String   @map("actor_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  toothState   ToothState @relation(fields: [toothStateId], references: [id])
+
+  @@index([tenantId, toothStateId, createdAt], map: "idx_tooth_state_history")
+  @@map("tooth_state_history")
+}
+
+model ClinicalNote {
+  id              String   @id @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  medicalRecordId String   @map("medical_record_id") @db.Uuid
+  appointmentId   String?  @map("appointment_id") @db.Uuid
+  professionalId  String   @map("professional_id") @db.Uuid
+  content         String
+  procedures      Json     @default("[]")
+  version         Int      @default(1)
+  supersedesId    String?  @map("supersedes_id") @db.Uuid
+  amendReason     String?  @map("amend_reason")
+  contentHash     String   @map("content_hash")
+  signedAt        DateTime @default(now()) @map("signed_at") @db.Timestamptz
+  signature       Json
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+  professional    Professional @relation(fields: [professionalId], references: [id])
+  supersedes      ClinicalNote? @relation("ClinicalNoteAmend", fields: [supersedesId], references: [id])
+  amendments      ClinicalNote[] @relation("ClinicalNoteAmend")
+  attachments     Attachment[]
+
+  @@index([tenantId, medicalRecordId, createdAt(sort: Desc)], map: "idx_clinical_note_record")
+  @@map("clinical_note")
+}
+
+model Attachment {
+  id              String    @id @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  medicalRecordId String?   @map("medical_record_id") @db.Uuid
+  patientId       String    @map("patient_id") @db.Uuid
+  clinicalNoteId  String?   @map("clinical_note_id") @db.Uuid
+  category        String
+  fileName        String    @map("file_name")
+  storageKey      String    @map("storage_key")
+  mimeType        String    @map("mime_type")
+  sizeBytes       BigInt    @map("size_bytes")
+  checksumSha256  String    @map("checksum_sha256")
+  thumbnailKey    String?   @map("thumbnail_key")
+  uploadedBy      String    @map("uploaded_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+  deletedReason   String?   @map("deleted_reason")
+  deletedBy       String?   @map("deleted_by") @db.Uuid
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  medicalRecord   MedicalRecord? @relation(fields: [medicalRecordId], references: [id])
+  patient         Patient   @relation(fields: [patientId], references: [id])
+  clinicalNote    ClinicalNote? @relation(fields: [clinicalNoteId], references: [id])
+
+  @@index([tenantId, patientId, createdAt(sort: Desc)], map: "idx_attachment_patient")
+  @@map("attachment")
 }

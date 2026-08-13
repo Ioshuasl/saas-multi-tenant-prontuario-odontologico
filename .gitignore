@@ -21,3 +21,6 @@ backend/src/docs/openapi.yaml
 /test-results/
 /blob-report/
 /e2e/.auth/*.json
+scripts/odontogram/_*.png
+frontend/src/packages/clinico/assets/odontogram/_work-full.png
+frontend/src/packages/clinico/assets/odontogram/glyphs/*.png

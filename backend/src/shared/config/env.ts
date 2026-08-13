@@ -28,6 +28,7 @@ const envSchema = z.object({
   STORAGE_REGION: z.string().default('sa-east-1'),
   STORAGE_ACCESS_KEY: z.string().min(1),
   STORAGE_SECRET_KEY: z.string().min(1),
+  ATTACHMENT_QUOTA_BYTES: z.coerce.number().int().positive().default(1_073_741_824),
   WHATSAPP_APP_SECRET: z.string().min(1),
   WHATSAPP_VERIFY_TOKEN: z.string().min(1),
   MAIL_DSN: z.string().min(1),

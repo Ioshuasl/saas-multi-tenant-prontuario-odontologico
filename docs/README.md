@@ -31,6 +31,7 @@ Planejamento do MVP de um software odontológico completo (prontuário digital, 
 | [16 — Estrutura de Pastas](./16-estrutura-de-pastas.md) | Padrão Orius (1 arquivo por ação CRUD), nomenclatura, fronteiras, exemplo Patient |
 | [17 — Baseline de Segurança Enterprise](./17-seguranca-baseline.md) | Criptografia (envelope), auditoria, anomalias, endpoints, OWASP, Secure SDLC |
 | [desenvolvimento/](./desenvolvimento/README.md) | Diário e progresso de implementação (não substitui a especificação) |
+| [frontend/odontograma.md](./frontend/odontograma.md) | Odontograma (referência FDI + overlay de faces, contrato API) |
 
 ### Requisitos (RF / RNF)
 

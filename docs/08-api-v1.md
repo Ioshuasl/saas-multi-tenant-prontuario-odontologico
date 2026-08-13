@@ -114,6 +114,8 @@ PATCH  /api/v1/procedures/:id
 POST   /api/v1/procedures/import-catalog   importa catálogo sugerido
 ```
 
+**GET `/clinic`**, **GET `/clinic/professionals`**, **GET `/clinic/units/:id/chairs`**: `settings.read` **ou** `agenda.read` (catálogo operacional da agenda — dentista/recepção/ASB). Escrita (`POST`/`PATCH`) permanece `settings.write`.
+
 ### 2.3 Pacientes (`patients`)
 
 ```
@@ -136,7 +138,7 @@ GET    /api/v1/appointments                ?unitId=&from=&to=&professionalId=&ch
 POST   /api/v1/appointments
 GET    /api/v1/appointments/:id
 PATCH  /api/v1/appointments/:id            reagendar / trocar profissional / notas
-POST   /api/v1/appointments/:id/status     { status, reason? }
+POST   /api/v1/appointments/:id/status     { status, reason? }  // IN_SERVICE → outbox `scheduling.appointment_started`
 DELETE /api/v1/appointments/:id            cancelamento (com motivo)
 GET    /api/v1/appointments/:id/history
 
@@ -233,26 +235,110 @@ POST   /api/v1/waitlist/:id/offer
 
 ### 2.5 Prontuário (`clinical-records`)
 
+Permissões: `clinical_records.read` / `.write` (S1). Recepção → `403 FORBIDDEN` + `audit_log PERMISSION_DENIED`. GETs clínicos passam por `auditRead` (`action=READ`, `patient_id`). Envelope `{ data }` / `{ error }`; camelCase.
+
 ```
 GET    /api/v1/patients/:patientId/record              cabeçalho + alertas
-GET    /api/v1/patients/:patientId/record/odontogram   ?dentition=PERMANENT
+GET    /api/v1/patients/:patientId/record/odontogram   ?dentition=PERMANENT|DECIDUOUS&at=
 PUT    /api/v1/patients/:patientId/record/odontogram/teeth/:toothCode
-GET    /api/v1/patients/:patientId/record/notes        ?cursor=
+GET    /api/v1/patients/:patientId/record/notes        ?cursor=&limit=
 POST   /api/v1/patients/:patientId/record/notes        cria evolução (imutável)
 POST   /api/v1/patients/:patientId/record/notes/:id/amend   nova versão com motivo
+PATCH  /api/v1/patients/:patientId/record/notes/:id     → 423 RECORD_IMMUTABLE
+DELETE /api/v1/patients/:patientId/record/notes/:id     → 423 RECORD_IMMUTABLE
 GET    /api/v1/patients/:patientId/record/anamnesis
 POST   /api/v1/patients/:patientId/record/anamnesis
 POST   /api/v1/patients/:patientId/record/anamnesis/send-link
 GET    /api/v1/patients/:patientId/record/alerts
 POST   /api/v1/patients/:patientId/record/alerts
-GET    /api/v1/patients/:patientId/attachments
-POST   /api/v1/patients/:patientId/attachments/presign  → URL de upload direto
+PATCH  /api/v1/patients/:patientId/record/alerts/:id    { active }  // não-CRITICAL
+GET    /api/v1/patients/:patientId/attachments          ?category=
+POST   /api/v1/patients/:patientId/attachments/presign
 POST   /api/v1/patients/:patientId/attachments          confirma upload (metadados)
-GET    /api/v1/attachments/:id/download                 URL assinada de leitura
-DELETE /api/v1/attachments/:id
+GET    /api/v1/attachments/:id/download
+DELETE /api/v1/attachments/:id                          { reason }
 GET    /api/v1/anamnesis-forms
-POST   /api/v1/anamnesis-forms
+POST   /api/v1/anamnesis-forms                          // settings.write (nova versão)
 ```
+
+**GET `/patients/:patientId/record`** (`clinical_records.read`):
+
+```json
+{
+  "data": {
+    "patientId": "…",
+    "medicalRecordId": "…",
+    "openedAt": "2026-08-13T15:00:00.000Z",
+    "anamnesisStale": true,
+    "lastAnamnesisAt": null,
+    "alerts": [
+      { "id": "…", "severity": "CRITICAL", "category": "ALLERGY", "description": "Alergia a dipirona", "source": "ANAMNESIS", "active": true }
+    ]
+  }
+}
+```
+
+`anamnesisStale=true` se última resposta > 12 meses ou inexistente (RF-E5-18). Paciente sem prontuário → `404 NOT_FOUND` (1:1 criado no `patient` create). Alertas `CRITICAL` vêm primeiro.
+
+**GET `/anamnesis-forms`** (`clinical_records.read` **ou** `settings.read`): `{ "items": [{ "id", "name", "version", "active", "questions", "createdAt" }] }`. POST (`settings.write`) cria **nova versão** (`version+1`, `active` só na última): `{ "name", "questions" }`.
+
+**GET `/patients/:patientId/record/anamnesis`** (`clinical_records.read` + `auditRead`): histórico com `questions` da **versão respondida** + `answers` decifrados. POST (`.write`, `answered_by=PROFESSIONAL`): `{ "answers": { "allergy_meds": { "value": true, "text": "Dipirona" }, "main_complaint": "Dor no 26" } }` → `{ "id", "accepted": true }`. `alertWhen` satisfeito gera `ClinicalAlert` (`source=ANAMNESIS`); CRITICAL publica outbox `clinical_records.critical_alert_created` (emit-only).
+
+**POST `.../anamnesis/send-link`** (`.write`): `{ "channel": "WHATSAPP"|"EMAIL"|"COPY" }` → `{ "expiresAt", "sentVia", "publicUrl"? }`. Token `purpose=ANAMNESIS`, TTL 7 dias, one-shot. WA se WABA `CONNECTED` (template `anamnesis_request`); senão e-mail; `COPY` devolve URL absoluta `APP_PUBLIC_URL/anamnese/{token}`. Não logar token plaintext no `audit_log`.
+
+**GET|POST `/public/anamnesis/:token`** (sem JWT, sem slug; rate `public:anamnesis:ip:{ip}` 30/h): GET → `{ clinicName, patientFirstName, form: { name, version, questions }, expiresAt }` (sem CPF/telefone/CRO/alertas). Token usado/expirado/inexistente → `404 NOT_FOUND` (mesmo shape). POST `{ answers }` → `{ accepted: true }` (200); idempotente se `used_at` já setado; `answered_by=PATIENT` + signature SIMPLE `{ ip, userAgent, hash }`. Validação contra a versão do form no token. `showWhen.patientGender` filtra perguntas.
+
+**GET `/patients/:patientId/record/alerts`** (`.read` + `auditRead`): `{ "items": [...] }` filtrável `?severity=&category=&active=`. POST (`.write`, `source=MANUAL`): `{ "severity", "category", "description" }`. PATCH `{ "active" }` — `CRITICAL` não dispensável → `422 BUSINESS_RULE_VIOLATION`.
+
+**GET `/patients/:patientId/record/odontogram`** (`.read` + `auditRead`): query obrigatória `dentition=PERMANENT|DECIDUOUS`; opcional `at` (ISO) reconstruindo o estado a partir de `tooth_state_history` até a data.
+
+```json
+{
+  "data": {
+    "patientId": "…",
+    "medicalRecordId": "…",
+    "dentition": "PERMANENT",
+    "at": null,
+    "teeth": [
+      {
+        "toothCode": "26",
+        "face": "O",
+        "condition": "CARIES",
+        "notes": null,
+        "recordedAt": "2026-08-13T18:00:00.000Z",
+        "recordedBy": "…",
+        "history": [
+          { "at": "2026-08-13T18:00:00.000Z", "fromCondition": null, "toCondition": "CARIES", "source": "MANUAL" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Com `at`, `history` é omitido e `notes` vem `null` (não versionado). Dente sem evento até a data não aparece. Sem registros → `teeth: []`. Paciente sem prontuário → `404`.
+
+**PUT `.../odontogram/teeth/:toothCode`** (`.write`): `{ "dentition", "face"?, "condition", "notes"?, "justification"? }`. Sem `face` = dente inteiro. Grava `tooth_state` + `tooth_state_history` (`source=MANUAL`) e outbox `clinical_records.odontogram_updated` (emit-only). FDI inválido → `422 BUSINESS_RULE_VIOLATION`. `ABSENT`/`EXTRACTED` + `RESTORED` → `422 TOOTH_STATE_CONFLICT`; `justification` ≥10 caracteres força. PUT idêntico (mesma condição/notas) é idempotente (sem history/outbox).
+
+**GET `.../notes?cursor=&limit=`** (`.read`, `auditRead`): lista evoluções do prontuário (todas as versões, mais recente primeiro). Envelope `{ "data": { "items", "nextCursor" } }`. Cada item traz `content` decifrado, `procedures`, `version`, `supersedesId`, `amendReason`, `contentHash` (`sha256:<hex>`), `signature`, `signedAt`, `appointmentId`, `professionalId`. Sem prontuário → `404`.
+
+**POST `.../notes`** (`.write`): `{ "content", "appointmentId"?, "procedures"? }`. `content.trim()` ≥10. `procedures[]`: `{ "procedureId", "toothCode"|"tooth"?, "face"? }`. Profissional do membership deve ter `croNumber` (OWNER sem CRO → `422 BUSINESS_RULE_VIOLATION`). `appointmentId` opcional: se `SCHEDULED`/`CONFIRMED`, transiciona para `IN_SERVICE` e publica `scheduling.appointment_started`; se `IN_SERVICE`/`COMPLETED`, só vincula; outro status → `422`. Outbox `clinical_records.note_created` (emit-only). `content` cifrado (envelope); `content_hash` plaintext. ASB/recepção → `403`.
+
+**POST `.../notes/:id/amend`** (`.write`): `{ "content", "reason" }` — ambos ≥10 após trim. Nova linha `version+1`, `supersedesId`, `amendReason`. Outbox `clinical_records.note_amended`.
+
+**PATCH/DELETE `.../notes/:id`:** `423 RECORD_IMMUTABLE` + hint `/amend`. Trigger PG recusa `UPDATE`/`DELETE` na tabela.
+
+**GET `.../attachments?category=`** (`.read`, `auditRead`): lista anexos ativos. Envelope `{ "data": { "items" } }`.
+
+**POST `.../attachments/presign`** (`.read` — ASB pode anexar): `{ "fileName", "mimeType", "sizeBytes", "category" }`. Valida MIME (`image/jpeg|png|webp`, `application/pdf`), tamanho ≤20 MB e cota do tenant (`ATTACHMENT_QUOTA_BYTES`, default 1 GB) **antes** de emitir URL. MIME inválido → `415 UNSUPPORTED_MEDIA_TYPE`. Tamanho → `422`. Cota → `402 PLAN_LIMIT_EXCEEDED`. Storage down → `503 STORAGE_UNAVAILABLE`. Resposta: `{ uploadUrl, method: "PUT", headers, storageKey, expiresIn: 900 }`.
+
+**POST `.../attachments`** (`.read`): confirma upload `{ "storageKey", "checksumSha256", "fileName", "mimeType", "sizeBytes", "category", "clinicalNoteId"? }`. Exige objeto no storage. Idempotente por `storageKey`. Outbox `clinical_records.attachment_created` → job thumbnail (JPEG/PNG/WEBP; original intocado).
+
+**GET `/api/v1/attachments/:id/download`** (`.read`): `{ "downloadUrl", "expiresIn": 900 }` + `audit_log` com `patient_id`. Outro tenant → `404`. Excluído → `404`.
+
+**DELETE `/api/v1/attachments/:id`** (`.write`): `{ "reason" }` ≥10. Exclusão lógica (`deletedAt` + motivo + autor); arquivo permanece no storage. ASB → `403`.
+
+`toothStates` / `treatmentItemIds` / side-effects de odontograma e execução → S5.
 
 ### 2.6 Orçamentos e tratamentos (`treatments`)
 
@@ -429,9 +515,7 @@ POST /api/v1/patients/018f5c2b-.../record/notes
 {
   "appointmentId": "018f5d61-...",
   "content": "Realizada restauração classe II em 26 com resina composta. Anestesia local com lidocaína 2%. Paciente tolerou bem.",
-  "procedures": [{ "procedureId": "018f5c55-...", "toothCode": "26", "face": "O" }],
-  "toothStates": [{ "toothCode": "26", "face": "O", "condition": "RESTORED" }],
-  "treatmentItemIds": ["018f5c99-..."]
+  "procedures": [{ "procedureId": "018f5c55-...", "toothCode": "26", "face": "O" }]
 }
 ```
 
@@ -440,20 +524,22 @@ POST /api/v1/patients/018f5c2b-.../record/notes
 {
   "data": {
     "id": "018f5e10-...",
+    "appointmentId": "018f5d61-...",
+    "professionalId": "018f5c40-...",
+    "content": "Realizada restauração classe II em 26 com resina composta. Anestesia local com lidocaína 2%. Paciente tolerou bem.",
+    "procedures": [{ "procedureId": "018f5c55-...", "toothCode": "26", "face": "O" }],
     "version": 1,
+    "supersedesId": null,
+    "amendReason": null,
     "signedAt": "2026-08-20T17:35:12Z",
-    "signature": { "type": "SIMPLE", "userId": "018f5c31-...", "croNumber": "GO-12345" },
-    "contentHash": "sha256:9f2b...",
-    "sideEffects": {
-      "odontogramUpdated": ["26/O"],
-      "treatmentItemsExecuted": ["018f5c99-..."],
-      "productionEntriesCreated": 1
-    }
+    "createdAt": "2026-08-20T17:35:12Z",
+    "signature": { "type": "SIMPLE", "userId": "018f5c31-...", "croNumber": "12345", "croState": "GO" },
+    "contentHash": "sha256:9f2b..."
   }
 }
 ```
 
-Tentativa de `PATCH` nessa evolução → `423 RECORD_IMMUTABLE`, com orientação de usar `/amend`.
+`PATCH`/`DELETE` nessa evolução → `423 RECORD_IMMUTABLE` (usar `POST .../notes/:id/amend` com `{ "content", "reason" }`). Sem CRO → `422 BUSINESS_RULE_VIOLATION`. `toothStates` / `treatmentItemIds` / side-effects (odontograma, execução, produção) → S5.
 
 ### 3.4 Aprovar orçamento (gera plano + parcelas)
 
@@ -552,6 +638,27 @@ POST /api/v1/patients/018f5c2b-.../attachments/presign
 
 O cliente faz `PUT` direto no storage e depois confirma via `POST /attachments` com `storageKey` + `checksumSha256`. A API valida tamanho, tipo e cota do plano **antes** de emitir a URL.
 
+```http
+POST /api/v1/patients/018f5c2b-.../attachments
+{
+  "storageKey": "tenants/018f.../patients/018f5c2b/.../rx-panoramica.jpg",
+  "checksumSha256": "9f2b...",
+  "fileName": "rx-panoramica.jpg",
+  "mimeType": "image/jpeg",
+  "sizeBytes": 2411233,
+  "category": "XRAY",
+  "clinicalNoteId": null
+}
+```
+
+```http
+GET /api/v1/attachments/018f5e20-.../download
+→ { "data": { "downloadUrl": "https://storage...?", "expiresIn": 900 } }
+
+DELETE /api/v1/attachments/018f5e20-...
+{ "reason": "arquivo enviado por engano" }
+```
+
 ## 4. Segurança dos endpoints
 
 | Middleware (ordem) | Função |
@@ -579,6 +686,7 @@ O cliente faz `PUT` direto no storage e depois confirma via `POST /attachments` 
 | `POST /quotes/:id/decision` | ✔ | ✔ | ✔ | ✖ | ✖ |
 | `GET /reports/cash-flow` | ✔ | ✖ | ✖ | ✖ | ✔ |
 | `POST /installments/:id/payments` | ✔ | ✖ | ✔ | ✖ | ✔ |
+| `GET /clinic/professionals` | ✔ | ✔ | ✔ | ✔ | ✖ |
 | `PATCH /clinic` | ✔ | ✖ | ✖ | ✖ | ✖ |
 | `POST /privacy/exports` | ✔ | ✖ | ✖ | ✖ | ✖ |
 

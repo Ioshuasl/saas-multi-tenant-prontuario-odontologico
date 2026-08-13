@@ -1,4 +1,5 @@
 import type { RequestContext } from '../../shared/domain/request_context.js';
+import type { DbTransaction } from '../../shared/database/db_transaction.js';
 import { ListFutureByPatientRepository } from './repositories/appointment/appointment.repository.js';
 import { ListPatientTimelineAppointmentsRepository } from './repositories/appointment_series/appointment_series.repository.js';
 import { GetService } from './services/appointment/appointment_get.service.js';
@@ -8,6 +9,12 @@ import { StatusService } from './services/appointment/appointment_status.service
 import { AcceptService as WaitlistAcceptService } from './services/waitlist/waitlist_accept.service.js';
 import type { AppointmentCreateSchema } from './schemas/scheduling.schema.js';
 import type { AppointmentCreateOptions } from './services/appointment/appointment_create.service.js';
+import {
+  CreateTokenRepository,
+  ResolveTokenByHashGlobalRepository,
+  UpdateTokenRepository,
+} from './repositories/public_booking_token/public_booking_token.repository.js';
+import type { PublicBookingTokenMeta } from './types/public_booking.types.js';
 
 const listFuture = new ListFutureByPatientRepository();
 const getAppointment = new GetService();
@@ -16,6 +23,9 @@ const createAppointment = new AppointmentCreateService();
 const confirmFromPublic = new ConfirmService();
 const statusService = new StatusService();
 const waitlistAccept = new WaitlistAcceptService();
+const createToken = new CreateTokenRepository();
+const resolveTokenGlobal = new ResolveTokenByHashGlobalRepository();
+const updateToken = new UpdateTokenRepository();
 
 /** Agendamentos futuros ativos do paciente (patients RF-E3-12). */
 export async function listFutureAppointmentIds(
@@ -62,6 +72,11 @@ export async function applyWaitlistAcceptByOfferId(ctx: RequestContext, waitlist
   return waitlistAccept.executeFromOfferId(ctx, waitlistEntryId);
 }
 
+/** Inicia atendimento (SCHEDULED|CONFIRMED → IN_SERVICE). Publica `scheduling.appointment_started`. */
+export async function startAppointment(ctx: RequestContext, appointmentId: string) {
+  return statusService.execute(ctx, appointmentId, { status: 'IN_SERVICE' });
+}
+
 /** Botão WhatsApp CONFIRM_ → CONFIRMED (só a partir de SCHEDULED). */
 export async function applyConfirmationFromPatient(ctx: RequestContext, appointmentId: string) {
   const current = await getAppointment.execute(ctx, appointmentId);
@@ -81,7 +96,39 @@ export async function applyCancellationFromPatient(ctx: RequestContext, appointm
   );
 }
 
+export async function createPublicToken(
+  ctx: RequestContext,
+  input: {
+    purpose: string;
+    tokenHash: string;
+    expiresAt: Date;
+    targetId?: string | null;
+    meta?: PublicBookingTokenMeta;
+  },
+  tx?: DbTransaction,
+): Promise<string> {
+  if (tx) return createToken.executeInTx(tx, ctx, input);
+  return createToken.execute(ctx, input);
+}
+
+export async function resolvePublicTokenByHash(tokenHash: string) {
+  return resolveTokenGlobal.execute(tokenHash);
+}
+
+export async function markPublicTokenUsed(
+  ctx: RequestContext,
+  tokenId: string,
+  tx?: DbTransaction,
+): Promise<void> {
+  if (tx) {
+    await updateToken.executeInTx(tx, tokenId, { usedAt: new Date() });
+    return;
+  }
+  await updateToken.execute(ctx, tokenId, { usedAt: new Date() });
+}
+
 export type {
   AppointmentSummary,
   TimelineAppointmentItem,
 } from './types/scheduling.types.js';
+export type { PublicBookingTokenMeta, PublicBookingTokenRow } from './types/public_booking.types.js';

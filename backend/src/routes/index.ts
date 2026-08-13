@@ -3,6 +3,10 @@ import { buildIdentityRouter } from '../modules/identity/identity.module.js';
 import { buildClinicRouter } from '../modules/clinic/clinic.module.js';
 import { buildPatientsRouter } from '../modules/patients/patients.module.js';
 import {
+  buildClinicalRecordsRouter,
+  buildPublicAnamnesisRouter,
+} from '../modules/clinical_records/clinical_records.module.js';
+import {
   buildPublicRouter,
   buildSchedulingRouter,
 } from '../modules/scheduling/scheduling.module.js';
@@ -19,9 +23,11 @@ export function buildApiRouter(): Router {
   api.use(buildIdentityRouter());
   api.use(buildClinicRouter());
   api.use(buildPatientsRouter());
+  api.use(buildClinicalRecordsRouter());
   api.use(buildSchedulingRouter());
   api.use('/messaging', buildMessagingRouter());
   api.use('/webhooks/whatsapp', buildWhatsappWebhookRouter());
   api.use('/public', buildPublicRouter());
+  api.use('/public', buildPublicAnamnesisRouter());
   return api;
 }

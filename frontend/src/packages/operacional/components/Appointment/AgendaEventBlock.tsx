@@ -119,6 +119,7 @@ export function AgendaEventBlock({
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
       )}
       style={{ top, height }}
+      onClick={(e) => e.stopPropagation()}
       onPointerDown={onPointerDownMove}
       onPointerUp={onPointerUp}
       onKeyDown={(e) => {

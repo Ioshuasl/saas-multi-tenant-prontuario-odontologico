@@ -8,4 +8,5 @@ export const adminQueryKeys = {
   members: ['members'] as const,
   invitations: ['invitations'] as const,
   onboarding: ['onboarding'] as const,
+  anamnesisForms: ['anamnesis-forms'] as const,
 };

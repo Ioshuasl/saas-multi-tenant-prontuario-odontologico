@@ -2,9 +2,9 @@ import type { RequestContext } from '../../shared/domain/request_context.js';
 import { AppError } from '../../shared/middlewares/error_handler.middleware.js';
 import { assertPatientName, toE164Br } from './helpers/patient.helper.js';
 import { InvalidPatientNameError } from './models/errors/patients.errors.js';
+import { CreateAction } from './actions/patient/patient_create.action.js';
 import {
   CreateConsentRepository,
-  CreatePatientRepository,
   FindByPhoneRepository,
   GetDefaultUnitRepository,
   GetPatientRepository,
@@ -17,7 +17,7 @@ const getPatient = new GetService();
 const listConsents = new ListConsentsRepository();
 const findByPhone = new FindByPhoneRepository();
 const getDefaultUnit = new GetDefaultUnitRepository();
-const createPatient = new CreatePatientRepository();
+const createPatient = new CreateAction();
 const getPatientRepo = new GetPatientRepository();
 const createConsent = new CreateConsentRepository();
 

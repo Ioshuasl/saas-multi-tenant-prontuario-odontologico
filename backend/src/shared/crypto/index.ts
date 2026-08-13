@@ -24,3 +24,9 @@ export function getKeyManagement(): KeyManagementPort {
 
 export type { KeyManagementPort } from './key_management.port.js';
 export { LocalKeyManagementAdapter } from './local_key_management.adapter.js';
+export {
+  buildEnvelopeAad,
+  decryptField,
+  encryptField,
+  type EnvelopeAad,
+} from './envelope.js';

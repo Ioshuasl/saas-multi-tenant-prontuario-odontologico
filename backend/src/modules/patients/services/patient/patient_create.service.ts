@@ -12,8 +12,8 @@ import {
   normalizeCpf,
   normalizePhone,
 } from '../../helpers/patient.helper.js';
+import { CreateAction } from '../../actions/patient/patient_create.action.js';
 import {
-  CreatePatientRepository,
   FindByCpfRepository,
   FindByPhoneRepository,
   GetDefaultUnitRepository,
@@ -26,7 +26,7 @@ export class CreateService {
     private readonly findByCpf = new FindByCpfRepository(),
     private readonly findByPhone = new FindByPhoneRepository(),
     private readonly getDefaultUnit = new GetDefaultUnitRepository(),
-    private readonly create = new CreatePatientRepository(),
+    private readonly createAction = new CreateAction(),
   ) {}
 
   async execute(
@@ -76,7 +76,7 @@ export class CreateService {
       warnings.push('MINOR_WITHOUT_GUARDIAN');
     }
 
-    const patient = await this.create.execute(
+    const patient = await this.createAction.execute(
       ctx,
       {
         unitId,

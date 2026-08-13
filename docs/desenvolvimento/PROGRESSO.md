@@ -4,6 +4,148 @@ Append-only. Entradas mais recentes no topo.
 
 ---
 
+## 2026-08-13 — Odontograma permanente = referência vetorizada
+
+### Feito
+
+- Arte FDI 1024×434 na tela (`/odontogram/reference-fdi.png`) + overlay de 32 dentes / 6 faces
+- Script `scripts/odontogram/vectorize_reference.py` (OpenCV detecta dentes + VTracer)
+- Decídua permanece nos glifos SVG desenhados
+- Doc `docs/frontend/odontograma.md` atualizada
+
+### Validação
+
+- `pnpm --filter @repo/frontend typecheck` OK
+
+### Próximo
+
+- Conferir visual no atendimento (permanente = referência; faces pintam no overlay)
+
+---
+
+
+## 2026-08-13 — Odontograma SVG próprio (FDI + faces)
+
+### Feito
+
+- Silhuetas incisivo/canino/pré-molar/molar + 6 faces clicáveis (`M|D|V|L|O|C`) no dente
+- Espelho por quadrante FDI (mesial → linha média; inferior vira V/C para o mento)
+- Clique na face abre FormDialog com face pré-selecionada; número/silhueta = dente inteiro
+- Doc: `docs/frontend/odontograma.md` (índice, 09 §4.2, módulo 05)
+
+### Validação
+
+- `pnpm --filter @repo/frontend typecheck` OK
+- ESLint odontograma SVG OK
+
+### Próximo
+
+- Aceite S4 visual no atendimento (dentista seed)
+
+---
+
+## 2026-08-13 — S4 Bloco 7: frontend atendimento (`clinico`)
+
+### Feito
+
+- Rota `/app/atendimento/[appointmentId]` — 3 áreas (alertas + odontograma | plano S5 + evolução | histórico/anexos)
+- CRITICAL no topo (não dispensáveis); WARNING visíveis; anamnese stale
+- Odontograma FDI permanente/decídua, faces, histórico, teclado/foco; conflito com justificativa
+- Evolução: templates locais, rascunho `localStorage`, assinar (`clinical_records.write`), banner imutável, amend FormDialog
+- Anexos: presign → PUT storage → confirm; grid + download URL assinada; exclusão com motivo; comparação PHOTO_* lado a lado
+- Agenda: “Iniciar atendimento” (`SCHEDULED`/`CONFIRMED` + `clinical_records.read`) → `IN_SERVICE` + navegação; ASB sem botão assinar
+- E2E `e2e/attendance.spec.ts` (dentista seed + recepção UI oculta / 403)
+
+### Validação
+
+- `pnpm --filter @repo/frontend typecheck` OK
+- ESLint `clinico` + `AppointmentDetailsDialog` + rota atendimento OK
+
+### Próximo
+
+- Aceite S4 (E2E anamnese + atendimento local) · Marco M3 uso real separado
+
+---
+
+## 2026-08-13 — S4 Bloco 6: frontend anamnese (public + admin + ficha)
+
+### Feito
+
+- Público `/anamnese/[token]` (`public`): mobile-first sem AppShell; skeleton / 404 unificado / 429; perguntas tipadas; sucesso
+- Admin `/app/configuracoes/anamnese`: versões somente leitura + FormDialog nova versão (`settings.write`); nav Configurações
+- Ficha (`operacional`): tab **Prontuário** com `Can clinical_records.read`; resumo/alertas + send-link (COPY/WA/e-mail) + histórico por versão
+- `shared/auth/Can` + `hasPermission` (docs/09)
+- E2E `e2e/anamnesis.spec.ts` (token inválido, owner ponta a ponta, recepção sem aba, admin lista v1)
+
+### Validação
+
+- `pnpm --filter @repo/frontend typecheck` — ok
+- ESLint dos arquivos novos (anamnese public/admin/ficha) — ok
+- E2E `e2e/anamnesis.spec.ts` — spec criada; não executada aqui (precisa API + seed)
+
+### Próximo
+
+- S4 Bloco 7 — frontend atendimento (`clinico`) + agenda “Iniciar atendimento”
+
+---
+
+## 2026-08-13 — S4 Bloco 5: anexos + storage
+
+### Feito
+
+- Port `ObjectStorage` (`shared/storage/`): MinIO/S3 + fake in-memory (`NODE_ENV=test` / `STORAGE_FAKE=1`)
+- `POST .../attachments/presign` valida MIME/size/cota **antes** da URL (415 / 422 / 402 / 503)
+- Confirm + checksum; download 15 min + `audit_log.patient_id`; exclusão lógica (`reason` ≥10)
+- ASB anexa com `clinical_records.read`; DELETE exige `.write`; cross-tenant download → 404
+- Outbox `clinical_records.attachment_created` → job `generate-attachment-thumbnail` (original intacto)
+- Smoke `test:attachments`; `docs/08` §2.5 + §3.6; `test:rls` inclui `attachment`
+
+### Validação
+
+- typecheck / lint / arch:check / smoke — a executar no gate
+
+### Próximo
+
+- S4 Bloco 6 — frontend anamnese (public + admin + ficha)
+
+---
+
+## 2026-08-13 — S4 Bloco 4: evolução append-only
+
+### Feito
+
+- Domain `ClinicalNote.create` / `amend` (CRO, `content` ≥10, motivo amend ≥10, hash SHA-256)
+- `GET|POST /patients/:id/record/notes` + `POST .../notes/:id/amend`; `PATCH`/`DELETE` → `423 RECORD_IMMUTABLE`
+- Envelope AES-256-GCM em `content`; `content_hash` plaintext; trigger PG recusa UPDATE/DELETE
+- Outbox emit-only `clinical_records.note_created` / `note_amended`; `SCHEDULED|CONFIRMED` + note → `IN_SERVICE` + `scheduling.appointment_started`
+- OWNER/DENTIST sem CRO → `422`; ASB lê / não assina (`403`); recepção `403`
+- Smoke `test:clinical-notes`; `docs/08` §2.5 + §3.3 atualizados (side-effects E6 ficam na S5)
+
+### Validação
+
+- typecheck / lint / arch:check / smoke — a executar no gate
+
+### Próximo
+
+- S4 Bloco 5 — anexos + storage (presign / confirm / download / delete lógico)
+
+---
+
+## 2026-08-13 — S4 planejada (checklist)
+
+### Feito
+
+- Checklist [`sprints/S4-prontuario.md`](./sprints/S4-prontuario.md) no mesmo nível da S3
+- Escopo: E5 Must (anamnese + alertas + odontograma + evolução append-only + anexos + tela atendimento)
+- 7 blocos (5 backend + 2 frontend); cortes fechados (sem E6/plano; envelope obrigatório; ASB anexa com `read`; M3 uso real separado)
+- README desenvolvimento aponta S4 como próxima
+
+### Próximo
+
+- Fechar aceite S3 (E2E fake) se ainda pendente · iniciar S4 Bloco 1 (DDL/RLS/crypto/MedicalRecord)
+
+---
+
 ## 2026-08-13 — S3 Bloco 6: frontend waitlist + WhatsApp ops
 
 ### Feito

@@ -1,2 +1,2 @@
-/** Package clínico: ClinicalNote, Odontogram, Quote, … */
+/** Package clínico: atendimento, odontograma, evolução, anexos */
 export {};

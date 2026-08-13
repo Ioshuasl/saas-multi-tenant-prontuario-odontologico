@@ -7,6 +7,8 @@ import { scheduleAppointmentNotificationsJob } from './modules/scheduling/jobs/s
 import { offerWaitlistSlotJob } from './modules/scheduling/jobs/offer_waitlist_slot.job.js';
 import { sendWhatsappMessageJob } from './modules/messaging/jobs/send_whatsapp_message.job.js';
 import { processWhatsappWebhookJob } from './modules/messaging/jobs/process_whatsapp_webhook.job.js';
+import { ensureMedicalRecordJob } from './modules/clinical_records/jobs/ensure_medical_record.job.js';
+import { generateAttachmentThumbnailJob } from './modules/clinical_records/jobs/generate_attachment_thumbnail.job.js';
 import { BullmqJobQueue } from './shared/queue/bullmq_job_queue.js';
 import { setJobQueue } from './shared/queue/job_queue_singleton.js';
 import type { JobPayload } from './shared/queue/job_payload.js';
@@ -19,6 +21,8 @@ async function main(): Promise<void> {
 
   const queue = new BullmqJobQueue();
   setJobQueue(queue);
+  queue.register(QUEUE.platform, JOB.ensureMedicalRecord, ensureMedicalRecordJob);
+  queue.register(QUEUE.platform, JOB.generateAttachmentThumbnail, generateAttachmentThumbnailJob);
   queue.register(QUEUE.platform, JOB.smokePing, async (payload: JobPayload) => {
     logger.info(
       { tenantId: payload.tenantId, requestId: payload.requestId, eventId: payload.eventId },

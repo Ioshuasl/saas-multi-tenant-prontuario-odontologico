@@ -4,16 +4,19 @@ import { OnboardingSeedRepository } from './repositories/onboarding/onboarding_s
 import { GetService as WorkingWindowsGetService } from './services/business_hours/working_windows_get.service.js';
 import { ResolveTenantBySlugRepository } from './repositories/tenant/tenant_resolve_slug.repository.js';
 import { GetPublicCatalogRepository } from './repositories/tenant/tenant_public_catalog.repository.js';
+import { GetByMembershipRepository } from './repositories/professional/professional.repository.js';
 import type {
   ClinicOnboardingSeedInput,
   ClinicOnboardingSeedResult,
 } from './types/ports/clinic_onboarding.port.js';
 import type { WorkingWindow } from './helpers/working_windows.helper.js';
+import type { ProfessionalSummary } from './types/clinic.types.js';
 
 const onboardingSeedRepository = new OnboardingSeedRepository();
 const workingWindowsGet = new WorkingWindowsGetService();
 const resolveSlug = new ResolveTenantBySlugRepository();
 const publicCatalog = new GetPublicCatalogRepository();
+const getByMembership = new GetByMembershipRepository();
 
 export async function seedClinicOnSignup(
   tx: DbTransaction,
@@ -45,7 +48,15 @@ export async function getPublicClinicCatalog(ctx: RequestContext) {
   return publicCatalog.execute(ctx);
 }
 
+export async function getProfessionalByMembershipId(
+  ctx: RequestContext,
+  membershipId: string,
+): Promise<ProfessionalSummary | null> {
+  return getByMembership.execute(ctx, membershipId);
+}
+
 export type { ClinicOnboardingPort, ClinicOnboardingSeedInput, ClinicOnboardingSeedResult } from './types/ports/clinic_onboarding.port.js';
 export type { WorkingWindow } from './helpers/working_windows.helper.js';
 export type { BookingSettings } from './helpers/booking_settings.helper.js';
+export type { ProfessionalSummary } from './types/clinic.types.js';
 export { parseBookingSettings, DEFAULT_BOOKING_SETTINGS } from './helpers/booking_settings.helper.js';

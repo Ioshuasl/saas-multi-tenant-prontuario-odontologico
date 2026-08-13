@@ -60,6 +60,7 @@ Regras:
 - Toda mudança grava `ToothStateHistory` com origem (`MANUAL` ou `PROCEDURE_EXECUTION`), autor e timestamp → é possível reconstruir o odontograma em qualquer data passada.
 - Execução de procedimento no atendimento atualiza o odontograma automaticamente conforme o mapeamento do procedimento (ex.: `RES-01` → `RESTORED` na face indicada; `EXO-01` → `EXTRACTED`).
 - Coerência mínima validada: dente `ABSENT`/`EXTRACTED` não recebe restauração (aviso bloqueante com opção de justificar — realidade clínica tem exceções, mas o erro de digitação é mais comum que a exceção).
+- UI: permanente = referência FDI + overlay de faces; decídua = glifos SVG — [docs/frontend/odontograma.md](../frontend/odontograma.md).
 
 ## 5. Evolução clínica (`ClinicalNote`)
 

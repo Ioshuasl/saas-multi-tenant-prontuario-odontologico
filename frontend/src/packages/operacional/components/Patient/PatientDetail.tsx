@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { PatientConsentsPanel } from '@/packages/operacional/components/Patient/PatientConsentsPanel';
 import { PatientGuardiansPanel } from '@/packages/operacional/components/Patient/PatientGuardiansPanel';
+import { PatientRecordPanel } from '@/packages/operacional/components/Patient/PatientRecordPanel';
 import { PatientTimeline } from '@/packages/operacional/components/Patient/PatientTimeline';
 import { operacionalErrorMessage } from '@/packages/operacional/helpers/OperacionalErrorMessage';
 import { usePatientDeleteHook } from '@/packages/operacional/hooks/Patient/usePatientDeleteHook';
@@ -10,6 +11,7 @@ import { usePatientUpdateFormHook } from '@/packages/operacional/hooks/Patient/u
 import { usePatientGetHook } from '@/packages/operacional/hooks/Patient/usePatientGetHook';
 import { usePatientUpdateHook } from '@/packages/operacional/hooks/Patient/usePatientUpdateHook';
 import type { PatientUpdateFormValues } from '@/packages/operacional/schemas/Patient/PatientSchema';
+import { Can } from '@/shared/auth/Can';
 import { ApiClientError } from '@/shared/api/api-client';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
@@ -124,6 +126,9 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
           <TabsTrigger value="responsaveis">Responsáveis</TabsTrigger>
           <TabsTrigger value="consentimentos">Consentimentos</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <Can permission="clinical_records.read">
+            <TabsTrigger value="prontuario">Prontuário</TabsTrigger>
+          </Can>
         </TabsList>
 
         <TabsContent value="dados" className="mt-4">
@@ -209,6 +214,12 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
         <TabsContent value="timeline" className="mt-4">
           <PatientTimeline patientId={patientId} />
         </TabsContent>
+
+        <Can permission="clinical_records.read">
+          <TabsContent value="prontuario" className="mt-4">
+            <PatientRecordPanel patientId={patientId} />
+          </TabsContent>
+        </Can>
       </Tabs>
     </div>
   );

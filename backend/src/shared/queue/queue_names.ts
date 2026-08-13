@@ -20,6 +20,8 @@ export const JOB = {
   cleanupExpiredTokens: 'cleanup-expired-tokens',
   recalculateUsageCounters: 'recalculate-usage-counters',
   smokePing: 'smoke-ping',
+  ensureMedicalRecord: 'ensure-medical-record',
+  generateAttachmentThumbnail: 'generate-attachment-thumbnail',
 } as const;
 
 export type JobName = (typeof JOB)[keyof typeof JOB];
@@ -42,6 +44,8 @@ export const JOB_RETRY: Record<JobName, JobRetry> = {
   [JOB.cleanupExpiredTokens]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
   [JOB.recalculateUsageCounters]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
   [JOB.smokePing]: { attempts: 3, backoff: { type: 'exponential', delay: 1_000 } },
+  [JOB.ensureMedicalRecord]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
+  [JOB.generateAttachmentThumbnail]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
 };
 
 export function dlqName(queue: QueueName): string {

@@ -3,6 +3,7 @@ import {
   ArmchairIcon,
   Building2Icon,
   CalendarDaysIcon,
+  ClipboardListIcon,
   ClockIcon,
   ContactIcon,
   HomeIcon,
@@ -55,6 +56,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     href: '/app/configuracoes/procedimentos',
     label: 'Procedimentos',
     icon: SyringeIcon,
+    group: 'settings',
+  },
+  {
+    href: '/app/configuracoes/anamnese',
+    label: 'Anamnese',
+    icon: ClipboardListIcon,
     group: 'settings',
   },
   {

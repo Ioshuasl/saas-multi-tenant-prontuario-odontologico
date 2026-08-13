@@ -149,11 +149,13 @@ export async function sendWhatsappMessageJob(payload: JobPayload): Promise<void>
 
   const tenant = await tenantCtxRepo.execute(ctx);
   const startsAt = appointment ? new Date(appointment.startsAt) : new Date();
+  const publicUrl = str(payload.publicUrl) ?? str(payload.link) ?? '';
   const variables = {
     nome: patient.name.split(' ')[0] ?? patient.name,
     clinica: tenant.name,
     data: formatYmdInTz(startsAt, tenant.timezone),
     hora: formatHmInTz(startsAt, tenant.timezone),
+    link: publicUrl,
   };
   const body = renderTemplateBody(template.body, variables);
 

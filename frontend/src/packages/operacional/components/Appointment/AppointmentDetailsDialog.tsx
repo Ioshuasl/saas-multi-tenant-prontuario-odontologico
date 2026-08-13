@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   APPOINTMENT_STATUSES,
   APPOINTMENT_STATUS_META,
@@ -15,6 +16,7 @@ import {
   useAppointmentStatusHook,
 } from '@/packages/operacional/hooks/Appointment/useAppointmentStatusHook';
 import type { AppointmentSummary } from '@/packages/operacional/types/Appointment/AppointmentTypes';
+import { Can } from '@/shared/auth/Can';
 import { MotionDialogBody } from '@/shared/motion/MotionDialogBody';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
@@ -38,6 +40,7 @@ export function AppointmentDetailsDialog({
   appointment,
   onClose,
 }: AppointmentDetailsDialogProps) {
+  const router = useRouter();
   const statusMutation = useAppointmentStatusHook();
   const deleteMutation = useAppointmentDeleteHook();
   const seriesDelete = useAppointmentSeriesDeleteHook();
@@ -105,6 +108,37 @@ export function AppointmentDetailsDialog({
               ].label}
             </p>
             {appointment.procedure ? <p>{appointment.procedure.name}</p> : null}
+
+            <Can permission="clinical_records.read">
+              {appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED' ? (
+                <Button
+                  type="button"
+                  disabled={statusMutation.isPending}
+                  onClick={() => {
+                    void (async () => {
+                      await statusMutation.mutateAsync({
+                        appointmentId: appointment.id,
+                        statusSchema: { status: 'IN_SERVICE' },
+                      });
+                      router.push(`/app/atendimento/${appointment.id}`);
+                    })();
+                  }}
+                >
+                  {statusMutation.isPending ? 'Iniciando…' : 'Iniciar atendimento'}
+                </Button>
+              ) : null}
+              {appointment.status === 'IN_SERVICE' ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    router.push(`/app/atendimento/${appointment.id}`);
+                  }}
+                >
+                  Abrir atendimento
+                </Button>
+              ) : null}
+            </Can>
 
             <Field>
               <FieldLabel htmlFor="appt-status">Status</FieldLabel>

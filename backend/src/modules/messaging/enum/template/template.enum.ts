@@ -4,6 +4,7 @@ export const TEMPLATE_KEYS = [
   'appointment_reminder',
   'appointment_cancelled',
   'waitlist_offer',
+  'anamnesis_request',
 ] as const;
 
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];

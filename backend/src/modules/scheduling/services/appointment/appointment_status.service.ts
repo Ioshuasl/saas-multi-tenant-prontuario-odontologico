@@ -74,7 +74,13 @@ export class StatusService {
     );
     if (!updated) throw new AppointmentNotFoundError();
 
-    if (to === 'CANCELLED' || to === 'NO_SHOW' || to === 'CONFIRMED' || (to === 'SCHEDULED' && from === 'REQUESTED')) {
+    if (
+      to === 'CANCELLED' ||
+      to === 'NO_SHOW' ||
+      to === 'CONFIRMED' ||
+      to === 'IN_SERVICE' ||
+      (to === 'SCHEDULED' && from === 'REQUESTED')
+    ) {
       await getTenantPrisma().runInTenantContext(ctx, async (tx) => {
         const name =
           to === 'NO_SHOW'
@@ -83,7 +89,9 @@ export class StatusService {
               ? 'scheduling.appointment_cancelled'
               : to === 'CONFIRMED'
                 ? 'scheduling.appointment_confirmed'
-                : 'scheduling.appointment_scheduled';
+                : to === 'IN_SERVICE'
+                  ? 'scheduling.appointment_started'
+                  : 'scheduling.appointment_scheduled';
         await appendOutboxEvent(tx, {
           tenantId: ctx.tenantId,
           event: {

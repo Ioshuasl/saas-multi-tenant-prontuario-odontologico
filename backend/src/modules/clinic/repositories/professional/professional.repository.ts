@@ -89,6 +89,19 @@ export class FindByMembershipRepository {
   }
 }
 
+export class GetByMembershipRepository {
+  async execute(ctx: RequestContext, membershipId: string): Promise<ProfessionalSummary | null> {
+    const tenantPrisma = getTenantPrisma();
+    return tenantPrisma.runInTenantContext(ctx, async (tx) => {
+      const row = await tx.professional.findFirst({
+        where: { tenantId: ctx.tenantId, membershipId },
+        select: professionalSelect,
+      });
+      return row ? mapProfessional(row) : null;
+    });
+  }
+}
+
 export class GetMembershipRepository {
   async execute(
     ctx: RequestContext,

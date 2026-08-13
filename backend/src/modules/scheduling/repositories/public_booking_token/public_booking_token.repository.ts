@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import type { RequestContext } from '../../../../shared/domain/request_context.js';
+import type { DbTransaction } from '../../../../shared/database/db_transaction.js';
 import { getPrismaClient, getTenantPrisma } from '../../../../shared/database/tenant_prisma.js';
 import { idGenerator } from '../../../../shared/helpers/id_generator.js';
 import type {
@@ -13,6 +14,32 @@ function mapMeta(value: unknown): PublicBookingTokenMeta {
 }
 
 export class CreateTokenRepository {
+  async executeInTx(
+    tx: DbTransaction,
+    ctx: RequestContext,
+    input: {
+      purpose: string;
+      tokenHash: string;
+      expiresAt: Date;
+      targetId?: string | null;
+      meta?: PublicBookingTokenMeta;
+    },
+  ): Promise<string> {
+    const id = idGenerator.next();
+    await tx.publicBookingToken.create({
+      data: {
+        id,
+        tenantId: ctx.tenantId,
+        purpose: input.purpose,
+        tokenHash: input.tokenHash,
+        expiresAt: input.expiresAt,
+        targetId: input.targetId ?? null,
+        meta: (input.meta ?? {}) as Prisma.InputJsonValue,
+      },
+    });
+    return id;
+  }
+
   async execute(
     ctx: RequestContext,
     input: {
@@ -24,21 +51,7 @@ export class CreateTokenRepository {
     },
   ): Promise<string> {
     const tenantPrisma = getTenantPrisma();
-    const id = idGenerator.next();
-    await tenantPrisma.runInTenantContext(ctx, async (tx) => {
-      await tx.publicBookingToken.create({
-        data: {
-          id,
-          tenantId: ctx.tenantId,
-          purpose: input.purpose,
-          tokenHash: input.tokenHash,
-          expiresAt: input.expiresAt,
-          targetId: input.targetId ?? null,
-          meta: (input.meta ?? {}) as Prisma.InputJsonValue,
-        },
-      });
-    });
-    return id;
+    return tenantPrisma.runInTenantContext(ctx, (tx) => this.executeInTx(tx, ctx, input));
   }
 }
 
@@ -64,22 +77,28 @@ export class GetTokenByHashRepository {
 }
 
 export class UpdateTokenRepository {
+  async executeInTx(
+    tx: DbTransaction,
+    tokenId: string,
+    patch: { usedAt?: Date | null; meta?: PublicBookingTokenMeta; targetId?: string | null },
+  ): Promise<void> {
+    await tx.publicBookingToken.update({
+      where: { id: tokenId },
+      data: {
+        ...(patch.usedAt !== undefined ? { usedAt: patch.usedAt } : {}),
+        ...(patch.targetId !== undefined ? { targetId: patch.targetId } : {}),
+        ...(patch.meta !== undefined ? { meta: patch.meta as Prisma.InputJsonValue } : {}),
+      },
+    });
+  }
+
   async execute(
     ctx: RequestContext,
     tokenId: string,
     patch: { usedAt?: Date | null; meta?: PublicBookingTokenMeta; targetId?: string | null },
   ): Promise<void> {
     const tenantPrisma = getTenantPrisma();
-    await tenantPrisma.runInTenantContext(ctx, async (tx) => {
-      await tx.publicBookingToken.update({
-        where: { id: tokenId },
-        data: {
-          ...(patch.usedAt !== undefined ? { usedAt: patch.usedAt } : {}),
-          ...(patch.targetId !== undefined ? { targetId: patch.targetId } : {}),
-          ...(patch.meta !== undefined ? { meta: patch.meta as Prisma.InputJsonValue } : {}),
-        },
-      });
-    });
+    await tenantPrisma.runInTenantContext(ctx, (tx) => this.executeInTx(tx, tokenId, patch));
   }
 }
 

@@ -40,6 +40,8 @@ backend/src/
 │   ├── database/                # prisma, tenant-prisma (RLS), unit-of-work, outbox
 │   ├── middlewares/
 │   ├── integrations/
+│   ├── crypto/                  # KeyManagementPort + envelope AES-GCM
+│   ├── storage/                 # ObjectStorage port (MinIO/S3 + fake)
 │   ├── queue/
 │   ├── domain/                  # kernel: EntityId, TenantId, DomainEvent, erros base
 │   └── helpers/

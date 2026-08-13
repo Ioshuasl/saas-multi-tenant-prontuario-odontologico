@@ -3,4 +3,5 @@ export const publicQueryKeys = {
   availability: (slug: string, procedureId: string, professionalId: string, from: string, to: string) =>
     ['public-availability', slug, procedureId, professionalId, from, to] as const,
   confirm: (token: string) => ['public-booking-confirm', token] as const,
+  anamnesis: (token: string) => ['public-anamnesis', token] as const,
 };

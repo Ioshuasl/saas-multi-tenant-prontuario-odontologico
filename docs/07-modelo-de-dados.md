@@ -323,7 +323,7 @@ CREATE INDEX idx_waitlist_active ON waitlist_entry (tenant_id, status, priority 
 CREATE TABLE public_booking_token (     -- também usado para anamnese/orçamento por link
   id           uuid PRIMARY KEY,
   tenant_id    uuid NOT NULL,
-  purpose      text NOT NULL,           -- BOOKING|CONFIRMATION|WAITLIST_OFFER (ANAMNESIS|QUOTE depois)
+  purpose      text NOT NULL,           -- BOOKING|CONFIRMATION|WAITLIST_OFFER|ANAMNESIS
   target_id    uuid,
   token_hash   text NOT NULL,
   expires_at   timestamptz NOT NULL,
@@ -433,15 +433,18 @@ CREATE TABLE attachment (
   medical_record_id uuid REFERENCES medical_record(id),
   patient_id        uuid NOT NULL,
   clinical_note_id  uuid REFERENCES clinical_note(id),
-  category          text NOT NULL,       -- XRAY|PHOTO|EXAM|DOCUMENT|OTHER
+  category          text NOT NULL,       -- XRAY|PHOTO_INTRAORAL|PHOTO_FACIAL|DOCUMENT|EXAM|CONSENT_FORM|OTHER
   file_name         text NOT NULL,
   storage_key       text NOT NULL,
   mime_type         text NOT NULL,
   size_bytes        bigint NOT NULL,
   checksum_sha256   text NOT NULL,
+  thumbnail_key     text,                -- miniatura (job); original intocado
   uploaded_by       uuid NOT NULL,
   created_at        timestamptz NOT NULL DEFAULT now(),
-  deleted_at        timestamptz
+  deleted_at        timestamptz,
+  deleted_reason    text,                -- obrigatório na exclusão lógica (≥10)
+  deleted_by        uuid                 -- autor da exclusão lógica (RF-E5-15)
 );
 CREATE INDEX idx_attachment_patient ON attachment (tenant_id, patient_id, created_at DESC);
 ```

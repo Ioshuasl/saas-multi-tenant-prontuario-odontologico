@@ -45,6 +45,9 @@ export type PublicBookingTokenMeta = {
   consentDataProcessing?: boolean;
   consentTerms?: boolean;
   consentWhatsappMarketing?: boolean;
+  formId?: string;
+  formVersion?: number;
+  patientId?: string;
 };
 
 export type PublicBookingTokenRow = {

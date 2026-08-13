@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import type { RequestContext } from '../../../../shared/domain/request_context.js';
+import type { DbTransaction } from '../../../../shared/database/db_transaction.js';
 import { getTenantPrisma } from '../../../../shared/database/tenant_prisma.js';
 import { idGenerator } from '../../../../shared/helpers/id_generator.js';
 import { listFutureAppointmentIds } from '../../../scheduling/scheduling_public.js';
@@ -42,7 +43,7 @@ const patientSelect = {
   updatedAt: true,
 } satisfies Prisma.PatientSelect;
 
-type CreatePatientInput = {
+export type CreatePatientInput = {
   unitId: string;
   name: string;
   socialName?: string | null;
@@ -175,56 +176,65 @@ export class CheckDuplicateRepository {
 export class CreatePatientRepository {
   constructor(private readonly nextCode = new NextCodeRepository()) {}
 
+  async executeInTx(
+    tx: DbTransaction,
+    ctx: RequestContext,
+    input: CreatePatientInput,
+    warnings: PatientWarning[],
+  ): Promise<PatientDetail> {
+    const code = await this.nextCode.execute(ctx, tx);
+    const patientId = idGenerator.next();
+    const row = await tx.patient.create({
+      data: {
+        id: patientId,
+        tenantId: ctx.tenantId,
+        unitId: input.unitId,
+        code,
+        name: input.name,
+        socialName: input.socialName ?? null,
+        cpf: input.cpf ?? null,
+        birthDate: input.birthDate ? toDateOnly(input.birthDate) : null,
+        sex: input.sex ?? null,
+        phonePrimary: input.phonePrimary,
+        phoneSecondary: input.phoneSecondary ?? null,
+        email: input.email ?? null,
+        address: input.address === null ? Prisma.JsonNull : input.address,
+        howFoundUs: input.howFoundUs ?? null,
+        notes: input.notes ?? null,
+        origin: input.origin ?? 'INTERNAL',
+      },
+      select: patientSelect,
+    });
+
+    const guardians = [];
+    for (const g of input.guardians ?? []) {
+      const created = await tx.legalGuardian.create({
+        data: {
+          id: idGenerator.next(),
+          tenantId: ctx.tenantId,
+          patientId,
+          name: g.name,
+          cpf: g.cpf ?? null,
+          relationship: g.relationship ?? null,
+          phone: g.phone ?? null,
+          email: g.email ?? null,
+        },
+      });
+      guardians.push(created);
+    }
+
+    return mapPatientDetail(row, guardians, [], warnings);
+  }
+
   async execute(
     ctx: RequestContext,
     input: CreatePatientInput,
     warnings: PatientWarning[],
   ): Promise<PatientDetail> {
     const tenantPrisma = getTenantPrisma();
-    return tenantPrisma.runInTenantContext(ctx, async (tx) => {
-      const code = await this.nextCode.execute(ctx, tx);
-      const patientId = idGenerator.next();
-      const row = await tx.patient.create({
-        data: {
-          id: patientId,
-          tenantId: ctx.tenantId,
-          unitId: input.unitId,
-          code,
-          name: input.name,
-          socialName: input.socialName ?? null,
-          cpf: input.cpf ?? null,
-          birthDate: input.birthDate ? toDateOnly(input.birthDate) : null,
-          sex: input.sex ?? null,
-          phonePrimary: input.phonePrimary,
-          phoneSecondary: input.phoneSecondary ?? null,
-          email: input.email ?? null,
-          address: input.address === null ? Prisma.JsonNull : input.address,
-          howFoundUs: input.howFoundUs ?? null,
-          notes: input.notes ?? null,
-          origin: input.origin ?? 'INTERNAL',
-        },
-        select: patientSelect,
-      });
-
-      const guardians = [];
-      for (const g of input.guardians ?? []) {
-        const created = await tx.legalGuardian.create({
-          data: {
-            id: idGenerator.next(),
-            tenantId: ctx.tenantId,
-            patientId,
-            name: g.name,
-            cpf: g.cpf ?? null,
-            relationship: g.relationship ?? null,
-            phone: g.phone ?? null,
-            email: g.email ?? null,
-          },
-        });
-        guardians.push(created);
-      }
-
-      return mapPatientDetail(row, guardians, [], warnings);
-    });
+    return tenantPrisma.runInTenantContext(ctx, (tx) =>
+      this.executeInTx(tx, ctx, input, warnings),
+    );
   }
 }
 

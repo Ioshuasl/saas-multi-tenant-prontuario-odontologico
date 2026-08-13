@@ -1,9 +1,6 @@
 import { once } from 'node:events';
 import type { Server } from 'node:http';
 import { createApp } from '../src/app.js';
-import { authenticateMiddleware } from '../src/shared/middlewares/authenticate.middleware.js';
-import { authorize } from '../src/shared/middlewares/authorize.middleware.js';
-import { tenantContextMiddleware } from '../src/shared/middlewares/tenant_context.middleware.js';
 import { getPrismaClient, getTenantPrisma } from '../src/shared/database/tenant_prisma.js';
 import { hashToken } from '../src/shared/helpers/token_hash.js';
 import { idGenerator } from '../src/shared/helpers/id_generator.js';
@@ -14,21 +11,7 @@ import { AuditAction } from '../src/shared/database/write_audit.js';
 type Json = { status: number; body: Record<string, unknown> | null };
 
 async function main() {
-  const app = createApp({
-    registerApi: (api) => {
-      api.get(
-        '/patients/:patientId/record',
-        (req, res, next) => {
-          void authenticateMiddleware(req, res, next);
-        },
-        tenantContextMiddleware,
-        authorize('clinical_records.read'),
-        (_req, res) => {
-          res.status(200).json({ data: { ok: true } });
-        },
-      );
-    },
-  });
+  const app = createApp();
 
   const server = app.listen(0) as Server;
   await once(server, 'listening');

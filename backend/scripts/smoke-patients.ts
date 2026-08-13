@@ -76,6 +76,15 @@ async function main() {
   const patientId = (dataOf(create).patient as { id: string }).id;
   if ((dataOf(create).patient as { code: number }).code !== 1) failed = true;
 
+  const record = await request(`/api/v1/patients/${patientId}/record`, {
+    headers: authHeaders(token, tenantId),
+  });
+  console.log('patient-record', record.status, dataOf(record).medicalRecordId ? 'ok' : dataOf(record));
+  if (record.status !== 200) failed = true;
+  if (dataOf(record).patientId !== patientId) failed = true;
+  if (!dataOf(record).medicalRecordId) failed = true;
+  if (dataOf(record).anamnesisStale !== true) failed = true;
+
   const dupCpf = await request('/api/v1/patients', {
     method: 'POST',
     headers: { ...authHeaders(token, tenantId), 'content-type': 'application/json' },
