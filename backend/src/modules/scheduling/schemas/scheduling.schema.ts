@@ -54,6 +54,7 @@ export const appointmentIdParamSchema = z.object({ id: z.string().uuid() });
 export const appointmentListQuerySchema = z.object({
   unitId: z.string().uuid().optional(),
   professionalId: z.string().uuid().optional(),
+  chairId: z.string().uuid().optional(),
   patientId: z.string().uuid().optional(),
   status: z.enum(APPOINTMENT_STATUSES).optional(),
   from: z.string().min(1).optional(),

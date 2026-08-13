@@ -13,6 +13,7 @@ export class ListService {
     return this.list.execute(ctx, {
       unitId: query.unitId,
       professionalId: query.professionalId,
+      chairId: query.chairId,
       patientId: query.patientId,
       status: query.status,
       from: query.from ? new Date(query.from) : undefined,

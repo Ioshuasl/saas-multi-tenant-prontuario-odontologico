@@ -6,7 +6,9 @@ import {
   type SlotMinutes,
 } from '@/packages/operacional/helpers/AgendaNotionTokens';
 import type {
+  AgendaResourceMode,
   AgendaViewMode,
+  ChairOption,
   ProfessionalOption,
 } from '@/packages/operacional/types/Appointment/AppointmentTypes';
 import { Button } from '@/shared/ui/button';
@@ -21,9 +23,14 @@ type AgendaToolbarProps = {
   onToday: () => void;
   slotMinutes: SlotMinutes;
   onSlotMinutes: (value: SlotMinutes) => void;
+  resourceMode: AgendaResourceMode;
+  onResourceMode: (mode: AgendaResourceMode) => void;
   professionals: ProfessionalOption[];
   professionalId: string;
   onProfessionalId: (id: string) => void;
+  chairs: ChairOption[];
+  chairId: string;
+  onChairId: (id: string) => void;
   onBlock: () => void;
 };
 
@@ -36,9 +43,14 @@ export function AgendaToolbar({
   onToday,
   slotMinutes,
   onSlotMinutes,
+  resourceMode,
+  onResourceMode,
   professionals,
   professionalId,
   onProfessionalId,
+  chairs,
+  chairId,
+  onChairId,
   onBlock,
 }: AgendaToolbarProps) {
   return (
@@ -77,19 +89,54 @@ export function AgendaToolbar({
         <span className="min-w-36 px-2 text-sm capitalize text-[#37352F]">{anchorLabel}</span>
       </div>
 
-      <NativeSelect
-        aria-label="Profissional"
-        value={professionalId}
-        onChange={(e) => onProfessionalId(e.target.value)}
-        className="h-8 w-44"
-      >
-        <NativeSelectOption value="">Profissional…</NativeSelectOption>
-        {professionals.map((p) => (
-          <NativeSelectOption key={p.id} value={p.id}>
-            {p.name}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
+      <div className="flex items-center gap-1 rounded-md border border-[#E9E9E7] bg-white p-0.5">
+        <Button
+          type="button"
+          size="sm"
+          variant={resourceMode === 'professional' ? 'secondary' : 'ghost'}
+          onClick={() => onResourceMode('professional')}
+        >
+          Profissional
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={resourceMode === 'chair' ? 'secondary' : 'ghost'}
+          onClick={() => onResourceMode('chair')}
+        >
+          Cadeira
+        </Button>
+      </div>
+
+      {resourceMode === 'professional' ? (
+        <NativeSelect
+          aria-label="Profissional"
+          value={professionalId}
+          onChange={(e) => onProfessionalId(e.target.value)}
+          className="h-8 w-44"
+        >
+          <NativeSelectOption value="">Profissional…</NativeSelectOption>
+          {professionals.map((p) => (
+            <NativeSelectOption key={p.id} value={p.id}>
+              {p.name}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      ) : (
+        <NativeSelect
+          aria-label="Cadeira"
+          value={chairId}
+          onChange={(e) => onChairId(e.target.value)}
+          className="h-8 w-44"
+        >
+          <NativeSelectOption value="">Cadeira…</NativeSelectOption>
+          {chairs.map((c) => (
+            <NativeSelectOption key={c.id} value={c.id}>
+              {c.name}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      )}
 
       <NativeSelect
         aria-label="Duração do slot"

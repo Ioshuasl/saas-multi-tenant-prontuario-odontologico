@@ -10,6 +10,7 @@ export async function AppointmentListData(
   const params = new URLSearchParams();
   if (query.unitId) params.set('unitId', query.unitId);
   if (query.professionalId) params.set('professionalId', query.professionalId);
+  if (query.chairId) params.set('chairId', query.chairId);
   if (query.patientId) params.set('patientId', query.patientId);
   if (query.status) params.set('status', query.status);
   if (query.from) params.set('from', query.from);

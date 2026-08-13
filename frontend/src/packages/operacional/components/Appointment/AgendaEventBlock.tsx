@@ -18,6 +18,7 @@ import { cn } from '@/shared/helpers/utils';
 type AgendaEventBlockProps = {
   appointment: AppointmentSummary;
   slotMinutes: number;
+  showProfessional?: boolean;
   onOpen: (appointment: AppointmentSummary) => void;
   onMoveOrResize: (input: {
     appointmentId: string;
@@ -29,6 +30,7 @@ type AgendaEventBlockProps = {
 export function AgendaEventBlock({
   appointment,
   slotMinutes,
+  showProfessional = false,
   onOpen,
   onMoveOrResize,
 }: AgendaEventBlockProps) {
@@ -130,6 +132,9 @@ export function AgendaEventBlock({
       </p>
       <p className="truncate text-[10px] opacity-80">
         {formatHour(start)}–{formatHour(end)} · {meta.label}
+        {showProfessional && appointment.professional?.name
+          ? ` · ${appointment.professional.name}`
+          : ''}
       </p>
       <button
         type="button"

@@ -22,6 +22,7 @@ export type AppointmentSummary = {
 export type AppointmentListQuery = {
   unitId?: string;
   professionalId?: string;
+  chairId?: string;
   patientId?: string;
   status?: string;
   from?: string;
@@ -89,6 +90,7 @@ export type AppointmentSeriesCreateInput = {
   unitId?: string;
   patientId: string;
   professionalId: string;
+  chairId?: string | null;
   procedureId?: string | null;
   rrule: string;
   startsAt: string;
@@ -103,4 +105,13 @@ export type ProfessionalOption = {
   active: boolean;
 };
 
+export type ChairOption = {
+  id: string;
+  name: string;
+  color: string | null;
+  active: boolean;
+};
+
 export type AgendaViewMode = 'day' | 'week';
+
+export type AgendaResourceMode = 'professional' | 'chair';

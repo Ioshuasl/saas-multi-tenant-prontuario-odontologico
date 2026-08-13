@@ -20,6 +20,7 @@ type AgendaGridProps = {
   days: Date[];
   appointments: AppointmentSummary[];
   slotMinutes: SlotMinutes;
+  showProfessional?: boolean;
   onSlotClick: (startsAt: Date, endsAt: Date) => void;
   onOpenAppointment: (appointment: AppointmentSummary) => void;
   onMoveOrResize: (input: {
@@ -33,6 +34,7 @@ export function AgendaGrid({
   days,
   appointments,
   slotMinutes,
+  showProfessional = false,
   onSlotClick,
   onOpenAppointment,
   onMoveOrResize,
@@ -124,6 +126,7 @@ export function AgendaGrid({
                   key={appointment.id}
                   appointment={appointment}
                   slotMinutes={slotMinutes}
+                  showProfessional={showProfessional}
                   onOpen={onOpenAppointment}
                   onMoveOrResize={onMoveOrResize}
                 />

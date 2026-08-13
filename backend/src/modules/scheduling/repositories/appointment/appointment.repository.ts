@@ -25,6 +25,7 @@ export class ListAppointmentsRepository {
     input: {
       unitId?: string;
       professionalId?: string;
+      chairId?: string;
       patientId?: string;
       status?: string;
       from?: Date;
@@ -38,6 +39,7 @@ export class ListAppointmentsRepository {
           tenantId: ctx.tenantId,
           ...(input.unitId ? { unitId: input.unitId } : {}),
           ...(input.professionalId ? { professionalId: input.professionalId } : {}),
+          ...(input.chairId ? { chairId: input.chairId } : {}),
           ...(input.patientId ? { patientId: input.patientId } : {}),
           ...(input.status ? { status: input.status } : {}),
           ...(input.from || input.to

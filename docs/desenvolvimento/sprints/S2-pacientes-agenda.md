@@ -126,11 +126,12 @@ Não misturar: um bloco é **só backend** ou **só frontend**, salvo Bloco 0 (c
 ### Bloco 5 — Frontend: agenda (`operacional`)
 
 - [x] Rota `(app)/agenda` — visão dia/semana por profissional e/ou cadeira (RF-E4-01)
+- [x] Toggle Profissional | Cadeira + filtro `chairId` na listagem
 - [x] Grade com slots configuráveis (10/15/20/30/60)
 - [x] Status coloridos (7 estados) (RF-E4-02)
 - [x] Criar a partir de slot livre em ≤ 3 interações (RF-E4-03)
 - [x] Drag / resize otimista + rollback em `409` (RF-E4-05)
-- [x] UI de bloqueios + conflitos
+- [x] UI de bloqueios + conflitos (profissional ou cadeira)
 - [x] UI mínima de recorrência (criar série / excluir com escopo)
 
 ## Endpoints-alvo (docs/08)
@@ -143,7 +144,7 @@ GET|POST          /api/v1/patients/:id/consents
 POST              /api/v1/patients/:id/guardians
 GET               /api/v1/patients/check-duplicate
 
-GET|POST          /api/v1/appointments
+GET|POST          /api/v1/appointments   (?professionalId=&chairId=&from=&to=)
 GET|PATCH|DELETE  /api/v1/appointments/:id
 POST              /api/v1/appointments/:id/status
 GET               /api/v1/appointments/:id/history
@@ -163,7 +164,7 @@ POST|DELETE       /api/v1/appointment-series[/:id]?scope=THIS|FUTURE|ALL
 **Frontend**
 
 - [x] Pacientes ponta a ponta em local
-- [x] Agenda dia/semana usável (M1): criar, mover, status, bloqueio
+- [x] Agenda dia/semana usável (M1 código): criar, mover, status, bloqueio, visão por cadeira
 - [x] Carry-over S1: exceções + horário por profissional
 
 ## Qualidade
@@ -176,11 +177,14 @@ POST|DELETE       /api/v1/appointment-series[/:id]?scope=THIS|FUTURE|ALL
 
 ## Bloqueios
 
-_Nenhum no planejamento. Dependência: S1 fechada (`getWorkingWindows`)._
+_Nenhum. S2 Must E3+E4a + Qualidade fechados (2026-08-13)._
 
 ## Notas
 
 - Cruzar módulos só via `*_public.ts` / eventos (docs/05, docs/16).
 - Índice agenda: `(tenant_id, unit_id, starts_at)`; risco R3 (fuso) e R9 (volume) — índices desde a S2.
-- Recrutar clínica-piloto durante a S2 (roadmap §5).
 - Carry-over para S3: máquina `CONFIRMED` / `REQUESTED` pronta para WhatsApp e link público; availability reutilizada no autoagendamento.
+- **Fora do fechamento de código (não bloqueia S2 Must):**
+  - Marco **M1** com recepcionista real (docs/13) — validação de uso, não feature.
+  - Recrutamento de clínica-piloto (roadmap §5).
+  - Playwright E2E — base em `e2e/` + `pnpm test:e2e` (identity/clinic/patients/agenda).

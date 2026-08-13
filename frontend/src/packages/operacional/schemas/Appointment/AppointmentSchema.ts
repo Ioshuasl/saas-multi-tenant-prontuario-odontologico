@@ -3,7 +3,8 @@ import { APPOINTMENT_STATUSES } from '@/packages/operacional/enum/Appointment/Ap
 
 export const AppointmentCreateSchema = z.object({
   patientId: z.string().uuid('Selecione o paciente'),
-  professionalId: z.string().uuid(),
+  professionalId: z.string().uuid('Selecione o profissional'),
+  chairId: z.union([z.string().uuid(), z.literal('')]).optional(),
   startsAt: z.string().min(1),
   endsAt: z.string().min(1).optional(),
   notes: z.string().max(4000).optional().nullable(),

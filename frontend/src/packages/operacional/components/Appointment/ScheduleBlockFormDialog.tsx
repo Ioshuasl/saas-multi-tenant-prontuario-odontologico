@@ -5,6 +5,7 @@ import { operacionalErrorMessage } from '@/packages/operacional/helpers/Operacio
 import { useScheduleBlockFormHook } from '@/packages/operacional/hooks/Appointment/useAppointmentFormHook';
 import { useScheduleBlockCreateHook } from '@/packages/operacional/hooks/Appointment/useScheduleBlockCreateHook';
 import type { ScheduleBlockFormValues } from '@/packages/operacional/schemas/Appointment/AppointmentSchema';
+import type { ScheduleBlockFormDialogProps } from '@/packages/operacional/types/Appointment/ScheduleBlockFormDialogTypes';
 import { MotionDialogBody } from '@/shared/motion/MotionDialogBody';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
@@ -18,17 +19,10 @@ import {
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/field';
 import { Input } from '@/shared/ui/input';
 
-type ScheduleBlockFormDialogProps = {
-  open: boolean;
-  professionalId: string;
-  startsAt: string;
-  endsAt: string;
-  onClose: () => void;
-};
-
 export function ScheduleBlockFormDialog({
   open,
   professionalId,
+  chairId,
   startsAt,
   endsAt,
   onClose,
@@ -39,14 +33,19 @@ export function ScheduleBlockFormDialog({
     Array<{ appointmentId: string; startsAt: string; endsAt: string }>
   >([]);
 
-  useEffect(() => {
+  const handleForm = () => {
     form.reset({ startsAt, endsAt, reason: '' });
     setConflicts([]);
+  };
+
+  useEffect(() => {
+    handleForm();
   }, [startsAt, endsAt, form]);
 
   const onSubmit = async (values: ScheduleBlockFormValues) => {
     const result = await create.mutateAsync({
-      professionalId,
+      professionalId: professionalId || null,
+      chairId: chairId || null,
       startsAt: new Date(values.startsAt).toISOString(),
       endsAt: new Date(values.endsAt).toISOString(),
       reason: values.reason,

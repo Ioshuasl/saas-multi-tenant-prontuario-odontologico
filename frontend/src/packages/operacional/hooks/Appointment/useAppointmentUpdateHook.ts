@@ -9,16 +9,16 @@ import type {
 } from '@/packages/operacional/types/Appointment/AppointmentTypes';
 
 export function useAppointmentUpdateHook(listKey: {
-  professionalId: string;
+  professionalId?: string;
+  chairId?: string;
   from: string;
   to: string;
 }) {
   const queryClient = useQueryClient();
-  const key = operacionalQueryKeys.appointments(
-    listKey.professionalId,
-    listKey.from,
-    listKey.to,
-  );
+  const resourceKey = listKey.professionalId
+    ? `p:${listKey.professionalId}`
+    : `c:${listKey.chairId ?? ''}`;
+  const key = operacionalQueryKeys.appointments(resourceKey, listKey.from, listKey.to);
 
   return useMutation({
     mutationFn: (input: { appointmentId: string; appointmentSchema: AppointmentUpdateInput }) =>

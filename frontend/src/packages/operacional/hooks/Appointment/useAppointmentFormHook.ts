@@ -17,6 +17,7 @@ export function useAppointmentCreateFormHook(defaults?: Partial<AppointmentCreat
     defaultValues: {
       patientId: '',
       professionalId: defaults?.professionalId ?? '',
+      chairId: defaults?.chairId ?? '',
       startsAt: defaults?.startsAt ?? '',
       endsAt: defaults?.endsAt ?? '',
       notes: '',

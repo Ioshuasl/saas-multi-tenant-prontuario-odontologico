@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AgendaGrid } from '@/packages/operacional/components/Appointment/AgendaGrid';
 import { AgendaToolbar } from '@/packages/operacional/components/Appointment/AgendaToolbar';
-import { AppointmentDetailsDialog } from '@/packages/operacional/components/Appointment/AppointmentDetailsDialog';
-import { AppointmentFormDialog } from '@/packages/operacional/components/Appointment/AppointmentFormDialog';
-import { ScheduleBlockFormDialog } from '@/packages/operacional/components/Appointment/ScheduleBlockFormDialog';
 import type { SlotMinutes } from '@/packages/operacional/helpers/AgendaNotionTokens';
 import {
   dayRange,
@@ -17,16 +15,39 @@ import {
   weekRange,
 } from '@/packages/operacional/helpers/AgendaTime';
 import { operacionalErrorMessage } from '@/packages/operacional/helpers/OperacionalErrorMessage';
+import { useAgendaChairListHook } from '@/packages/operacional/hooks/Appointment/useAgendaChairListHook';
 import { useAgendaProfessionalListHook } from '@/packages/operacional/hooks/Appointment/useAgendaProfessionalListHook';
 import { useAppointmentListHook } from '@/packages/operacional/hooks/Appointment/useAppointmentListHook';
 import { useAppointmentUpdateHook } from '@/packages/operacional/hooks/Appointment/useAppointmentUpdateHook';
 import type {
+  AgendaResourceMode,
   AgendaViewMode,
   AppointmentSummary,
 } from '@/packages/operacional/types/Appointment/AppointmentTypes';
 import { ApiClientError } from '@/shared/api/api-client';
-import { FadeIn } from '@/shared/motion/FadeIn';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
+
+const AppointmentDetailsDialog = dynamic(
+  () =>
+    import('@/packages/operacional/components/Appointment/AppointmentDetailsDialog').then(
+      (m) => m.AppointmentDetailsDialog,
+    ),
+  { ssr: false },
+);
+const AppointmentFormDialog = dynamic(
+  () =>
+    import('@/packages/operacional/components/Appointment/AppointmentFormDialog').then(
+      (m) => m.AppointmentFormDialog,
+    ),
+  { ssr: false },
+);
+const ScheduleBlockFormDialog = dynamic(
+  () =>
+    import('@/packages/operacional/components/Appointment/ScheduleBlockFormDialog').then(
+      (m) => m.ScheduleBlockFormDialog,
+    ),
+  { ssr: false },
+);
 
 function toLocalInput(date: Date): string {
   return format(date, "yyyy-MM-dd'T'HH:mm");
@@ -34,9 +55,11 @@ function toLocalInput(date: Date): string {
 
 export function AgendaIndex() {
   const [viewMode, setViewMode] = useState<AgendaViewMode>('week');
+  const [resourceMode, setResourceMode] = useState<AgendaResourceMode>('professional');
   const [anchor, setAnchor] = useState(() => new Date());
   const [slotMinutes, setSlotMinutes] = useState<SlotMinutes>(30);
   const [professionalId, setProfessionalId] = useState('');
+  const [chairId, setChairId] = useState('');
   const [createSlot, setCreateSlot] = useState<{ startsAt: string; endsAt: string } | null>(
     null,
   );
@@ -45,13 +68,21 @@ export function AgendaIndex() {
   const [moveError, setMoveError] = useState<string | null>(null);
 
   const professionalsQuery = useAgendaProfessionalListHook();
+  const chairsQuery = useAgendaChairListHook();
   const professionals = professionalsQuery.data ?? [];
+  const chairs = chairsQuery.data ?? [];
 
   useEffect(() => {
     if (!professionalId && professionals[0]) {
       setProfessionalId(professionals[0].id);
     }
   }, [professionals, professionalId]);
+
+  useEffect(() => {
+    if (!chairId && chairs[0]) {
+      setChairId(chairs[0].id);
+    }
+  }, [chairs, chairId]);
 
   const days = useMemo(
     () => (viewMode === 'week' ? weekDays(anchor) : [anchor]),
@@ -64,15 +95,21 @@ export function AgendaIndex() {
   );
   const { from: fromIso, to: toIso } = rangeIso(from, to);
 
+  const activeProfessionalId = resourceMode === 'professional' ? professionalId : undefined;
+  const activeChairId = resourceMode === 'chair' ? chairId : undefined;
+  const resourceReady = resourceMode === 'professional' ? Boolean(professionalId) : Boolean(chairId);
+
   const listQuery = useAppointmentListHook({
-    professionalId,
+    professionalId: activeProfessionalId,
+    chairId: activeChairId,
     from: fromIso,
     to: toIso,
-    enabled: Boolean(professionalId),
+    enabled: resourceReady,
   });
 
   const update = useAppointmentUpdateHook({
-    professionalId,
+    professionalId: activeProfessionalId,
+    chairId: activeChairId,
     from: fromIso,
     to: toIso,
   });
@@ -118,8 +155,15 @@ export function AgendaIndex() {
     return { startsAt: toLocalInput(start), endsAt: toLocalInput(end) };
   })();
 
+  const resourceError =
+    resourceMode === 'professional' ? professionalsQuery.error : chairsQuery.error;
+  const emptyResourceMessage =
+    resourceMode === 'professional'
+      ? 'Cadastre um profissional para visualizar a agenda.'
+      : 'Cadastre uma cadeira para visualizar a agenda.';
+
   return (
-    <FadeIn className="grid gap-4">
+    <div className="grid gap-4">
       <AgendaToolbar
         viewMode={viewMode}
         onViewMode={setViewMode}
@@ -129,24 +173,25 @@ export function AgendaIndex() {
         onToday={() => setAnchor(new Date())}
         slotMinutes={slotMinutes}
         onSlotMinutes={setSlotMinutes}
+        resourceMode={resourceMode}
+        onResourceMode={setResourceMode}
         professionals={professionals}
         professionalId={professionalId}
         onProfessionalId={setProfessionalId}
+        chairs={chairs}
+        chairId={chairId}
+        onChairId={setChairId}
         onBlock={() => setBlockOpen(true)}
       />
 
-      {professionalsQuery.isError ? (
+      {resourceError ? (
         <Alert variant="destructive" role="alert">
-          <AlertDescription>
-            {operacionalErrorMessage(professionalsQuery.error)}
-          </AlertDescription>
+          <AlertDescription>{operacionalErrorMessage(resourceError)}</AlertDescription>
         </Alert>
       ) : null}
 
-      {!professionalId ? (
-        <p className="text-sm text-muted-foreground">
-          Cadastre um profissional para visualizar a agenda.
-        </p>
+      {!resourceReady ? (
+        <p className="text-sm text-muted-foreground">{emptyResourceMessage}</p>
       ) : listQuery.isLoading ? (
         <div className="h-64 animate-pulse rounded-md bg-[#EFEFEF]" aria-hidden />
       ) : listQuery.isError ? (
@@ -158,6 +203,7 @@ export function AgendaIndex() {
           days={days}
           appointments={appointments}
           slotMinutes={slotMinutes}
+          showProfessional={resourceMode === 'chair'}
           onSlotClick={(startsAt, endsAt) => {
             setCreateSlot({
               startsAt: startsAt.toISOString(),
@@ -187,7 +233,10 @@ export function AgendaIndex() {
       {createSlot ? (
         <AppointmentFormDialog
           open
-          professionalId={professionalId}
+          professionalId={resourceMode === 'professional' ? professionalId : professionals[0]?.id}
+          chairId={resourceMode === 'chair' ? chairId : undefined}
+          professionals={professionals}
+          chairs={chairs}
           startsAt={createSlot.startsAt}
           endsAt={createSlot.endsAt}
           onClose={() => setCreateSlot(null)}
@@ -201,7 +250,8 @@ export function AgendaIndex() {
       {blockOpen ? (
         <ScheduleBlockFormDialog
           open
-          professionalId={professionalId}
+          professionalId={resourceMode === 'professional' ? professionalId : null}
+          chairId={resourceMode === 'chair' ? chairId : null}
           startsAt={blockDefaults.startsAt}
           endsAt={blockDefaults.endsAt}
           onClose={() => setBlockOpen(false)}
@@ -209,8 +259,9 @@ export function AgendaIndex() {
       ) : null}
 
       <p className="sr-only">
-        Visão {viewMode} a partir de {toYmd(anchor)}
+        Visão {viewMode} por {resourceMode === 'chair' ? 'cadeira' : 'profissional'} a partir de{' '}
+        {toYmd(anchor)}
       </p>
-    </FadeIn>
+    </div>
   );
 }

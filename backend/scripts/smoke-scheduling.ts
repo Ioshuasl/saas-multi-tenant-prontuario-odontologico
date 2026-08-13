@@ -81,6 +81,24 @@ async function main() {
   if (professional.status !== 201) failed = true;
   const professionalId = dataOf(professional).id as string;
 
+  const chair = await request(`/api/v1/clinic/units/${unitId}/chairs`, {
+    method: 'POST',
+    headers: { ...authHeaders(token, tenantId), 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'Cadeira 1', color: '#3366FF' }),
+  });
+  console.log('chair-create', chair.status);
+  if (chair.status !== 201) failed = true;
+  const chairId = dataOf(chair).id as string;
+
+  const chairEmpty = await request(`/api/v1/clinic/units/${unitId}/chairs`, {
+    method: 'POST',
+    headers: { ...authHeaders(token, tenantId), 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'Cadeira 2' }),
+  });
+  console.log('chair-create-empty', chairEmpty.status);
+  if (chairEmpty.status !== 201) failed = true;
+  const emptyChairId = dataOf(chairEmpty).id as string;
+
   const patient = await request('/api/v1/patients', {
     method: 'POST',
     headers: { ...authHeaders(token, tenantId), 'content-type': 'application/json' },
@@ -126,6 +144,60 @@ async function main() {
   console.log('appointment-create', create.status, dataOf(create).status);
   if (create.status !== 201 || dataOf(create).status !== 'SCHEDULED') failed = true;
   const appointmentId = dataOf(create).id as string;
+
+  const chairStarts = '2026-08-17T16:00:00-03:00';
+  const chairEndMs = new Date(chairStarts).getTime() + duration * 60_000;
+  const chairEnds = new Date(chairEndMs).toISOString();
+  const chairAppt = await request('/api/v1/appointments', {
+    method: 'POST',
+    headers: {
+      ...authHeaders(token, tenantId, {
+        'content-type': 'application/json',
+        'idempotency-key': `idem-chair-${stamp}`,
+      }),
+    },
+    body: JSON.stringify({
+      unitId,
+      patientId,
+      professionalId,
+      chairId,
+      procedureId,
+      startsAt: chairStarts,
+      endsAt: chairEnds,
+    }),
+  });
+  console.log('appointment-chair-create', chairAppt.status, dataOf(chairAppt).chairId);
+  if (chairAppt.status !== 201 || dataOf(chairAppt).chairId !== chairId) failed = true;
+  const chairAppointmentId = dataOf(chairAppt).id as string;
+
+  const listByChair = await request(
+    `/api/v1/appointments?chairId=${chairId}&from=2026-08-17T00:00:00-03:00&to=2026-08-18T00:00:00-03:00`,
+    { headers: authHeaders(token, tenantId) },
+  );
+  const chairItems =
+    (listByChair.body?.data as Array<{ id: string; chairId?: string | null }>) ?? [];
+  console.log(
+    'appointments-by-chair',
+    listByChair.status,
+    chairItems.length,
+    chairItems.every((item) => item.chairId === chairId),
+  );
+  if (
+    listByChair.status !== 200 ||
+    chairItems.length < 1 ||
+    !chairItems.some((item) => item.id === chairAppointmentId) ||
+    chairItems.some((item) => item.chairId !== chairId)
+  ) {
+    failed = true;
+  }
+
+  const listEmptyChair = await request(
+    `/api/v1/appointments?chairId=${emptyChairId}&from=2026-08-17T00:00:00-03:00&to=2026-08-18T00:00:00-03:00`,
+    { headers: authHeaders(token, tenantId) },
+  );
+  const emptyChairItems = (listEmptyChair.body?.data as unknown[]) ?? [];
+  console.log('appointments-by-chair-empty', listEmptyChair.status, emptyChairItems.length);
+  if (listEmptyChair.status !== 200 || emptyChairItems.length !== 0) failed = true;
 
   const idempotent = await request('/api/v1/appointments', {
     method: 'POST',
@@ -246,6 +318,21 @@ async function main() {
   console.log('schedule-block', block.status, blockConflicts.length);
   if (block.status !== 201 || blockConflicts.length < 1) failed = true;
   const blockId = dataOf(block).id as string;
+
+  const chairBlock = await request('/api/v1/schedule-blocks', {
+    method: 'POST',
+    headers: { ...authHeaders(token, tenantId), 'content-type': 'application/json' },
+    body: JSON.stringify({
+      unitId,
+      chairId,
+      startsAt: chairStarts,
+      endsAt: chairEnds,
+      reason: 'Manutenção cadeira',
+    }),
+  });
+  const chairBlockConflicts = (dataOf(chairBlock).conflicts as unknown[]) ?? [];
+  console.log('schedule-block-chair', chairBlock.status, chairBlockConflicts.length);
+  if (chairBlock.status !== 201 || chairBlockConflicts.length < 1) failed = true;
 
   const delBlock = await request(`/api/v1/schedule-blocks/${blockId}`, {
     method: 'DELETE',

@@ -132,7 +132,7 @@ GET    /api/v1/patients/check-duplicate    ?cpf=&phone=
 ### 2.4 Agenda (`scheduling`)
 
 ```
-GET    /api/v1/appointments                ?unitId=&from=&to=&professionalId=&status=
+GET    /api/v1/appointments                ?unitId=&from=&to=&professionalId=&chairId=&status=
 POST   /api/v1/appointments
 GET    /api/v1/appointments/:id
 PATCH  /api/v1/appointments/:id            reagendar / trocar profissional / notas
