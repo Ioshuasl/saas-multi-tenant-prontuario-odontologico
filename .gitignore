@@ -17,3 +17,7 @@ backend/prisma/*.db
 backend/src/docs/openapi.yaml
 .cursor/settings.json
 .cursor/mcp.json
+/playwright-report/
+/test-results/
+/blob-report/
+/e2e/.auth/*.json

@@ -14,6 +14,10 @@ export default defineConfig(
       'backend/prisma/migrations/**',
       'backend/scripts/**',
       'backend/.dependency-cruiser.cjs',
+      'e2e/**',
+      'playwright.config.ts',
+      'playwright-report/**',
+      'test-results/**',
     ],
   },
   eslint.configs.recommended,
@@ -68,6 +72,26 @@ export default defineConfig(
       '@typescript-eslint/no-misused-promises': [
         'error',
         { checksVoidReturn: { attributes: false } },
+      ],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/shared/ui',
+              message: 'Proibido barrel de UI. Importe o primitivo: @/shared/ui/button',
+            },
+            {
+              name: '@/shared/ui/index',
+              message: 'Proibido shared/ui/index.ts. Importe o arquivo do primitivo.',
+            },
+            {
+              name: '@/shared/ui/sidebar',
+              message:
+                'Proibido re-export do sidebar. Use sidebar-context, sidebar-chrome, sidebar-panel ou sidebar-menu.',
+            },
+          ],
+        },
       ],
     },
   },

@@ -17,12 +17,16 @@
     "test:rls": "pnpm --filter @repo/backend test:rls",
     "test:kms": "pnpm --filter @repo/backend test:kms",
     "test:identity": "pnpm --filter @repo/backend test:identity",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
     "db:generate": "pnpm --filter @repo/backend db:generate",
     "db:migrate": "pnpm --filter @repo/backend db:migrate",
     "db:seed": "pnpm --filter @repo/backend db:seed"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
+    "@playwright/test": "^1.62.1",
     "eslint": "^9.22.0",
     "globals": "^16.0.0",
     "typescript": "^5.8.2",
