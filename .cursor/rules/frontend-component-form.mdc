@@ -21,5 +21,6 @@ alwaysApply: false
 - Encapsular em `Dialog` — isso é `*FormDialog`.
 - Acessar Data/API.
 - Decidir POST/PUT no Form (isso é no Data).
+- `FadeIn` / `Stagger` / `motion` no Form de página.
 
 Norma: `docs/09`, `.cursor/docs/ui/04-form-dialog.md` / `05` se precisar.

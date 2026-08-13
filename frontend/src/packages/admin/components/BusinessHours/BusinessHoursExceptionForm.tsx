@@ -8,7 +8,6 @@ import { useClinicGetHook } from '@/packages/admin/hooks/Clinic/useClinicGetHook
 import { useProfessionalListHook } from '@/packages/admin/hooks/Professional/useProfessionalListHook';
 import type { BusinessHoursExceptionFormValues } from '@/packages/admin/schemas/BusinessHours/BusinessHoursSchema';
 import type { ScheduleConflictSummary } from '@/packages/admin/types/BusinessHours/BusinessHoursTypes';
-import { FadeIn } from '@/shared/motion/FadeIn';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 import { Checkbox } from '@/shared/ui/checkbox';
@@ -60,7 +59,6 @@ export function BusinessHoursExceptionForm() {
   const activeProfessionals = (professionalsQuery.data ?? []).filter((p) => p.active);
 
   return (
-    <FadeIn>
       <form
         className="mx-auto grid max-w-2xl gap-4 border-t pt-8"
         onSubmit={(e) => {
@@ -171,6 +169,5 @@ export function BusinessHoursExceptionForm() {
           {create.isPending ? 'Salvando…' : 'Salvar exceção'}
         </Button>
       </form>
-    </FadeIn>
   );
 }

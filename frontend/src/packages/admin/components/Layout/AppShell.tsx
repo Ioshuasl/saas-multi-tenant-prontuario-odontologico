@@ -1,17 +1,18 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { AppHeader } from '@/packages/admin/components/Layout/AppHeader';
 import { AppSidebar } from '@/packages/admin/components/Layout/AppSidebar';
 import { useClinicGetHook } from '@/packages/admin/hooks/Clinic/useClinicGetHook';
 import { useAuth } from '@/shared/auth/AuthProvider';
-import { PageTransition } from '@/shared/motion/PageTransition';
-import { SidebarInset, SidebarProvider } from '@/shared/ui/sidebar';
 import { Skeleton } from '@/shared/ui/skeleton';
+import { SidebarInset } from '@/shared/ui/sidebar-chrome';
+import { SidebarProvider } from '@/shared/ui/sidebar-context';
+import { TooltipProvider } from '@/shared/ui/tooltip';
 
 type AppShellProps = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 export function AppShell({ children }: AppShellProps) {
@@ -25,7 +26,7 @@ export function AppShell({ children }: AppShellProps) {
     }
   }, [ready, isAuthenticated, router]);
 
-  if (!ready) {
+  if (!ready || !isAuthenticated) {
     return (
       <div className="flex min-h-svh items-center justify-center p-6">
         <Skeleton className="h-8 w-40" />
@@ -33,25 +34,15 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="flex min-h-svh items-center justify-center p-6">
-        <Skeleton className="h-8 w-48" />
-      </div>
-    );
-  }
-
-  const clinicName = clinicQuery.data?.name ?? 'Clínica';
-
   return (
-    <SidebarProvider>
-      <AppSidebar clinicName={clinicName} />
-      <SidebarInset>
-        <AppHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-          <PageTransition>{children}</PageTransition>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar clinicName={clinicQuery.data?.name} />
+        <SidebarInset>
+          <AppHeader />
+          <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">{children}</div>
+        </SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }

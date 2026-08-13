@@ -10,7 +10,11 @@ const nextConfig: NextConfig = {
       'recharts',
       '@tanstack/react-query',
       'motion',
-      'framer-motion',
+      '@base-ui/react',
+      'cmdk',
+      'react-day-picker',
+      'react-hook-form',
+      '@hookform/resolvers',
     ],
   },
 };

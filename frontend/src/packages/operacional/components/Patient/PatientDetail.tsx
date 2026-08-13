@@ -11,7 +11,6 @@ import { usePatientGetHook } from '@/packages/operacional/hooks/Patient/usePatie
 import { usePatientUpdateHook } from '@/packages/operacional/hooks/Patient/usePatientUpdateHook';
 import type { PatientUpdateFormValues } from '@/packages/operacional/schemas/Patient/PatientSchema';
 import { ApiClientError } from '@/shared/api/api-client';
-import { FadeIn } from '@/shared/motion/FadeIn';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/field';
@@ -81,7 +80,7 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
   const patient = patientQuery.data;
 
   return (
-    <FadeIn className="grid gap-6">
+    <div className="grid gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">Ficha #{patient.code}</p>
@@ -211,6 +210,6 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
           <PatientTimeline patientId={patientId} />
         </TabsContent>
       </Tabs>
-    </FadeIn>
+    </div>
   );
 }

@@ -2,13 +2,12 @@
 
 import { OnboardingBanner } from '@/packages/admin/components/Onboarding/OnboardingBanner';
 import { useAuth } from '@/shared/auth/AuthProvider';
-import { FadeIn } from '@/shared/motion/FadeIn';
 
 export function DashboardHome() {
   const { user, tenant } = useAuth();
 
   return (
-    <FadeIn className="grid gap-6">
+    <div className="grid gap-6">
       <div className="grid gap-1">
         <h1 className="text-2xl font-semibold">
           Olá{user?.name ? `, ${user.name}` : ''}
@@ -18,6 +17,6 @@ export function DashboardHome() {
         </p>
       </div>
       <OnboardingBanner />
-    </FadeIn>
+    </div>
   );
 }

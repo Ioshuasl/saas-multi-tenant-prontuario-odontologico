@@ -1,10 +1,10 @@
 'use client';
 
 import type { ProcedureSummary } from '@/packages/admin/types/Procedure/ProcedureTypes';
-import { MotionTableBody, MotionTableRow } from '@/shared/motion/MotionTable';
 import { Button } from '@/shared/ui/button';
 import {
   Table,
+  TableBody,
   TableCell,
   TableHead,
   TableHeader,
@@ -38,9 +38,9 @@ export function ProcedureTable({ procedures, onEdit }: ProcedureTableProps) {
           <TableHead />
         </TableRow>
       </TableHeader>
-      <MotionTableBody>
+      <TableBody>
         {procedures.map((procedure) => (
-          <MotionTableRow key={procedure.id}>
+          <TableRow key={procedure.id}>
             <TableCell>{procedure.code}</TableCell>
             <TableCell>{procedure.name}</TableCell>
             <TableCell>{procedure.specialty ?? '—'}</TableCell>
@@ -52,9 +52,9 @@ export function ProcedureTable({ procedures, onEdit }: ProcedureTableProps) {
                 Editar
               </Button>
             </TableCell>
-          </MotionTableRow>
+          </TableRow>
         ))}
-      </MotionTableBody>
+      </TableBody>
     </Table>
   );
 }

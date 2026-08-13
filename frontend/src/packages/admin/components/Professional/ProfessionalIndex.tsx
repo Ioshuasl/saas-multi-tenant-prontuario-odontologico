@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ProfessionalFormDialog } from '@/packages/admin/components/Professional/ProfessionalFormDialog';
+import dynamic from 'next/dynamic';
 import { ProfessionalTable } from '@/packages/admin/components/Professional/ProfessionalTable';
 import { adminErrorMessage } from '@/packages/admin/helpers/AdminErrorMessage';
 import { useMemberListHook } from '@/packages/admin/hooks/Member/useMemberListHook';
@@ -9,7 +9,14 @@ import { useProfessionalListHook } from '@/packages/admin/hooks/Professional/use
 import type { ProfessionalSummary } from '@/packages/admin/types/Professional/ProfessionalTypes';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
-import { FadeIn } from '@/shared/motion/FadeIn';
+
+const ProfessionalFormDialog = dynamic(
+  () =>
+    import('@/packages/admin/components/Professional/ProfessionalFormDialog').then(
+      (m) => m.ProfessionalFormDialog,
+    ),
+  { ssr: false },
+);
 
 export function ProfessionalIndex() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -33,7 +40,7 @@ export function ProfessionalIndex() {
   const members = membersQuery.data ?? [];
 
   return (
-    <FadeIn className="grid gap-4">
+    <div className="grid gap-4">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Profissionais</h1>
         <Button type="button" onClick={() => setIsCreateOpen(true)}>
@@ -58,6 +65,6 @@ export function ProfessionalIndex() {
           onClose={() => setEditing(null)}
         />
       ) : null}
-    </FadeIn>
+    </div>
   );
 }

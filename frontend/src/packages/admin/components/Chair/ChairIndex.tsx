@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChairFormDialog } from '@/packages/admin/components/Chair/ChairFormDialog';
+import dynamic from 'next/dynamic';
 import { ChairTable } from '@/packages/admin/components/Chair/ChairTable';
 import { adminErrorMessage } from '@/packages/admin/helpers/AdminErrorMessage';
 import { useChairListHook } from '@/packages/admin/hooks/Chair/useChairListHook';
@@ -9,7 +9,12 @@ import { useClinicGetHook } from '@/packages/admin/hooks/Clinic/useClinicGetHook
 import type { ChairSummary } from '@/packages/admin/types/Chair/ChairTypes';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
-import { FadeIn } from '@/shared/motion/FadeIn';
+
+const ChairFormDialog = dynamic(
+  () =>
+    import('@/packages/admin/components/Chair/ChairFormDialog').then((m) => m.ChairFormDialog),
+  { ssr: false },
+);
 
 export function ChairIndex() {
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
@@ -39,7 +44,7 @@ export function ChairIndex() {
   }
 
   return (
-    <FadeIn className="grid gap-4">
+    <div className="grid gap-4">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Cadeiras</h1>
         <Button
@@ -70,6 +75,6 @@ export function ChairIndex() {
           }}
         />
       ) : null}
-    </FadeIn>
+    </div>
   );
 }

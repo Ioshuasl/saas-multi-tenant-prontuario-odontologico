@@ -9,7 +9,6 @@ import { useBusinessHoursReplaceHook } from '@/packages/admin/hooks/BusinessHour
 import { useClinicGetHook } from '@/packages/admin/hooks/Clinic/useClinicGetHook';
 import { useProfessionalListHook } from '@/packages/admin/hooks/Professional/useProfessionalListHook';
 import type { BusinessHoursFormValues } from '@/packages/admin/schemas/BusinessHours/BusinessHoursSchema';
-import { FadeIn } from '@/shared/motion/FadeIn';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/field';
@@ -75,7 +74,6 @@ export function BusinessHoursForm() {
   const activeProfessionals = (professionalsQuery.data ?? []).filter((p) => p.active);
 
   return (
-    <FadeIn>
       <form
         className="mx-auto grid max-w-2xl gap-4"
         onSubmit={(e) => {
@@ -178,6 +176,5 @@ export function BusinessHoursForm() {
           {replace.isPending ? 'Salvando…' : 'Salvar horários'}
         </Button>
       </form>
-    </FadeIn>
   );
 }

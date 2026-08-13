@@ -7,8 +7,9 @@ import {
   isAdminNavActive,
   type AdminNavGroup,
 } from '@/packages/admin/helpers/AdminNav';
+import { Skeleton } from '@/shared/ui/skeleton';
+import { SidebarRail } from '@/shared/ui/sidebar-chrome';
 import {
-  Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
@@ -17,8 +18,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
-} from '@/shared/ui/sidebar';
+} from '@/shared/ui/sidebar-menu';
+import { Sidebar } from '@/shared/ui/sidebar-panel';
 
 const GROUPS: Array<{ id: AdminNavGroup; label: string }> = [
   { id: 'main', label: 'Principal' },
@@ -26,7 +27,7 @@ const GROUPS: Array<{ id: AdminNavGroup; label: string }> = [
 ];
 
 type AppSidebarProps = {
-  clinicName: string;
+  clinicName?: string;
 };
 
 export function AppSidebar({ clinicName }: AppSidebarProps) {
@@ -37,13 +38,23 @@ export function AppSidebar({ clinicName }: AppSidebarProps) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" tooltip={clinicName} render={<Link href="/app" />}>
+            <SidebarMenuButton
+              size="lg"
+              tooltip={clinicName ?? 'Clínica'}
+              render={<Link href="/app" prefetch={false} />}
+            >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                 <span className="text-xs font-semibold">SO</span>
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{clinicName}</span>
-                <span className="truncate text-xs text-muted-foreground">Admin</span>
+                {clinicName ? (
+                  <>
+                    <span className="truncate font-medium">{clinicName}</span>
+                    <span className="truncate text-xs text-muted-foreground">Admin</span>
+                  </>
+                ) : (
+                  <Skeleton className="h-8 w-28" />
+                )}
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -65,7 +76,7 @@ export function AppSidebar({ clinicName }: AppSidebarProps) {
                         <SidebarMenuButton
                           tooltip={item.label}
                           isActive={isAdminNavActive(pathname, item.href)}
-                          render={<Link href={item.href} />}
+                          render={<Link href={item.href} prefetch={false} />}
                         >
                           <Icon />
                           <span>{item.label}</span>

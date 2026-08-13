@@ -1,10 +1,10 @@
 'use client';
 
 import type { ChairSummary } from '@/packages/admin/types/Chair/ChairTypes';
-import { MotionTableBody, MotionTableRow } from '@/shared/motion/MotionTable';
 import { Button } from '@/shared/ui/button';
 import {
   Table,
+  TableBody,
   TableCell,
   TableHead,
   TableHeader,
@@ -31,9 +31,9 @@ export function ChairTable({ chairs, onEdit }: ChairTableProps) {
           <TableHead />
         </TableRow>
       </TableHeader>
-      <MotionTableBody>
+      <TableBody>
         {chairs.map((chair) => (
-          <MotionTableRow key={chair.id}>
+          <TableRow key={chair.id}>
             <TableCell>{chair.name}</TableCell>
             <TableCell>
               {chair.color ? (
@@ -54,9 +54,9 @@ export function ChairTable({ chairs, onEdit }: ChairTableProps) {
                 Editar
               </Button>
             </TableCell>
-          </MotionTableRow>
+          </TableRow>
         ))}
-      </MotionTableBody>
+      </TableBody>
     </Table>
   );
 }

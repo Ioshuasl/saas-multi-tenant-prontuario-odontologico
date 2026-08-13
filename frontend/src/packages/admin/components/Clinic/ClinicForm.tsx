@@ -10,7 +10,6 @@ import { useClinicFormHook } from '@/packages/admin/hooks/Clinic/useClinicFormHo
 import { useClinicGetHook } from '@/packages/admin/hooks/Clinic/useClinicGetHook';
 import { useClinicUpdateHook } from '@/packages/admin/hooks/Clinic/useClinicUpdateHook';
 import type { ClinicUpdateFormValues } from '@/packages/admin/schemas/Clinic/ClinicSchema';
-import { FadeIn } from '@/shared/motion/FadeIn';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/field';
@@ -61,7 +60,6 @@ export function ClinicForm() {
   }
 
   return (
-    <FadeIn>
       <form
         className="mx-auto grid max-w-2xl gap-4"
         onSubmit={(e) => {
@@ -153,6 +151,5 @@ export function ClinicForm() {
         {update.isPending ? 'Salvando…' : 'Salvar'}
       </Button>
       </form>
-    </FadeIn>
   );
 }

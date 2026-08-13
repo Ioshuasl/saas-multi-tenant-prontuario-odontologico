@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ProcedureFormDialog } from '@/packages/admin/components/Procedure/ProcedureFormDialog';
+import dynamic from 'next/dynamic';
 import { ProcedureTable } from '@/packages/admin/components/Procedure/ProcedureTable';
 import { adminErrorMessage } from '@/packages/admin/helpers/AdminErrorMessage';
 import { useProcedureImportCatalogHook } from '@/packages/admin/hooks/Procedure/useProcedureImportCatalogHook';
@@ -9,7 +9,14 @@ import { useProcedureListHook } from '@/packages/admin/hooks/Procedure/useProced
 import type { ProcedureSummary } from '@/packages/admin/types/Procedure/ProcedureTypes';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
-import { FadeIn } from '@/shared/motion/FadeIn';
+
+const ProcedureFormDialog = dynamic(
+  () =>
+    import('@/packages/admin/components/Procedure/ProcedureFormDialog').then(
+      (m) => m.ProcedureFormDialog,
+    ),
+  { ssr: false },
+);
 
 export function ProcedureIndex() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -30,7 +37,7 @@ export function ProcedureIndex() {
   }
 
   return (
-    <FadeIn className="grid gap-4">
+    <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Procedimentos</h1>
         <div className="flex gap-2">
@@ -72,6 +79,6 @@ export function ProcedureIndex() {
           onClose={() => setEditing(null)}
         />
       ) : null}
-    </FadeIn>
+    </div>
   );
 }

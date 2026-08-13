@@ -1,15 +1,22 @@
 'use client';
 
 import { useDeferredValue, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { PatientFilter } from '@/packages/operacional/components/Patient/PatientFilter';
-import { PatientFormDialog } from '@/packages/operacional/components/Patient/PatientFormDialog';
 import { PatientTable } from '@/packages/operacional/components/Patient/PatientTable';
 import { operacionalErrorMessage } from '@/packages/operacional/helpers/OperacionalErrorMessage';
 import { usePatientListHook } from '@/packages/operacional/hooks/Patient/usePatientListHook';
-import { FadeIn } from '@/shared/motion/FadeIn';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
+
+const PatientFormDialog = dynamic(
+  () =>
+    import('@/packages/operacional/components/Patient/PatientFormDialog').then(
+      (m) => m.PatientFormDialog,
+    ),
+  { ssr: false },
+);
 
 export function PatientIndex() {
   const router = useRouter();
@@ -31,7 +38,7 @@ export function PatientIndex() {
   }
 
   return (
-    <FadeIn className="grid gap-4">
+    <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Pacientes</h1>
         <Button type="button" onClick={() => setCreateOpen(true)}>
@@ -58,6 +65,6 @@ export function PatientIndex() {
           }}
         />
       ) : null}
-    </FadeIn>
+    </div>
   );
 }

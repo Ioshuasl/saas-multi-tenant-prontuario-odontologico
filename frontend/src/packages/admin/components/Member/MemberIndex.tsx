@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { InvitationFormDialog } from '@/packages/admin/components/Member/InvitationFormDialog';
-import { MemberFormDialog } from '@/packages/admin/components/Member/MemberFormDialog';
+import dynamic from 'next/dynamic';
 import { MemberTable } from '@/packages/admin/components/Member/MemberTable';
 import { adminErrorMessage } from '@/packages/admin/helpers/AdminErrorMessage';
 import { useInvitationDeleteHook } from '@/packages/admin/hooks/Invitation/useInvitationDeleteHook';
@@ -12,7 +11,19 @@ import { useMemberListHook } from '@/packages/admin/hooks/Member/useMemberListHo
 import type { MemberSummary } from '@/packages/admin/types/Member/MemberTypes';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
-import { FadeIn } from '@/shared/motion/FadeIn';
+
+const InvitationFormDialog = dynamic(
+  () =>
+    import('@/packages/admin/components/Member/InvitationFormDialog').then(
+      (m) => m.InvitationFormDialog,
+    ),
+  { ssr: false },
+);
+const MemberFormDialog = dynamic(
+  () =>
+    import('@/packages/admin/components/Member/MemberFormDialog').then((m) => m.MemberFormDialog),
+  { ssr: false },
+);
 
 export function MemberIndex() {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -37,7 +48,7 @@ export function MemberIndex() {
   }
 
   return (
-    <FadeIn className="grid gap-4">
+    <div className="grid gap-4">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Membros</h1>
         <Button type="button" onClick={() => setIsInviteOpen(true)}>
@@ -69,6 +80,6 @@ export function MemberIndex() {
       {editing ? (
         <MemberFormDialog member={editing} onClose={() => setEditing(null)} />
       ) : null}
-    </FadeIn>
+    </div>
   );
 }

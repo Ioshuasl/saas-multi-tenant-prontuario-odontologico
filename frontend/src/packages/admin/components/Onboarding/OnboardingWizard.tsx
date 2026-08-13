@@ -10,8 +10,6 @@ import { adminErrorMessage } from '@/packages/admin/helpers/AdminErrorMessage';
 import { useOnboardingGetHook } from '@/packages/admin/hooks/Onboarding/useOnboardingGetHook';
 import { useOnboardingUpdateHook } from '@/packages/admin/hooks/Onboarding/useOnboardingUpdateHook';
 import { cn } from '@/shared/helpers/utils';
-import { FadeIn } from '@/shared/motion/FadeIn';
-import { StaggerItem, StaggerList } from '@/shared/motion/Stagger';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 
@@ -34,7 +32,7 @@ export function OnboardingWizard() {
   const status = onboardingQuery.data;
 
   return (
-    <FadeIn className="mx-auto grid max-w-2xl gap-4">
+    <div className="mx-auto grid max-w-2xl gap-4">
       <h1 className="text-xl font-semibold">Onboarding</h1>
       <p className="text-sm text-muted-foreground">
         Configure a clínica para liberar o uso completo.
@@ -51,7 +49,7 @@ export function OnboardingWizard() {
         </Alert>
       ) : null}
 
-      <StaggerList as="ul" className="grid gap-3">
+      <ul className="grid gap-3">
         {ONBOARDING_STEPS.map((step) => {
           const done = Boolean(status.stepsStatus[step]);
           const skipped = status.skippedSteps.includes(step);
@@ -64,8 +62,7 @@ export function OnboardingWizard() {
           else if (skipped) stateLabel = 'Ignorado';
 
           return (
-            <StaggerItem
-              as="li"
+            <li
               key={step}
               className={cn(
                 'flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3',
@@ -100,16 +97,16 @@ export function OnboardingWizard() {
                   </Button>
                 ) : null}
               </div>
-            </StaggerItem>
+            </li>
           );
         })}
-      </StaggerList>
+      </ul>
 
       {skip.isError ? (
         <Alert variant="destructive">
           <AlertDescription>{adminErrorMessage(skip.error)}</AlertDescription>
         </Alert>
       ) : null}
-    </FadeIn>
+    </div>
   );
 }

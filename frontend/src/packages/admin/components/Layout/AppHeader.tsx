@@ -17,13 +17,6 @@ import {
 } from '@/shared/ui/breadcrumb';
 import { Button } from '@/shared/ui/button';
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/shared/ui/empty';
-import {
   Popover,
   PopoverContent,
   PopoverDescription,
@@ -32,7 +25,7 @@ import {
   PopoverTrigger,
 } from '@/shared/ui/popover';
 import { Separator } from '@/shared/ui/separator';
-import { SidebarTrigger } from '@/shared/ui/sidebar';
+import { SidebarTrigger } from '@/shared/ui/sidebar-chrome';
 
 function userInitials(name: string | undefined, email: string | undefined): string {
   const source = name?.trim() || email?.trim() || 'U';
@@ -72,7 +65,7 @@ export function AppHeader() {
                   ) : (
                     <BreadcrumbLink
                       className="cursor-pointer"
-                      render={<Link href={crumb.href} />}
+                      render={<Link href={crumb.href} prefetch={false} />}
                     >
                       {crumb.label}
                     </BreadcrumbLink>
@@ -85,37 +78,15 @@ export function AppHeader() {
       </Breadcrumb>
 
       <div className="flex items-center gap-1">
-        <Popover>
-          <PopoverTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon"
-                className="cursor-pointer"
-                aria-label="Notificações"
-              />
-            }
-          >
-            <BellIcon />
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-80">
-            <PopoverHeader>
-              <PopoverTitle>Notificações</PopoverTitle>
-              <PopoverDescription>Atualizações da clínica</PopoverDescription>
-            </PopoverHeader>
-            <Empty className="border-0 p-4">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <BellIcon />
-                </EmptyMedia>
-                <EmptyTitle>Nenhuma notificação</EmptyTitle>
-                <EmptyDescription>
-                  Avisos e alertas aparecerão aqui.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          </PopoverContent>
-        </Popover>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="cursor-pointer"
+          aria-label="Notificações"
+          disabled
+        >
+          <BellIcon />
+        </Button>
 
         <Popover>
           <PopoverTrigger
@@ -142,7 +113,7 @@ export function AppHeader() {
               <Button
                 variant="ghost"
                 className="w-full cursor-pointer justify-start"
-                render={<Link href="/app/configuracoes/clinica" />}
+                render={<Link href="/app/configuracoes/clinica" prefetch={false} />}
                 nativeButton={false}
               >
                 <SettingsIcon data-icon="inline-start" />

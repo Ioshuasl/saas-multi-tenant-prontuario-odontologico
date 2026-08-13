@@ -2,10 +2,10 @@
 
 import { ROLE_LABELS, type Role } from '@/packages/admin/enum/RoleEnum';
 import type { ProfessionalSummary } from '@/packages/admin/types/Professional/ProfessionalTypes';
-import { MotionTableBody, MotionTableRow } from '@/shared/motion/MotionTable';
 import { Button } from '@/shared/ui/button';
 import {
   Table,
+  TableBody,
   TableCell,
   TableHead,
   TableHeader,
@@ -35,9 +35,9 @@ export function ProfessionalTable({ professionals, onEdit }: ProfessionalTablePr
           <TableHead />
         </TableRow>
       </TableHeader>
-      <MotionTableBody>
+      <TableBody>
         {professionals.map((professional) => (
-          <MotionTableRow key={professional.id}>
+          <TableRow key={professional.id}>
             <TableCell>{professional.name}</TableCell>
             <TableCell>{professional.email}</TableCell>
             <TableCell>{ROLE_LABELS[professional.role as Role] ?? professional.role}</TableCell>
@@ -53,9 +53,9 @@ export function ProfessionalTable({ professionals, onEdit }: ProfessionalTablePr
                 Editar
               </Button>
             </TableCell>
-          </MotionTableRow>
+          </TableRow>
         ))}
-      </MotionTableBody>
+      </TableBody>
     </Table>
   );
 }

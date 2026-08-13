@@ -1,11 +1,11 @@
 'use client';
 
 import type { PatientSummary } from '@/packages/operacional/types/Patient/PatientTypes';
-import { MotionTableBody, MotionTableRow } from '@/shared/motion/MotionTable';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import {
   Table,
+  TableBody,
   TableCell,
   TableHead,
   TableHeader,
@@ -34,9 +34,9 @@ export function PatientTable({ patients, onOpen }: PatientTableProps) {
           <TableHead />
         </TableRow>
       </TableHeader>
-      <MotionTableBody>
+      <TableBody>
         {patients.map((patient) => (
-          <MotionTableRow key={patient.id}>
+          <TableRow key={patient.id}>
             <TableCell>#{patient.code}</TableCell>
             <TableCell>{patient.socialName || patient.name}</TableCell>
             <TableCell>{patient.phonePrimary}</TableCell>
@@ -51,9 +51,9 @@ export function PatientTable({ patients, onOpen }: PatientTableProps) {
                 Abrir
               </Button>
             </TableCell>
-          </MotionTableRow>
+          </TableRow>
         ))}
-      </MotionTableBody>
+      </TableBody>
     </Table>
   );
 }

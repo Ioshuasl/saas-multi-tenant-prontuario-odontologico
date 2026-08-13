@@ -5,10 +5,10 @@ import type {
   InvitationSummary,
   MemberSummary,
 } from '@/packages/admin/types/Member/MemberTypes';
-import { MotionTableBody, MotionTableRow } from '@/shared/motion/MotionTable';
 import { Button } from '@/shared/ui/button';
 import {
   Table,
+  TableBody,
   TableCell,
   TableHead,
   TableHeader,
@@ -55,9 +55,9 @@ export function MemberTable({
                 <TableHead />
               </TableRow>
             </TableHeader>
-            <MotionTableBody>
+            <TableBody>
               {members.map((member) => (
-                <MotionTableRow key={member.id}>
+                <TableRow key={member.id}>
                   <TableCell>{member.name}</TableCell>
                   <TableCell>{member.email}</TableCell>
                   <TableCell>{ROLE_LABELS[member.role as Role] ?? member.role}</TableCell>
@@ -72,9 +72,9 @@ export function MemberTable({
                       Editar
                     </Button>
                   </TableCell>
-                </MotionTableRow>
+                </TableRow>
               ))}
-            </MotionTableBody>
+            </TableBody>
           </Table>
         )}
       </div>
@@ -93,9 +93,9 @@ export function MemberTable({
                 <TableHead />
               </TableRow>
             </TableHeader>
-            <MotionTableBody>
+            <TableBody>
               {pendingInvitations.map((invitation) => (
-                <MotionTableRow key={invitation.id}>
+                <TableRow key={invitation.id}>
                   <TableCell>{invitation.email}</TableCell>
                   <TableCell>
                     {ROLE_LABELS[invitation.role as Role] ?? invitation.role}
@@ -123,9 +123,9 @@ export function MemberTable({
                       Revogar
                     </Button>
                   </TableCell>
-                </MotionTableRow>
+                </TableRow>
               ))}
-            </MotionTableBody>
+            </TableBody>
           </Table>
         )}
       </div>

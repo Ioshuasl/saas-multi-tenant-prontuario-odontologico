@@ -11,10 +11,14 @@ alwaysApply: false
 - Orquestra Header, Table, FormDialog/dialogs e hooks — **não** chama API/Data/Service.
 - Lista: `usePatientListHook` (TanStack Query); Table recebe `data` do `query.data`.
 - Após create/update/delete: invalidação via Mutation hooks (não refetch manual espalhado).
-- Modais só montam quando abertos:
+- Modais só montam quando abertos **e** entram via `next/dynamic` (não import estático):
 
 ```tsx
-{isConfirmOpen && <ConfirmDialog ... />}
+const PatientFormDialog = dynamic(
+  () => import('.../PatientFormDialog').then((m) => m.PatientFormDialog),
+  { ssr: false },
+);
+
 {isFormOpen && <PatientFormDialog ... />}
 ```
 
@@ -26,5 +30,6 @@ alwaysApply: false
 - CollectionHook obrigatório estilo Orius.
 - Sempre renderizar FormDialog fechado.
 - Nomear modal como `*Form` — modal é `*FormDialog`.
+- `FadeIn` / `Stagger` / `motion` no Index (lista visível sem animação de lib).
 
 Norma: `docs/09`, `docs/16`.
