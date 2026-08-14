@@ -22,6 +22,18 @@ export const RECEPTION: E2eUser = {
   name: 'Carla Recepção',
 };
 
+export const ASSISTANT: E2eUser = {
+  email: 'asb@teste.local',
+  password: 'SenhaForte!99',
+  name: 'ASB Teste',
+};
+
+export const FINANCE: E2eUser = {
+  email: 'financeiro@teste.local',
+  password: 'SenhaForte!99',
+  name: 'Financeiro Teste',
+};
+
 export const SEED_CLINIC = 'Clínica Teste';
 export const SEED_PATIENT = 'Maria Silva';
 export const SEED_CHAIR = 'Cadeira 1';

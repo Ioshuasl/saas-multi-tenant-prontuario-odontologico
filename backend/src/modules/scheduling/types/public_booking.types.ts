@@ -48,6 +48,8 @@ export type PublicBookingTokenMeta = {
   formId?: string;
   formVersion?: number;
   patientId?: string;
+  quoteId?: string;
+  publicUrl?: string;
 };
 
 export type PublicBookingTokenRow = {

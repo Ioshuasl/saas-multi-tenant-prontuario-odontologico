@@ -11,6 +11,7 @@ import type { AppointmentCreateSchema } from './schemas/scheduling.schema.js';
 import type { AppointmentCreateOptions } from './services/appointment/appointment_create.service.js';
 import {
   CreateTokenRepository,
+  GetActiveTokenByTargetRepository,
   ResolveTokenByHashGlobalRepository,
   UpdateTokenRepository,
 } from './repositories/public_booking_token/public_booking_token.repository.js';
@@ -26,6 +27,7 @@ const waitlistAccept = new WaitlistAcceptService();
 const createToken = new CreateTokenRepository();
 const resolveTokenGlobal = new ResolveTokenByHashGlobalRepository();
 const updateToken = new UpdateTokenRepository();
+const getActiveByTarget = new GetActiveTokenByTargetRepository();
 
 /** Agendamentos futuros ativos do paciente (patients RF-E3-12). */
 export async function listFutureAppointmentIds(
@@ -109,6 +111,14 @@ export async function createPublicToken(
 ): Promise<string> {
   if (tx) return createToken.executeInTx(tx, ctx, input);
   return createToken.execute(ctx, input);
+}
+
+export async function getActivePublicToken(
+  ctx: RequestContext,
+  purpose: string,
+  targetId: string,
+) {
+  return getActiveByTarget.execute(ctx, purpose, targetId);
 }
 
 export async function resolvePublicTokenByHash(tokenHash: string) {

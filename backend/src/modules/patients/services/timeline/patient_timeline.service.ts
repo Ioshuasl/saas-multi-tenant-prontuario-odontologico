@@ -1,5 +1,6 @@
 import type { RequestContext } from '../../../../shared/domain/request_context.js';
 import { listPatientTimelineAppointments } from '../../../scheduling/scheduling_public.js';
+import { listQuotesForTimeline } from '../../../treatments/treatments_public.js';
 import { GetService as PatientGetService } from '../patient/patient_get.service.js';
 import { PatientNotFoundError } from '../../models/errors/patients.errors.js';
 import type {
@@ -51,6 +52,22 @@ export class GetService {
     }
     if (hasPermission(ctx, 'quotes.read')) {
       includedSources.push('QUOTE');
+      const quotes = await listQuotesForTimeline(ctx, patientId);
+      for (const quote of quotes) {
+        items.push({
+          id: `quote:${quote.id}`,
+          source: 'QUOTE',
+          occurredAt: quote.decidedAt ?? quote.createdAt,
+          title: `Orçamento nº ${quote.number}`,
+          summary: quote.status,
+          refId: quote.id,
+          meta: {
+            status: quote.status,
+            totalCents: quote.totalCents,
+            decidedAt: quote.decidedAt,
+          },
+        });
+      }
     }
     if (hasPermission(ctx, 'finance.read')) {
       includedSources.push('PAYMENT');

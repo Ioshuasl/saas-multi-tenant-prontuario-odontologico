@@ -6,6 +6,7 @@ import {
   ClipboardListIcon,
   ClockIcon,
   ContactIcon,
+  FileTextIcon,
   HomeIcon,
   ListChecksIcon,
   MessageCircleIcon,
@@ -21,12 +22,20 @@ export type AdminNavItem = {
   label: string;
   icon: LucideIcon;
   group: AdminNavGroup;
+  permission?: string;
 };
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: '/app', label: 'Início', icon: HomeIcon, group: 'main' },
   { href: '/app/pacientes', label: 'Pacientes', icon: ContactIcon, group: 'main' },
   { href: '/app/agenda', label: 'Agenda', icon: CalendarDaysIcon, group: 'main' },
+  {
+    href: '/app/orcamentos',
+    label: 'Orçamentos',
+    icon: FileTextIcon,
+    group: 'main',
+    permission: 'quotes.read',
+  },
   { href: '/app/onboarding', label: 'Onboarding', icon: ListChecksIcon, group: 'main' },
   {
     href: '/app/configuracoes/clinica',

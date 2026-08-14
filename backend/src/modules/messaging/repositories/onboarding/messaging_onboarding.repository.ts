@@ -67,5 +67,25 @@ export class MessagingOnboardingRepository {
         },
       });
     }
+
+    const quoteTemplate = await tx.messageTemplate.findFirst({
+      where: { tenantId: input.tenantId, key: 'quote_sent' },
+      select: { id: true },
+    });
+    if (!quoteTemplate) {
+      await tx.messageTemplate.create({
+        data: {
+          id: input.idNext(),
+          tenantId: input.tenantId,
+          key: 'quote_sent',
+          category: 'UTILITY',
+          language: 'pt_BR',
+          providerName: 'quote_sent',
+          body: 'Olá {{nome}}, a {{clinica}} enviou um orçamento de {{valor}}: {{link}}',
+          variables: ['nome', 'clinica', 'valor', 'link'],
+          status: 'APPROVED',
+        },
+      });
+    }
   }
 }

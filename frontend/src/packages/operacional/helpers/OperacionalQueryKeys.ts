@@ -11,4 +11,7 @@ export const operacionalQueryKeys = {
   procedures: ['procedures'] as const,
   medicalRecord: (patientId: string) => ['medical-record', patientId] as const,
   anamnesis: (patientId: string) => ['anamnesis', patientId] as const,
+  quotes: (patientId?: string, status?: string) =>
+    ['quotes', patientId ?? '', status ?? ''] as const,
+  quote: (id: string) => ['quote', id] as const,
 };

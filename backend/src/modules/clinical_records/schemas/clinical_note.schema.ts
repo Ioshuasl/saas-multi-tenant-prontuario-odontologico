@@ -29,6 +29,7 @@ export const clinicalNoteCreateSchema = z
     content: z.string().min(1).max(20000),
     appointmentId: z.string().uuid().optional().nullable(),
     procedures: z.array(procedureSchema).max(50).optional(),
+    treatmentItemIds: z.array(z.string().uuid()).max(100).optional(),
   })
   .strict();
 

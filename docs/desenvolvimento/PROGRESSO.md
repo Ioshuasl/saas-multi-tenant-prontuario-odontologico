@@ -4,6 +4,180 @@ Append-only. Entradas mais recentes no topo.
 
 ---
 
+## 2026-08-14 — S5 fechada: smokes, Playwright, aceite, CI S4
+
+### Feito
+
+- Smokes S5 verdes: `test:quotes-crud` / `test:quotes-send` (`NODE_ENV=test`) / `test:quotes-decision` / `test:treatments-execute`
+- Playwright 9/9: `e2e/quotes.spec.ts` + `e2e/quote-public.spec.ts` + `e2e/treatment-execute.spec.ts`
+- Seed Maria DRAFT 3 itens (RES-01 26 + PROF-01 + RAD-01 16); `GET /procedures` com `quotes.read|write` para a recepção
+- CI: `test:clinical-crypto` no quality; smokes S4 (`anamnesis` / `odontogram` / `clinical-notes` / `attachments`) no integration
+- Execute não abre TX aninhada em `clinic_public` (profissional já resolvido); painel mantém banner de evolução se o plano completar
+- Checklists de aceite (backend, frontend, produto) marcados em [S5](./sprints/S5-orcamentos-tratamentos.md)
+
+### Validação
+
+- Playwright local contra `pnpm dev` (`:3001` / `:3333`): 9 passed
+- Demo pública 2-de-3 consome o DRAFT da Maria — `pnpm db:seed` recria o orçamento para repetir
+
+### Próximo
+
+- S6 — E7 baixa/caixa (M4)
+- M3 uso real S4 (não bloqueia S6)
+- Should `appointment.treatment_item_id` → `SCHEDULED` se couber depois
+
+---
+
+## 2026-08-14 — S5 Bloco 7: plano no atendimento (`clinico`)
+
+### Feito
+
+- `PlanPlaceholder` substituído por `TreatmentPlanPanel` (ACTIVE + executar + evolução)
+- E2E `e2e/treatment-execute.spec.ts`: Dra. Ana executa RES-01 dente 26 → RESTORED
+
+### Próximo
+
+- Aceite de produto S5 (fechado na entrada acima)
+
+---
+
+## 2026-08-14 — S5 Bloco 6: frontend orçamentos (operacional + public + ficha)
+
+### Feito
+
+- `/app/orcamentos` Index/FormDialog (DRAFT, send COPY, duplicar, PDF, decisão presencial)
+- Ficha: aba Orçamentos (`quotes.read`) + timeline `QUOTE`
+- Público `/orcamento/[token]` (parcial, rejeitar, copy “Proposta comercial”)
+- E2E quotes + quote-public; recepção vê catálogo e não vê Prontuário; ASB/FINANCE sem nav
+
+### Próximo
+
+- S5 Bloco 7 — plano no atendimento
+
+---
+
+## 2026-08-14 — S5 Bloco 5: plano, execute, odontograma, produção, cancel
+
+### Feito
+
+- `GET /treatment-plans` + `/:id` com progresso (`progressPercent`, `executedCents`, `pendingCents`)
+- `POST /treatment-items/:id/execute` e batch: note assinada + odontograma `PROCEDURE_EXECUTION` + `production_entry` na mesma TX
+- Mapa `RES/EXO/IMP/PROT/END` → condição; override `toothState`; CRO obrigatório; recepção 403
+- Cancel `PLANNED`/`SCHEDULED`; executado `422 ITEM_ALREADY_EXECUTED`; plano `COMPLETED`/`CANCELLED`
+- `POST /notes` com `treatmentItemIds` → 422 hint execute; timeline `QUOTE` via `treatments_public`
+- Smoke `pnpm test:treatments-execute` + passo no `ci.yml`; docs/08 §2.6 Bloco 5
+
+### Validação
+
+- `typecheck` · `arch:check` a executar no gate. Smoke precisa do Postgres em `:5432`.
+
+### Próximo
+
+- S5 Bloco 6 — frontend orçamentos (operacional + public + ficha)
+
+---
+
+## 2026-08-13 — S5 Bloco 4: decisão atômica + público + menor
+
+### Feito
+
+- `POST /quotes/:id/decision` com `Idempotency-Key` obrigatório (`quotes.write`; recepção presencial ok)
+- Aprovação total/parcial na mesma TX: plano + receivable + parcelas via `billing_public`; stub throw faz rollback
+- Público `GET|POST /api/v1/public/quotes/:token[/decision]` (rate 30/h); menor/`legal_guardian` + `guardianCpf`; token one-shot com replay da mesma chave
+- Rejeição com motivo ≥10 sem plano; `GET /quotes/:id` devolve `receivable`
+- Smoke `pnpm test:quotes-decision` + passo no `ci.yml`; docs/08 §2.6 Bloco 4
+
+### Validação
+
+- `typecheck` · `arch:check` a executar no gate. Smoke precisa do Postgres em `:5432`.
+
+### Próximo
+
+- S5 Bloco 5 — plano, execute, odontograma, produção, cancel
+
+---
+
+## 2026-08-13 — S5 Bloco 3: send, PDF, token, expire, duplicate
+
+### Feito
+
+- `POST /quotes/:id/send` (DRAFT→SENT, token `QUOTE` reutilizado, fallback WA→e-mail→COPY)
+- Outbox `treatments.quote_sent` → job `generate-quote-pdf` (pdfkit, sem diagnóstico) + WA se canal WHATSAPP
+- `GET /quotes/:id/pdf` URL 15 min; `409 PDF_PENDING` até o job; template `quote_sent`
+- `POST /quotes/:id/duplicate` com preços atuais + `duplicated_from_id`
+- Job `expire-quotes` (cron worker por TZ) SENT vencido → EXPIRED; send em expirado 409
+- Smoke `pnpm test:quotes-send` + passo no `ci.yml`; docs/08 §2.6
+
+### Validação
+
+- `typecheck` · `arch:check` OK. Smoke `test:quotes-send` precisa do Postgres em `:5432`.
+
+### Próximo
+
+- S5 Bloco 4 — decisão atômica + público + menor
+
+---
+
+## 2026-08-13 — S5 Bloco 2: CRUD orçamento (DRAFT)
+
+### Feito
+
+- HTTP `GET|POST|PATCH /quotes` + `POST|DELETE /quotes/:id/items` (`quotes.read` / `quotes.write`)
+- Totais no servidor; `unit_price_cents` congelado no create/add item; PATCH de catálogo não altera item
+- `requiresTooth` / `requiresFace` → 422; teto de desconto por papel → `422 DISCOUNT_LIMIT_EXCEEDED`; PATCH fora de DRAFT → `409 INVALID_STATE_TRANSITION`
+- Create via Action + UoW + outbox `treatments.quote_created`; número por tenant
+- Smoke `pnpm test:quotes-crud` + script no `ci.yml`; docs/08 §2.6 contrato do CRUD
+
+### Validação
+
+- `pnpm --filter @repo/backend typecheck` · `arch:check` OK. `test:quotes-crud` precisa do Postgres em `:5432` (Docker Desktop off neste gate).
+
+### Próximo
+
+- S5 Bloco 3 — send, PDF, token, expire, duplicate
+
+---
+
+## 2026-08-13 — S5 Bloco 1: fundação treatments + fatia billing
+
+### Feito
+
+- Migração `20260815000000_s5_treatments_billing`: quote/plan/item + counter por tenant, fatia `financial_category`/`receivable`/`installment`/`production_entry`, RLS, purpose `QUOTE`, `appointment.treatment_item_id`
+- Módulos `treatments/` + `billing/` + `*_public.ts` (`listQuotesForTimeline`, `createReceivableFromApprovedQuote`, `createProductionEntry`)
+- `splitInstallments` (bigint, resíduo na 1ª parcela) + `pnpm test:split-installments` (casos + 100 pares)
+- Seed categoria “Procedimentos” no signup e `db:seed`
+- docs/07 §6 e docs/08 §2.6 / público quotes; `test:rls` cobre quote/receivable + port de título
+
+### Validação
+
+- `pnpm test:split-installments` · `pnpm db:migrate` · `pnpm test:rls` · `arch:check` · typecheck — a executar no gate
+
+### Próximo
+
+- S5 Bloco 2 — CRUD orçamento (preço, dente, desconto, máquina DRAFT)
+
+---
+
+## 2026-08-13 — S5 planejada (checklist)
+
+### Feito
+
+- Checklist [`sprints/S5-orcamentos-tratamentos.md`](./sprints/S5-orcamentos-tratamentos.md) no mesmo nível da S4
+- Escopo: E6 Must (orçamento + PDF/envio + aprovação parcial atômica + plano + execução no atendimento)
+- 7 blocos (5 backend + 2 frontend); cortes fechados (sem E7/caixa; execute via `treatments` + `*_public`; parcelas na decisão; `PlanPlaceholder` some no Bloco 7)
+- README desenvolvimento aponta S5 como fase atual
+
+### Não feito (propositadamente)
+
+- Nenhuma implementação de código E6 — aguarda início do Bloco 1
+
+### Próximo
+
+- S5 Bloco 1 (DDL/RLS + `splitInstallments` + `billing_public` stub)
+- Carry-over: plugar smokes S4 no CI se ainda faltarem; M3 uso real continua separado
+
+---
+
 ## 2026-08-13 — Odontograma permanente = referência vetorizada
 
 ### Feito

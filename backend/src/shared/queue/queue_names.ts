@@ -22,6 +22,8 @@ export const JOB = {
   smokePing: 'smoke-ping',
   ensureMedicalRecord: 'ensure-medical-record',
   generateAttachmentThumbnail: 'generate-attachment-thumbnail',
+  generateQuotePdf: 'generate-quote-pdf',
+  expireQuotes: 'expire-quotes',
 } as const;
 
 export type JobName = (typeof JOB)[keyof typeof JOB];
@@ -46,6 +48,8 @@ export const JOB_RETRY: Record<JobName, JobRetry> = {
   [JOB.smokePing]: { attempts: 3, backoff: { type: 'exponential', delay: 1_000 } },
   [JOB.ensureMedicalRecord]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
   [JOB.generateAttachmentThumbnail]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
+  [JOB.generateQuotePdf]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
+  [JOB.expireQuotes]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
 };
 
 export function dlqName(queue: QueueName): string {

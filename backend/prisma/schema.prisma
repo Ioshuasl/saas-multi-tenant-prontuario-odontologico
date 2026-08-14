@@ -59,6 +59,15 @@ model Tenant {
   toothStateHistories ToothStateHistory[]
   clinicalNotes   ClinicalNote[]
   attachments     Attachment[]
+  quoteNumberCounters QuoteNumberCounter[]
+  quotes          Quote[]
+  quoteItems      QuoteItem[]
+  treatmentPlans  TreatmentPlan[]
+  treatmentItems  TreatmentItem[]
+  financialCategories FinancialCategory[]
+  receivables     Receivable[]
+  installments    Installment[]
+  productionEntries ProductionEntry[]
 
   @@map("tenant")
 }
@@ -212,6 +221,9 @@ model Unit {
   scheduleBlocks ScheduleBlock[]
   waitlistEntries WaitlistEntry[]
   whatsappAccounts WhatsappAccount[]
+  quotes          Quote[]
+  receivables     Receivable[]
+  productionEntries ProductionEntry[]
 
   @@map("unit")
 }
@@ -250,6 +262,9 @@ model Professional {
   scheduleBlocks ScheduleBlock[]
   waitlistEntries WaitlistEntry[]
   clinicalNotes ClinicalNote[]
+  quotes          Quote[]
+  treatmentItems  TreatmentItem[]
+  productionEntries ProductionEntry[]
 
   @@unique([tenantId, membershipId])
   @@map("professional")
@@ -305,6 +320,9 @@ model Procedure {
   appointments    Appointment[]
   appointmentSeries AppointmentSeries[]
   waitlistEntries WaitlistEntry[]
+  quoteItems      QuoteItem[]
+  treatmentItems  TreatmentItem[]
+  productionEntries ProductionEntry[]
 
   @@unique([tenantId, code])
   @@map("procedure")
@@ -352,6 +370,10 @@ model Patient {
   conversations   Conversation[]
   medicalRecord   MedicalRecord?
   attachments     Attachment[]
+  quotes          Quote[]
+  treatmentPlans  TreatmentPlan[]
+  receivables     Receivable[]
+  productionEntries ProductionEntry[]
 
   @@unique([tenantId, code], map: "uq_patient_tenant_code")
   @@index([tenantId, name], map: "idx_patient_name")
@@ -427,6 +449,7 @@ model Appointment {
   professionalId  String              @map("professional_id") @db.Uuid
   chairId         String?             @map("chair_id") @db.Uuid
   procedureId     String?             @map("procedure_id") @db.Uuid
+  treatmentItemId String?             @map("treatment_item_id") @db.Uuid
   startsAt        DateTime            @map("starts_at") @db.Timestamptz
   endsAt          DateTime            @map("ends_at") @db.Timestamptz
   status          String              @default("SCHEDULED")
@@ -820,6 +843,7 @@ model ClinicalNote {
   supersedes      ClinicalNote? @relation("ClinicalNoteAmend", fields: [supersedesId], references: [id])
   amendments      ClinicalNote[] @relation("ClinicalNoteAmend")
   attachments     Attachment[]
+  treatmentItems  TreatmentItem[]
 
   @@index([tenantId, medicalRecordId, createdAt(sort: Desc)], map: "idx_clinical_note_record")
   @@map("clinical_note")
@@ -850,4 +874,198 @@ model Attachment {
 
   @@index([tenantId, patientId, createdAt(sort: Desc)], map: "idx_attachment_patient")
   @@map("attachment")
+}
+
+/// Contador de nº de orçamento por tenant (S5 — não IDENTITY global).
+model QuoteNumberCounter {
+  tenantId   String @id @map("tenant_id") @db.Uuid
+  lastNumber BigInt @default(0) @map("last_number")
+  tenant     Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("quote_number_counter")
+}
+
+/// Orçamento. docs/07 §6 · S5
+model Quote {
+  id               String    @id @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  unitId           String    @map("unit_id") @db.Uuid
+  patientId        String    @map("patient_id") @db.Uuid
+  professionalId   String    @map("professional_id") @db.Uuid
+  number           BigInt
+  status           String    @default("DRAFT")
+  subtotalCents    BigInt    @default(0) @map("subtotal_cents")
+  discountCents    BigInt    @default(0) @map("discount_cents")
+  totalCents       BigInt    @default(0) @map("total_cents")
+  validUntil       DateTime? @map("valid_until") @db.Date
+  notes            String?
+  sentAt           DateTime? @map("sent_at") @db.Timestamptz
+  decidedAt        DateTime? @map("decided_at") @db.Timestamptz
+  decidedBy        String?   @map("decided_by")
+  rejectReason     String?   @map("reject_reason")
+  pdfStorageKey    String?   @map("pdf_storage_key")
+  idempotencyKey   String?   @map("idempotency_key")
+  duplicatedFromId String?   @map("duplicated_from_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  tenant           Tenant    @relation(fields: [tenantId], references: [id])
+  unit             Unit      @relation(fields: [unitId], references: [id])
+  patient          Patient   @relation(fields: [patientId], references: [id])
+  professional     Professional @relation(fields: [professionalId], references: [id])
+  duplicatedFrom   Quote?    @relation("QuoteDuplicate", fields: [duplicatedFromId], references: [id])
+  duplicates       Quote[]   @relation("QuoteDuplicate")
+  items            QuoteItem[]
+  treatmentPlans   TreatmentPlan[]
+  receivables      Receivable[]
+
+  @@unique([tenantId, number], map: "uq_quote_tenant_number")
+  @@index([tenantId, patientId, createdAt(sort: Desc)], map: "idx_quote_patient")
+  @@map("quote")
+}
+
+model QuoteItem {
+  id             String  @id @db.Uuid
+  tenantId       String  @map("tenant_id") @db.Uuid
+  quoteId        String  @map("quote_id") @db.Uuid
+  procedureId    String  @map("procedure_id") @db.Uuid
+  toothCode      String? @map("tooth_code")
+  face           String?
+  quantity       Int     @default(1) @db.SmallInt
+  unitPriceCents BigInt  @map("unit_price_cents")
+  discountCents  BigInt  @default(0) @map("discount_cents")
+  totalCents     BigInt  @map("total_cents")
+  approved       Boolean @default(true)
+  sortOrder      Int     @default(0) @map("sort_order") @db.SmallInt
+  tenant         Tenant  @relation(fields: [tenantId], references: [id])
+  quote          Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  procedure      Procedure @relation(fields: [procedureId], references: [id])
+  treatmentItems TreatmentItem[]
+
+  @@index([tenantId, quoteId, sortOrder], map: "idx_quote_item_quote")
+  @@map("quote_item")
+}
+
+model TreatmentPlan {
+  id          String    @id @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  patientId   String    @map("patient_id") @db.Uuid
+  quoteId     String?   @map("quote_id") @db.Uuid
+  status      String    @default("ACTIVE")
+  startedAt   DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  patient     Patient   @relation(fields: [patientId], references: [id])
+  quote       Quote?    @relation(fields: [quoteId], references: [id])
+  items       TreatmentItem[]
+  receivables Receivable[]
+
+  @@index([tenantId, patientId, status], map: "idx_treatment_plan_patient")
+  @@map("treatment_plan")
+}
+
+model TreatmentItem {
+  id              String    @id @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  treatmentPlanId String    @map("treatment_plan_id") @db.Uuid
+  procedureId     String    @map("procedure_id") @db.Uuid
+  quoteItemId     String?   @map("quote_item_id") @db.Uuid
+  toothCode       String?   @map("tooth_code")
+  face            String?
+  priceCents      BigInt    @map("price_cents")
+  status          String    @default("PLANNED")
+  professionalId  String?   @map("professional_id") @db.Uuid
+  executedAt      DateTime? @map("executed_at") @db.Timestamptz
+  clinicalNoteId  String?   @map("clinical_note_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  plan            TreatmentPlan @relation(fields: [treatmentPlanId], references: [id])
+  procedure       Procedure @relation(fields: [procedureId], references: [id])
+  quoteItem       QuoteItem? @relation(fields: [quoteItemId], references: [id])
+  professional    Professional? @relation(fields: [professionalId], references: [id])
+  clinicalNote    ClinicalNote? @relation(fields: [clinicalNoteId], references: [id])
+  productionEntries ProductionEntry[]
+
+  @@index([tenantId, treatmentPlanId, status], map: "idx_treatment_item_status")
+  @@map("treatment_item")
+}
+
+model FinancialCategory {
+  id       String  @id @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
+  name     String
+  kind     String
+  parentId String? @map("parent_id") @db.Uuid
+  active   Boolean @default(true)
+  tenant   Tenant  @relation(fields: [tenantId], references: [id])
+  parent   FinancialCategory?  @relation("FinancialCategoryTree", fields: [parentId], references: [id])
+  children FinancialCategory[] @relation("FinancialCategoryTree")
+  receivables Receivable[]
+
+  @@unique([tenantId, name, kind])
+  @@map("financial_category")
+}
+
+/// Título a receber. Fatia S5 — sem payment/caixa.
+model Receivable {
+  id               String   @id @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  unitId           String   @map("unit_id") @db.Uuid
+  patientId        String   @map("patient_id") @db.Uuid
+  quoteId          String?  @map("quote_id") @db.Uuid
+  treatmentPlanId  String?  @map("treatment_plan_id") @db.Uuid
+  totalCents       BigInt   @map("total_cents")
+  installmentCount Int      @default(1) @map("installments") @db.SmallInt
+  status           String   @default("OPEN")
+  categoryId       String?  @map("category_id") @db.Uuid
+  description      String?
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  unit             Unit     @relation(fields: [unitId], references: [id])
+  patient          Patient  @relation(fields: [patientId], references: [id])
+  quote            Quote?   @relation(fields: [quoteId], references: [id])
+  treatmentPlan    TreatmentPlan? @relation(fields: [treatmentPlanId], references: [id])
+  category         FinancialCategory? @relation(fields: [categoryId], references: [id])
+  lines            Installment[]
+
+  @@index([tenantId, patientId, status], map: "idx_receivable_patient")
+  @@map("receivable")
+}
+
+model Installment {
+  id           String    @id @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  receivableId String    @map("receivable_id") @db.Uuid
+  number       Int       @db.SmallInt
+  dueDate      DateTime  @map("due_date") @db.Date
+  amountCents  BigInt    @map("amount_cents")
+  paidCents    BigInt    @default(0) @map("paid_cents")
+  status       String    @default("OPEN")
+  paidAt       DateTime? @map("paid_at") @db.Timestamptz
+  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  receivable   Receivable @relation(fields: [receivableId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, receivableId, number])
+  @@map("installment")
+}
+
+model ProductionEntry {
+  id              String   @id @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  unitId          String   @map("unit_id") @db.Uuid
+  professionalId  String   @map("professional_id") @db.Uuid
+  patientId       String   @map("patient_id") @db.Uuid
+  treatmentItemId String?  @map("treatment_item_id") @db.Uuid
+  procedureId     String   @map("procedure_id") @db.Uuid
+  amountCents     BigInt   @map("amount_cents")
+  executedAt      DateTime @map("executed_at") @db.Timestamptz
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  unit            Unit     @relation(fields: [unitId], references: [id])
+  professional    Professional @relation(fields: [professionalId], references: [id])
+  patient         Patient  @relation(fields: [patientId], references: [id])
+  treatmentItem   TreatmentItem? @relation(fields: [treatmentItemId], references: [id])
+  procedure       Procedure @relation(fields: [procedureId], references: [id])
+
+  @@index([tenantId, professionalId, executedAt], map: "idx_production_period")
+  @@map("production_entry")
 }

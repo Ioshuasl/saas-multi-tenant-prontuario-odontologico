@@ -57,4 +57,15 @@ export const OUTBOX_ROUTES: Record<string, OutboxRouteTarget> = {
     queue: QUEUE.messaging,
     job: JOB.sendWhatsappMessage,
   },
+  'treatments.quote_created': 'emit-only',
+  'treatments.quote_sent': [
+    { queue: QUEUE.platform, job: JOB.generateQuotePdf },
+    { queue: QUEUE.messaging, job: JOB.sendWhatsappMessage },
+  ],
+  'treatments.quote_expired': 'emit-only',
+  'treatments.quote_approved': 'emit-only',
+  'treatments.quote_rejected': 'emit-only',
+  'treatments.plan_created': 'emit-only',
+  'treatments.item_executed': 'emit-only',
+  'treatments.plan_completed': 'emit-only',
 };

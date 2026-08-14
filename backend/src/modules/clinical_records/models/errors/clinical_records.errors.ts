@@ -75,6 +75,18 @@ export class ToothStateConflictError extends AppError {
   }
 }
 
+export class TreatmentItemIdsOnNoteError extends AppError {
+  constructor() {
+    super(
+      'BUSINESS_RULE_VIOLATION',
+      'Para executar item do plano use POST /api/v1/treatment-items/:id/execute.',
+      422,
+      { hint: '/api/v1/treatment-items/:id/execute' },
+    );
+    this.name = 'TreatmentItemIdsOnNoteError';
+  }
+}
+
 export class ClinicalNoteTooShortError extends AppError {
   constructor() {
     super('BUSINESS_RULE_VIOLATION', 'Evolução deve ter no mínimo 10 caracteres.', 422);

@@ -154,7 +154,7 @@ export async function grantPublicBookingConsents(
   );
 }
 
-export { toE164Br } from './helpers/patient.helper.js';
+export { toE164Br, isMinor, digitsOnly } from './helpers/patient.helper.js';
 export type { PatientDetail, PatientSummary } from './types/patients.types.js';
 
 function normalizeName(value: string): string {

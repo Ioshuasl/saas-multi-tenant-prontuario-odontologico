@@ -5,6 +5,7 @@ import { PatientConsentsPanel } from '@/packages/operacional/components/Patient/
 import { PatientGuardiansPanel } from '@/packages/operacional/components/Patient/PatientGuardiansPanel';
 import { PatientRecordPanel } from '@/packages/operacional/components/Patient/PatientRecordPanel';
 import { PatientTimeline } from '@/packages/operacional/components/Patient/PatientTimeline';
+import { PatientQuotesPanel } from '@/packages/operacional/components/Quote/PatientQuotesPanel';
 import { operacionalErrorMessage } from '@/packages/operacional/helpers/OperacionalErrorMessage';
 import { usePatientDeleteHook } from '@/packages/operacional/hooks/Patient/usePatientDeleteHook';
 import { usePatientUpdateFormHook } from '@/packages/operacional/hooks/Patient/usePatientFormHook';
@@ -126,6 +127,9 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
           <TabsTrigger value="responsaveis">Responsáveis</TabsTrigger>
           <TabsTrigger value="consentimentos">Consentimentos</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <Can permission="quotes.read">
+            <TabsTrigger value="orcamentos">Orçamentos</TabsTrigger>
+          </Can>
           <Can permission="clinical_records.read">
             <TabsTrigger value="prontuario">Prontuário</TabsTrigger>
           </Can>
@@ -214,6 +218,12 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
         <TabsContent value="timeline" className="mt-4">
           <PatientTimeline patientId={patientId} />
         </TabsContent>
+
+        <Can permission="quotes.read">
+          <TabsContent value="orcamentos" className="mt-4">
+            <PatientQuotesPanel patientId={patientId} />
+          </TabsContent>
+        </Can>
 
         <Can permission="clinical_records.read">
           <TabsContent value="prontuario" className="mt-4">

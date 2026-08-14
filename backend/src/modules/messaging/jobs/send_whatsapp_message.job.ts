@@ -45,6 +45,8 @@ export async function sendWhatsappMessageJob(payload: JobPayload): Promise<void>
   };
   const automationRunId = str(payload.automationRunId);
   const templateKey = str(payload.templateKey);
+  const channel = str(payload.channel);
+  if (channel === 'EMAIL' || channel === 'COPY') return;
   const appointmentId = str(payload.appointmentId);
   const patientIdHint = str(payload.patientId);
   const buttonPayload = str(payload.buttonPayload);
@@ -156,6 +158,7 @@ export async function sendWhatsappMessageJob(payload: JobPayload): Promise<void>
     data: formatYmdInTz(startsAt, tenant.timezone),
     hora: formatHmInTz(startsAt, tenant.timezone),
     link: publicUrl,
+    valor: str(payload.valor) ?? '',
   };
   const body = renderTemplateBody(template.body, variables);
 

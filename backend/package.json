@@ -27,9 +27,14 @@
     "test:odontogram": "tsx scripts/smoke-odontogram.ts",
     "test:clinical-notes": "tsx scripts/smoke-clinical-notes.ts",
     "test:attachments": "tsx scripts/smoke-attachments.ts",
+    "test:split-installments": "tsx scripts/check-split-installments.ts",
+    "test:quotes-crud": "tsx scripts/smoke-quotes-crud.ts",
+    "test:quotes-send": "tsx scripts/smoke-quotes-send.ts",
+    "test:quotes-decision": "tsx scripts/smoke-quotes-decision.ts",
+    "test:treatments-execute": "tsx scripts/smoke-treatments-execute.ts",
     "db:generate": "prisma generate",
     "db:migrate": "tsx scripts/migrate-deploy.ts",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seeders/index.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1110.0",
@@ -46,6 +51,7 @@
     "ioredis": "^6.0.0",
     "jose": "^6.2.8",
     "nodemailer": "^9.0.5",
+    "pdfkit": "^0.19.1",
     "pino": "^9.6.0",
     "pino-http": "^10.4.0",
     "uuid": "^14.0.1",
@@ -57,6 +63,7 @@
     "@types/express": "^4.17.21",
     "@types/node": "^22.13.10",
     "@types/nodemailer": "^8.0.1",
+    "@types/pdfkit": "^0.17.6",
     "@types/uuid": "^11.0.0",
     "dependency-cruiser": "^16.10.0",
     "prisma": "^6.5.0",

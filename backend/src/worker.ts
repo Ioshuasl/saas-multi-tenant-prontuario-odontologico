@@ -9,12 +9,31 @@ import { sendWhatsappMessageJob } from './modules/messaging/jobs/send_whatsapp_m
 import { processWhatsappWebhookJob } from './modules/messaging/jobs/process_whatsapp_webhook.job.js';
 import { ensureMedicalRecordJob } from './modules/clinical_records/jobs/ensure_medical_record.job.js';
 import { generateAttachmentThumbnailJob } from './modules/clinical_records/jobs/generate_attachment_thumbnail.job.js';
+import { generateQuotePdfJob } from './modules/treatments/jobs/generate_quote_pdf.job.js';
+import { expireQuotesJob } from './modules/treatments/jobs/expire_quotes.job.js';
+import { listTenantsForScheduledJobs } from './modules/clinic/clinic_public.js';
+import { todayInTimezone } from './modules/treatments/helpers/quote_valid_until.helper.js';
 import { BullmqJobQueue } from './shared/queue/bullmq_job_queue.js';
 import { setJobQueue } from './shared/queue/job_queue_singleton.js';
 import type { JobPayload } from './shared/queue/job_payload.js';
 import { JOB, QUEUE } from './shared/queue/queue_names.js';
 
 const DISPATCH_INTERVAL_MS = 5_000;
+const EXPIRE_QUOTES_INTERVAL_MS = 15 * 60_000;
+
+async function enqueueExpireQuotes(queue: BullmqJobQueue): Promise<void> {
+  if (!queue.isConnected()) return;
+  const tenants = await listTenantsForScheduledJobs();
+  for (const tenant of tenants) {
+    const ymd = todayInTimezone(tenant.timezone);
+    await queue.add(
+      QUEUE.platform,
+      JOB.expireQuotes,
+      { tenantId: tenant.id, requestId: `expire-quotes:${ymd}` },
+      { jobId: `expire-quotes:${tenant.id}:${ymd}` },
+    );
+  }
+}
 
 async function main(): Promise<void> {
   logger.info('worker_starting');
@@ -23,6 +42,8 @@ async function main(): Promise<void> {
   setJobQueue(queue);
   queue.register(QUEUE.platform, JOB.ensureMedicalRecord, ensureMedicalRecordJob);
   queue.register(QUEUE.platform, JOB.generateAttachmentThumbnail, generateAttachmentThumbnailJob);
+  queue.register(QUEUE.platform, JOB.generateQuotePdf, generateQuotePdfJob);
+  queue.register(QUEUE.platform, JOB.expireQuotes, expireQuotesJob);
   queue.register(QUEUE.platform, JOB.smokePing, async (payload: JobPayload) => {
     logger.info(
       { tenantId: payload.tenantId, requestId: payload.requestId, eventId: payload.eventId },
@@ -73,6 +94,15 @@ async function main(): Promise<void> {
   }, DISPATCH_INTERVAL_MS);
   void tick();
 
+  const expireInterval = setInterval(() => {
+    void enqueueExpireQuotes(queue).catch((err) => {
+      logger.error({ err }, 'expire_quotes_enqueue_error');
+    });
+  }, EXPIRE_QUOTES_INTERVAL_MS);
+  void enqueueExpireQuotes(queue).catch((err) => {
+    logger.error({ err }, 'expire_quotes_enqueue_error');
+  });
+
   const health = startWorkerHealth(() => ({
     status: 'ok',
     service: 'worker',
@@ -81,6 +111,7 @@ async function main(): Promise<void> {
 
   const shutdown = async (): Promise<void> => {
     clearInterval(interval);
+    clearInterval(expireInterval);
     health.close();
     await queue.close();
     await getPrismaClient().$disconnect();

@@ -7,6 +7,8 @@ import {
   isAdminNavActive,
   type AdminNavGroup,
 } from '@/packages/admin/helpers/AdminNav';
+import { useAuth } from '@/shared/auth/AuthProvider';
+import { hasPermission } from '@/shared/auth/permissions';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { SidebarRail } from '@/shared/ui/sidebar-chrome';
 import {
@@ -32,6 +34,7 @@ type AppSidebarProps = {
 
 export function AppSidebar({ clinicName }: AppSidebarProps) {
   const pathname = usePathname();
+  const { me } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
@@ -63,7 +66,11 @@ export function AppSidebar({ clinicName }: AppSidebarProps) {
 
       <SidebarContent>
         {GROUPS.map((group) => {
-          const items = ADMIN_NAV_ITEMS.filter((item) => item.group === group.id);
+          const items = ADMIN_NAV_ITEMS.filter(
+            (item) =>
+              item.group === group.id &&
+              (!item.permission || hasPermission(me, item.permission)),
+          );
           return (
             <SidebarGroup key={group.id}>
               <SidebarGroupLabel>{group.label}</SidebarGroupLabel>

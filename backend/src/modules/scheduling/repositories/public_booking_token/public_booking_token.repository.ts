@@ -178,6 +178,38 @@ export class ListOfferTokensBySlotRepository {
   }
 }
 
+export class GetActiveTokenByTargetRepository {
+  async execute(
+    ctx: RequestContext,
+    purpose: string,
+    targetId: string,
+  ): Promise<PublicBookingTokenRow | null> {
+    const tenantPrisma = getTenantPrisma();
+    return tenantPrisma.runInTenantContext(ctx, async (tx) => {
+      const row = await tx.publicBookingToken.findFirst({
+        where: {
+          tenantId: ctx.tenantId,
+          purpose,
+          targetId,
+          usedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (!row) return null;
+      return {
+        id: row.id,
+        tenantId: row.tenantId,
+        purpose: row.purpose,
+        targetId: row.targetId,
+        expiresAt: row.expiresAt,
+        usedAt: row.usedAt,
+        meta: mapMeta(row.meta),
+      };
+    });
+  }
+}
+
 export class ResolveTokenByHashGlobalRepository {
   async execute(tokenHash: string): Promise<PublicBookingTokenRow | null> {
     const rows = await getPrismaClient().$queryRaw<

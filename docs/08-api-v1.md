@@ -116,6 +116,8 @@ POST   /api/v1/procedures/import-catalog   importa catálogo sugerido
 
 **GET `/clinic`**, **GET `/clinic/professionals`**, **GET `/clinic/units/:id/chairs`**: `settings.read` **ou** `agenda.read` (catálogo operacional da agenda — dentista/recepção/ASB). Escrita (`POST`/`PATCH`) permanece `settings.write`.
 
+**GET `/procedures`**: `settings.read` **ou** `quotes.read` **ou** `quotes.write` (montagem de orçamento pela recepção/dentista). Mutações do catálogo (`POST`/`PATCH`/`import-catalog`) permanecem `settings.write`. ASB **não** lista o catálogo por esta rota (sem `quotes.*`).
+
 ### 2.3 Pacientes (`patients`)
 
 ```
@@ -164,8 +166,8 @@ POST   /api/v1/public/clinics/:slug/bookings/verify    confirma com OTP → cria
 GET    /api/v1/public/appointments/:token/confirm      confirmação por link
 GET    /api/v1/public/anamnesis/:token                 (S4)
 POST   /api/v1/public/anamnesis/:token                 (S4)
-GET    /api/v1/public/quotes/:token                    (depois)
-POST   /api/v1/public/quotes/:token/decision           (depois)
+GET    /api/v1/public/quotes/:token                    (S5)
+POST   /api/v1/public/quotes/:token/decision           (S5; Idempotency-Key)
 POST   /api/v1/public/waitlist/:token/accept           (S3 Bloco 3)
 ```
 
@@ -322,7 +324,7 @@ Com `at`, `history` é omitido e `notes` vem `null` (não versionado). Dente sem
 
 **GET `.../notes?cursor=&limit=`** (`.read`, `auditRead`): lista evoluções do prontuário (todas as versões, mais recente primeiro). Envelope `{ "data": { "items", "nextCursor" } }`. Cada item traz `content` decifrado, `procedures`, `version`, `supersedesId`, `amendReason`, `contentHash` (`sha256:<hex>`), `signature`, `signedAt`, `appointmentId`, `professionalId`. Sem prontuário → `404`.
 
-**POST `.../notes`** (`.write`): `{ "content", "appointmentId"?, "procedures"? }`. `content.trim()` ≥10. `procedures[]`: `{ "procedureId", "toothCode"|"tooth"?, "face"? }`. Profissional do membership deve ter `croNumber` (OWNER sem CRO → `422 BUSINESS_RULE_VIOLATION`). `appointmentId` opcional: se `SCHEDULED`/`CONFIRMED`, transiciona para `IN_SERVICE` e publica `scheduling.appointment_started`; se `IN_SERVICE`/`COMPLETED`, só vincula; outro status → `422`. Outbox `clinical_records.note_created` (emit-only). `content` cifrado (envelope); `content_hash` plaintext. ASB/recepção → `403`.
+**POST `.../notes`** (`.write`): `{ "content", "appointmentId"?, "procedures"?, "treatmentItemIds"? }`. `content.trim()` ≥10. `procedures[]`: `{ "procedureId", "toothCode"|"tooth"?, "face"? }`. `treatmentItemIds` presente → `422 BUSINESS_RULE_VIOLATION` com hint `POST /api/v1/treatment-items/:id/execute` (execução do plano não é atalho deste POST). Profissional do membership deve ter `croNumber` (OWNER sem CRO → `422 BUSINESS_RULE_VIOLATION`). `appointmentId` opcional: se `SCHEDULED`/`CONFIRMED`, transiciona para `IN_SERVICE` e publica `scheduling.appointment_started`; se `IN_SERVICE`/`COMPLETED`, só vincula; outro status → `422`. Outbox `clinical_records.note_created` (emit-only). `content` cifrado (envelope); `content_hash` plaintext. ASB/recepção → `403`.
 
 **POST `.../notes/:id/amend`** (`.write`): `{ "content", "reason" }` — ambos ≥10 após trim. Nova linha `version+1`, `supersedesId`, `amendReason`. Outbox `clinical_records.note_amended`.
 
@@ -342,6 +344,8 @@ Com `at`, `history` é omitido e `notes` vem `null` (não versionado). Dente sem
 
 ### 2.6 Orçamentos e tratamentos (`treatments`)
 
+HTTP autenticado do **CRUD** entra no **S5 Bloco 2**. **Send/PDF/token/expire/duplicate** no **Bloco 3**. Decisão, plano e execute ficam nos Blocos 4–5. Fundação (Bloco 1): tabelas + RLS + `treatments_public` / `billing_public.createReceivableFromApprovedQuote`. Sem `GET /receivables` (E7 → S6).
+
 ```
 GET    /api/v1/quotes                      ?patientId=&status=&from=&to=
 POST   /api/v1/quotes
@@ -350,16 +354,52 @@ PATCH  /api/v1/quotes/:id                  só em DRAFT
 POST   /api/v1/quotes/:id/items
 DELETE /api/v1/quotes/:id/items/:itemId
 POST   /api/v1/quotes/:id/send              e-mail/WhatsApp + link
-POST   /api/v1/quotes/:id/decision          { decision, approvedItemIds?, installments? }
+POST   /api/v1/quotes/:id/duplicate
+POST   /api/v1/quotes/:id/decision          Idempotency-Key obrigatório
 GET    /api/v1/quotes/:id/pdf
 
 GET    /api/v1/treatment-plans              ?patientId=&status=
 GET    /api/v1/treatment-plans/:id
 POST   /api/v1/treatment-items/:id/execute  { appointmentId?, note, toothState? }
+POST   /api/v1/treatment-items/execute      { itemIds, note, appointmentId?, toothStates? }
 POST   /api/v1/treatment-items/:id/cancel
+
+GET    /api/v1/public/quotes/:token
+POST   /api/v1/public/quotes/:token/decision
 ```
 
+Público: rate limit `public:quotes:ip:{ip}` 30/h. GET sem PII/clínico. Decisão: mesmo shape autenticado §3.4. Autenticado: `quotes.write` no CRUD/send/**decision presencial** (recepção incluída). `quotes.approve` existe na matriz de papéis mas **não** é o gate HTTP deste POST nesta sprint. FINANCE/ASB 403.
+
+**Bloco 2 (vivo):** `GET|POST|PATCH /quotes` e items. Totais só no servidor. `unit_price_cents` copiado do catálogo no create/add item — alteração posterior de `procedure.price_cents` **não** altera item existente. `requiresTooth` sem `toothCode` / `requiresFace` sem `face` → `422`. Teto de desconto (bruto unit×qtd + descontos de item + header): RECEPTION 0%, DENTIST 10%, OWNER ilimitado → `422 DISCOUNT_LIMIT_EXCEEDED`. PATCH fora de `DRAFT` → `409 INVALID_STATE_TRANSITION`. Create publica outbox `treatments.quote_created`.
+
+```http
+POST /api/v1/quotes
+{
+  "patientId": "018f5c2b-...",
+  "professionalId": "018f5c40-...",
+  "unitId": "018f5c10-...",
+  "validUntil": "2026-09-12",
+  "notes": "Proposta de restauração",
+  "discountCents": 0,
+  "items": [
+    { "procedureId": "018f5c55-...", "toothCode": "26", "face": "O", "quantity": 1, "discountCents": 0 }
+  ]
+}
+```
+
+`unitId` omitido → unidade do paciente. `validUntil` omitido → hoje (TZ do tenant) + 30 dias. Envelope GET: `{ data }` com itens e totais em centavos `number`. Lista: `{ data: [...], meta: { nextCursor } }`.
+
+**Bloco 3 (vivo):** `POST /quotes/:id/send` `{ channel: WHATSAPP|EMAIL|COPY }` — `DRAFT`→`SENT`, token `purpose=QUOTE` (reuso da URL vigente), outbox `treatments.quote_sent` → job PDF + WA se canal WHATSAPP. Sem WA/e-mail → fallback COPY (devolve `publicUrl`). `GET /quotes/:id/pdf` URL assinada 15 min; sem arquivo → `409 PDF_PENDING`. `POST /quotes/:id/duplicate` a partir de `SENT|EXPIRED|REJECTED|PARTIALLY_APPROVED` com preços **atuais** do catálogo + `duplicated_from_id`. Job `expire-quotes` (fila `platform`, cron por tenant TZ) marca `SENT` vencido → `EXPIRED` (outbox `quote_expired`). Template `quote_sent` (utility: nome, clínica, valor, URL). PDF comercial sem diagnóstico (pdfkit).
+
+**Bloco 4 (vivo):** `POST /quotes/:id/decision` com `Idempotency-Key` obrigatório (`quotes.write` — recepção **pode** registrar decisão presencial; `quotes.approve` não é exigido neste endpoint nesta sprint, desvio vs. papel “approve” na matriz de permissões). Aprovação total/parcial na mesma TX: plano ACTIVE + `billing_public.createReceivableFromApprovedQuote` + parcelas; falha no billing faz rollback (orçamento permanece `SENT`, zero planos). Mesma chave + mesmo desfecho → resposta original; mesma chave + corpo diferente → `409 IDEMPOTENCY_KEY_REUSED`. Só `SENT` (e `validUntil` vigente) aceita decisão. Rejeição: `reason` ≥10, sem plano/título. `GET /quotes/:id` inclui `receivable` após aprovado.
+
+Público: `GET /api/v1/public/quotes/:token` (comercial: clínica, primeiro nome, itens, totais, validade; `requiresGuardian`) e `POST /api/v1/public/quotes/:token/decision`. Rate `public:quotes:ip:{ip}` 30/h. Token usado/expirado → GET 404; POST replay com a mesma Idempotency-Key continua válido. Menor ou cadastro com responsável: `guardianCpf` conferindo um `legal_guardian`; menor sem responsável → `422 GUARDIAN_REQUIRED`. `decidedBy`: `USER` (autenticado) vs `PATIENT_LINK` (público). Outbox `treatments.quote_approved` / `quote_rejected` / `plan_created` (`emit-only`).
+
+**Bloco 5 (vivo):** `GET /treatment-plans` + `/:id` (`quotes.read`) com `progressPercent` / `executedCents` / `pendingCents`. `POST /treatment-items/:id/execute` e `POST /treatment-items/execute` (`clinical_records.write`): note ≥10, CRO obrigatório, uma evolução assinada via `clinical_records_public.createSignedNote`, odontograma `source=PROCEDURE_EXECUTION` (mapa `RES→RESTORED` etc., override `toothState`), `billing_public.createProductionEntry`, outbox `item_executed` / `plan_completed`. Item `EXECUTED` de novo → `409 ITEM_ALREADY_EXECUTED`. Cancel só `PLANNED`/`SCHEDULED` (`reason` ≥10); executado → `422 ITEM_ALREADY_EXECUTED`. Plano: todos cancelados → `CANCELLED`; resto executado → `COMPLETED`. Recepção/ASB 403 no execute. Timeline `QUOTE` via `treatments_public` se `quotes.read`.
+
 ### 2.7 Financeiro (`billing`)
+
+HTTP E7 (baixa, caixa, AP) → **S6**. S5 só persiste `receivable` / `installment` / `production_entry` via `billing_public` na transação de aprovação/execução.
 
 ```
 GET    /api/v1/receivables                 ?patientId=&status=&from=&to=
@@ -539,7 +579,7 @@ POST /api/v1/patients/018f5c2b-.../record/notes
 }
 ```
 
-`PATCH`/`DELETE` nessa evolução → `423 RECORD_IMMUTABLE` (usar `POST .../notes/:id/amend` com `{ "content", "reason" }`). Sem CRO → `422 BUSINESS_RULE_VIOLATION`. `toothStates` / `treatmentItemIds` / side-effects (odontograma, execução, produção) → S5.
+`PATCH`/`DELETE` nessa evolução → `423 RECORD_IMMUTABLE` (usar `POST .../notes/:id/amend` com `{ "content", "reason" }`). Sem CRO → `422 BUSINESS_RULE_VIOLATION`. `treatmentItemIds` no POST notes → `422` com hint de execute (S5). Odontograma/produção na execução do plano: `POST /treatment-items/:id/execute`.
 
 ### 3.4 Aprovar orçamento (gera plano + parcelas)
 

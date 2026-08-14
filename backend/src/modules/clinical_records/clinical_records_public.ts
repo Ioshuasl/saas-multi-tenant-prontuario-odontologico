@@ -3,12 +3,21 @@ import type { DbTransaction } from '../../shared/database/db_transaction.js';
 import { ListCriticalRepository } from './repositories/clinical_alert/clinical_alert_list_critical.repository.js';
 import { EnsureRepository } from './repositories/medical_record/medical_record_ensure.repository.js';
 import { SeedRepository } from './repositories/anamnesis_form/anamnesis_form_seed.repository.js';
+import { PersistAction } from './actions/clinical_note/clinical_note_persist.action.js';
+import { ApplyExecutionAction } from './actions/tooth_state/tooth_state_apply_execution.action.js';
 import type { ClinicalAlertSummary } from './types/medical_record/medical_record_get.types.js';
 import type { EnsureRecordResult } from './repositories/medical_record/medical_record_ensure.repository.js';
+import type {
+  ApplyExecutionToothStateInput,
+  CreateSignedNoteInput,
+  CreateSignedNoteResult,
+} from './types/clinical_note/clinical_note_signed.types.js';
 
 const ensure = new EnsureRepository();
 const listCritical = new ListCriticalRepository();
 const seedForm = new SeedRepository();
+const persistNote = new PersistAction();
+const applyTooth = new ApplyExecutionAction();
 
 /** Cria prontuário 1:1 se ainda não existir (idempotente). */
 export async function ensureRecord(
@@ -39,4 +48,27 @@ export async function seedDefaultAnamnesisForm(
   await seedForm.executeInTx(tx, input);
 }
 
+/** Evolução assinada na mesma TX do caller (ExecuteItem). */
+export async function createSignedNote(
+  ctx: RequestContext,
+  noteSchema: CreateSignedNoteInput,
+  tx: DbTransaction,
+): Promise<CreateSignedNoteResult> {
+  return persistNote.executeInTx(tx, ctx, noteSchema);
+}
+
+/** Odontograma com source=PROCEDURE_EXECUTION na mesma TX do caller. */
+export async function applyExecutionToothState(
+  ctx: RequestContext,
+  toothSchema: ApplyExecutionToothStateInput,
+  tx: DbTransaction,
+): Promise<void> {
+  await applyTooth.executeInTx(tx, ctx, toothSchema);
+}
+
 export type { ClinicalAlertSummary, EnsureRecordResult };
+export type {
+  ApplyExecutionToothStateInput,
+  CreateSignedNoteInput,
+  CreateSignedNoteResult,
+} from './types/clinical_note/clinical_note_signed.types.js';

@@ -22,7 +22,7 @@ test.describe('Atendimento (E5)', () => {
     await expect(page).toHaveURL(/\/app\/atendimento\//, { timeout: 30_000 });
     await expect(page.getByRole('heading', { name: /João Pedro/ })).toBeVisible();
     await expect(page.getByText('Odontograma', { exact: true })).toBeVisible();
-    await expect(page.getByText('Disponível na Sprint 5.')).toBeVisible();
+    await expect(page.getByText('Plano de tratamento')).toBeVisible();
 
     await page.getByLabel('Texto da evolução').fill('Evolução e2e: profilaxia realizada sem intercorrências.');
     await page.getByRole('button', { name: 'Salvar e assinar' }).click();

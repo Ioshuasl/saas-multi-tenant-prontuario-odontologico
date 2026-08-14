@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { healthRoutes } from './health.routes.js';
 import { buildIdentityRouter } from '../modules/identity/identity.module.js';
 import { buildClinicRouter } from '../modules/clinic/clinic.module.js';
 import { buildPatientsRouter } from '../modules/patients/patients.module.js';
@@ -14,7 +15,7 @@ import {
   buildMessagingRouter,
   buildWhatsappWebhookRouter,
 } from '../modules/messaging/messaging.module.js';
-import { healthRoutes } from './health.routes.js';
+import { buildTreatmentsRouter, buildPublicQuotesRouter } from '../modules/treatments/treatments.module.js';
 
 /** Monta rotas versionadas em `/api/v1`. Módulos de domínio entram aqui. */
 export function buildApiRouter(): Router {
@@ -25,9 +26,11 @@ export function buildApiRouter(): Router {
   api.use(buildPatientsRouter());
   api.use(buildClinicalRecordsRouter());
   api.use(buildSchedulingRouter());
-  api.use('/messaging', buildMessagingRouter());
+  api.use(buildMessagingRouter());
   api.use('/webhooks/whatsapp', buildWhatsappWebhookRouter());
+  api.use(buildTreatmentsRouter());
   api.use('/public', buildPublicRouter());
   api.use('/public', buildPublicAnamnesisRouter());
+  api.use('/public', buildPublicQuotesRouter());
   return api;
 }

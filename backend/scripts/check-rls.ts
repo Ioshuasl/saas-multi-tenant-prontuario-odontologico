@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { TenantPrisma } from '../src/shared/database/tenant_prisma.js';
+import { createReceivableFromApprovedQuote } from '../src/modules/billing/billing_public.js';
 
 config({ path: resolve(process.cwd(), '../.env') });
 config({ path: resolve(process.cwd(), '.env') });
@@ -340,6 +341,215 @@ async function main() {
   }
   if (waWithoutCtx.length !== 0) {
     console.error('FAIL: sem tenant_id deveria ver 0 whatsapp_account; viu', waWithoutCtx.length);
+    failed = true;
+  }
+
+  const quoteCounterA = await tenantDb.runInTenantContext(ctxA, async (tx) => {
+    await tx.quoteNumberCounter.create({
+      data: { tenantId: tenantA, lastNumber: BigInt(1) },
+    });
+    return tx.quoteNumberCounter.findMany();
+  });
+  const quoteCounterB = await tenantDb.runInTenantContext(ctxB, (tx) =>
+    tx.quoteNumberCounter.findMany(),
+  );
+  if (quoteCounterA.length !== 1) {
+    console.error('FAIL: tenant A deveria ver 1 quote_number_counter, viu', quoteCounterA.length);
+    failed = true;
+  }
+  if (quoteCounterB.length !== 0) {
+    console.error('FAIL: tenant B deveria ver 0 quote_number_counter, viu', quoteCounterB.length);
+    failed = true;
+  }
+
+  const categoryA = randomUUID();
+  const planA = randomUUID();
+  const receivableA = randomUUID();
+  await tenantDb.runInTenantContext(ctxA, async (tx) => {
+    await tx.financialCategory.create({
+      data: {
+        id: categoryA,
+        tenantId: tenantA,
+        name: 'Procedimentos',
+        kind: 'REVENUE',
+      },
+    });
+    await tx.treatmentPlan.create({
+      data: {
+        id: planA,
+        tenantId: tenantA,
+        patientId: patientA,
+        status: 'ACTIVE',
+      },
+    });
+    await tx.receivable.create({
+      data: {
+        id: receivableA,
+        tenantId: tenantA,
+        unitId: unitA,
+        patientId: patientA,
+        treatmentPlanId: planA,
+        totalCents: BigInt(10000),
+        installmentCount: 2,
+        status: 'OPEN',
+        categoryId: categoryA,
+      },
+    });
+    await tx.installment.create({
+      data: {
+        id: randomUUID(),
+        tenantId: tenantA,
+        receivableId: receivableA,
+        number: 1,
+        dueDate: new Date('2026-09-05T00:00:00.000Z'),
+        amountCents: BigInt(5000),
+        status: 'OPEN',
+      },
+    });
+  });
+
+  const quoteVisibleA = await tenantDb.runInTenantContext(ctxA, async (tx) => ({
+    category: await tx.financialCategory.findMany(),
+    plan: await tx.treatmentPlan.findMany(),
+    receivable: await tx.receivable.findMany(),
+    installment: await tx.installment.findMany(),
+  }));
+  const quoteVisibleB = await tenantDb.runInTenantContext(ctxB, async (tx) => ({
+    category: await tx.financialCategory.findMany(),
+    plan: await tx.treatmentPlan.findMany(),
+    receivable: await tx.receivable.findMany(),
+    installment: await tx.installment.findMany(),
+  }));
+  const quoteWithoutCtx = {
+    category: await prisma.financialCategory.findMany(),
+    plan: await prisma.treatmentPlan.findMany(),
+    receivable: await prisma.receivable.findMany(),
+    installment: await prisma.installment.findMany(),
+  };
+
+  if (quoteVisibleA.receivable.length !== 1 || quoteVisibleA.installment.length !== 1) {
+    console.error('FAIL: tenant A deveria ver 1 receivable/installment');
+    failed = true;
+  }
+  if (
+    quoteVisibleB.category.length !== 0 ||
+    quoteVisibleB.plan.length !== 0 ||
+    quoteVisibleB.receivable.length !== 0 ||
+    quoteVisibleB.installment.length !== 0
+  ) {
+    console.error('FAIL: tenant B deveria ver 0 linhas de treatments/billing');
+    failed = true;
+  }
+  if (
+    quoteWithoutCtx.receivable.length !== 0 ||
+    quoteWithoutCtx.installment.length !== 0 ||
+    quoteWithoutCtx.plan.length !== 0
+  ) {
+    console.error('FAIL: sem tenant_id deveria ver 0 treatments/billing');
+    failed = true;
+  }
+
+  try {
+    await tenantDb.runInTenantContext(ctxA, async (tx) => {
+      await tx.receivable.create({
+        data: {
+          id: randomUUID(),
+          tenantId: tenantB,
+          unitId: unitA,
+          patientId: patientA,
+          totalCents: BigInt(1),
+          installmentCount: 1,
+          status: 'OPEN',
+        },
+      });
+    });
+    console.error('FAIL: INSERT receivable cross-tenant deveria falhar');
+    failed = true;
+  } catch {
+    // esperado
+  }
+
+  const userA = randomUUID();
+  const membershipA = randomUUID();
+  const professionalA = randomUUID();
+  const quoteA = randomUUID();
+  await prisma.user.create({
+    data: {
+      id: userA,
+      email: `rls-a-${userA.slice(0, 8)}@teste.local`,
+      name: 'RLS Dentista',
+      passwordHash: 'x',
+    },
+  });
+  await tenantDb.runInTenantContext(ctxA, async (tx) => {
+    await tx.membership.create({
+      data: {
+        id: membershipA,
+        tenantId: tenantA,
+        userId: userA,
+        role: 'DENTIST',
+      },
+    });
+    await tx.professional.create({
+      data: {
+        id: professionalA,
+        tenantId: tenantA,
+        membershipId: membershipA,
+        croNumber: '12345',
+        croState: 'GO',
+      },
+    });
+    await tx.quote.create({
+      data: {
+        id: quoteA,
+        tenantId: tenantA,
+        unitId: unitA,
+        patientId: patientA,
+        professionalId: professionalA,
+        number: BigInt(1),
+        status: 'DRAFT',
+        totalCents: BigInt(35000),
+      },
+    });
+  });
+  const quotesA = await tenantDb.runInTenantContext(ctxA, (tx) => tx.quote.findMany());
+  const quotesB = await tenantDb.runInTenantContext(ctxB, (tx) => tx.quote.findMany());
+  const quotesWithout = await prisma.quote.findMany();
+  if (quotesA.length !== 1) {
+    console.error('FAIL: tenant A deveria ver 1 quote, viu', quotesA.length);
+    failed = true;
+  }
+  if (quotesB.length !== 0) {
+    console.error('FAIL: tenant B deveria ver 0 quote, viu', quotesB.length);
+    failed = true;
+  }
+  if (quotesWithout.length !== 0) {
+    console.error('FAIL: sem tenant_id deveria ver 0 quote; viu', quotesWithout.length);
+    failed = true;
+  }
+
+  try {
+    const created = await createReceivableFromApprovedQuote(ctxA, {
+      patientId: patientA,
+      unitId: unitA,
+      quoteId: quoteA,
+      treatmentPlanId: planA,
+      totalCents: 10000n,
+      installmentCount: 3,
+      firstDueDate: '2026-09-05',
+      downPaymentCents: 100n,
+    });
+    const installmentSum = created.installments.reduce((acc, row) => acc + row.amountCents, 0n);
+    if (installmentSum + created.downPaymentCents !== created.totalCents) {
+      console.error('FAIL: createReceivableFromApprovedQuote parcelas ≠ total');
+      failed = true;
+    }
+    if (created.installments.length !== 3) {
+      console.error('FAIL: createReceivableFromApprovedQuote deveria criar 3 parcelas');
+      failed = true;
+    }
+  } catch (err) {
+    console.error('FAIL: createReceivableFromApprovedQuote', err);
     failed = true;
   }
 

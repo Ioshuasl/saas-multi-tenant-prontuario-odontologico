@@ -13,6 +13,12 @@
       "skillPath": "skills/shadcn/SKILL.md",
       "computedHash": "f99ef49d9909d380ca683ceb8dc8c25775c20ee38140112c394e037d8c11ee18"
     },
+    "tiptap": {
+      "source": "ueberdosis/tiptap",
+      "sourceType": "github",
+      "skillPath": "skills/tiptap/SKILL.md",
+      "computedHash": "397fd0a77b53263bfebc02cd5b87608790ead9b58a575292549de8e82f7dd0bf"
+    },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",

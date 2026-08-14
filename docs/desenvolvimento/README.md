@@ -19,12 +19,13 @@ Pasta **somente** para acompanhamento do desenvolvimento (scaffold, sprints, dec
 
 ## Status atual
 
-- **Fase:** Sprint 4 — Prontuário (E5) — Blocos 1–5 backend (anexos + storage fechados)
-- **Próxima:** S4 Bloco 6 — frontend anamnese (public + admin + ficha)
-- **Anterior:** Sprint 2 — Pacientes e Agenda interna — **fechada** (E3+E4a Must + Qualidade)
+- **Fase:** Sprint 5 — Orçamento → tratamento (E6) — **fechada** (código + aceite local)
+- **Próxima:** Sprint 6 (E7 baixa/caixa)
+- **Anterior:** Sprint 4 — Prontuário (E5) — **código Must fechado** (M3 uso real pendente; smokes S4 no CI nesta S5)
 - **Código base:** Sprint 0 concluída (monorepo, CI, RLS, KeyManagementPort)
 - **Especificação:** [`../README.md`](../README.md)
-- **Checklist S4 (planejada):** [`sprints/S4-prontuario.md`](./sprints/S4-prontuario.md)
+- **Checklist S5 (planejada):** [`sprints/S5-orcamentos-tratamentos.md`](./sprints/S5-orcamentos-tratamentos.md)
+- **Checklist S4 (código Must):** [`sprints/S4-prontuario.md`](./sprints/S4-prontuario.md)
 - **Checklist S3 (código Must):** [`sprints/S3-canal-paciente.md`](./sprints/S3-canal-paciente.md)
 - **Checklist S2 (fechada):** [`sprints/S2-pacientes-agenda.md`](./sprints/S2-pacientes-agenda.md)
 - **Checklist S1 (fechada):** [`sprints/S1-identidade-clinica.md`](./sprints/S1-identidade-clinica.md)

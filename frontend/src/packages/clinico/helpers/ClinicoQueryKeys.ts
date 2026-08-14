@@ -7,4 +7,6 @@ export const clinicoQueryKeys = {
     ['clinico-odontogram', patientId, dentition] as const,
   notes: (patientId: string) => ['clinico-notes', patientId] as const,
   attachments: (patientId: string) => ['clinico-attachments', patientId] as const,
+  treatmentPlans: (patientId: string) => ['clinico-treatment-plans', patientId] as const,
+  treatmentPlan: (id: string) => ['clinico-treatment-plan', id] as const,
 };

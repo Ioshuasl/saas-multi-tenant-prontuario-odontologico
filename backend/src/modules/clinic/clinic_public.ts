@@ -4,19 +4,31 @@ import { OnboardingSeedRepository } from './repositories/onboarding/onboarding_s
 import { GetService as WorkingWindowsGetService } from './services/business_hours/working_windows_get.service.js';
 import { ResolveTenantBySlugRepository } from './repositories/tenant/tenant_resolve_slug.repository.js';
 import { GetPublicCatalogRepository } from './repositories/tenant/tenant_public_catalog.repository.js';
-import { GetByMembershipRepository } from './repositories/professional/professional.repository.js';
+import {
+  GetByMembershipRepository,
+  GetProfessionalRepository,
+} from './repositories/professional/professional.repository.js';
+import { GetProcedureRepository } from './repositories/procedure/procedure.repository.js';
+import {
+  GetLetterheadRepository,
+  ListTenantsForJobsRepository,
+} from './repositories/tenant/tenant_letterhead.repository.js';
 import type {
   ClinicOnboardingSeedInput,
   ClinicOnboardingSeedResult,
 } from './types/ports/clinic_onboarding.port.js';
 import type { WorkingWindow } from './helpers/working_windows.helper.js';
-import type { ProfessionalSummary } from './types/clinic.types.js';
+import type { ProfessionalSummary, ProcedureSummary } from './types/clinic.types.js';
 
 const onboardingSeedRepository = new OnboardingSeedRepository();
 const workingWindowsGet = new WorkingWindowsGetService();
 const resolveSlug = new ResolveTenantBySlugRepository();
 const publicCatalog = new GetPublicCatalogRepository();
 const getByMembership = new GetByMembershipRepository();
+const getProfessional = new GetProfessionalRepository();
+const getProcedure = new GetProcedureRepository();
+const getLetterhead = new GetLetterheadRepository();
+const listTenantsForJobs = new ListTenantsForJobsRepository();
 
 export async function seedClinicOnSignup(
   tx: DbTransaction,
@@ -55,8 +67,30 @@ export async function getProfessionalByMembershipId(
   return getByMembership.execute(ctx, membershipId);
 }
 
+export async function getProfessionalById(
+  ctx: RequestContext,
+  professionalId: string,
+): Promise<ProfessionalSummary | null> {
+  return getProfessional.execute(ctx, professionalId);
+}
+
+export async function getProcedureById(
+  ctx: RequestContext,
+  procedureId: string,
+): Promise<ProcedureSummary | null> {
+  return getProcedure.execute(ctx, procedureId);
+}
+
+export async function getClinicLetterhead(ctx: RequestContext, unitId: string) {
+  return getLetterhead.execute(ctx, unitId);
+}
+
+export async function listTenantsForScheduledJobs() {
+  return listTenantsForJobs.execute();
+}
+
 export type { ClinicOnboardingPort, ClinicOnboardingSeedInput, ClinicOnboardingSeedResult } from './types/ports/clinic_onboarding.port.js';
 export type { WorkingWindow } from './helpers/working_windows.helper.js';
 export type { BookingSettings } from './helpers/booking_settings.helper.js';
-export type { ProfessionalSummary } from './types/clinic.types.js';
+export type { ProfessionalSummary, ProcedureSummary } from './types/clinic.types.js';
 export { parseBookingSettings, DEFAULT_BOOKING_SETTINGS } from './helpers/booking_settings.helper.js';

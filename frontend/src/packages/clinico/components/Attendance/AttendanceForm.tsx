@@ -1,7 +1,7 @@
 'use client';
 
 import { AttendanceHeader } from '@/packages/clinico/components/Attendance/AttendanceHeader';
-import { PlanPlaceholder } from '@/packages/clinico/components/Attendance/PlanPlaceholder';
+import { TreatmentPlanPanel } from '@/packages/clinico/components/TreatmentPlan/TreatmentPlanPanel';
 import { AttachmentPanel } from '@/packages/clinico/components/Attachment/AttachmentPanel';
 import { ClinicalNoteEditor } from '@/packages/clinico/components/ClinicalNote/ClinicalNoteEditor';
 import { ClinicalNoteHistory } from '@/packages/clinico/components/ClinicalNote/ClinicalNoteHistory';
@@ -13,6 +13,7 @@ import { useMedicalRecordGetHook } from '@/packages/clinico/hooks/MedicalRecord/
 import { usePatientGetHook } from '@/packages/clinico/hooks/Patient/usePatientGetHook';
 import type { AttendanceFormProps } from '@/packages/clinico/types/Attendance/AttendanceFormTypes';
 import { ApiClientError } from '@/shared/api/api-client';
+import { Can } from '@/shared/auth/Can';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 
 export function AttendanceForm({ appointmentId }: AttendanceFormProps) {
@@ -73,7 +74,9 @@ export function AttendanceForm({ appointmentId }: AttendanceFormProps) {
         </main>
         <aside className="w-full shrink-0 lg:w-[360px]">
           <div className="sticky top-4 grid gap-4">
-            <PlanPlaceholder />
+            <Can permission="quotes.read">
+              <TreatmentPlanPanel patientId={patientId} appointmentId={appointment.id} />
+            </Can>
             <ClinicalNoteEditor patientId={patientId} appointmentId={appointment.id} />
           </div>
         </aside>

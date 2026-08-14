@@ -6,6 +6,7 @@ import { getTenantPrisma } from '../../../../shared/database/tenant_prisma.js';
 import { seedClinicOnSignup } from '../../../clinic/clinic_public.js';
 import { seedMessagingOnSignup } from '../../../messaging/messaging_public.js';
 import { seedDefaultAnamnesisForm } from '../../../clinical_records/clinical_records_public.js';
+import { seedDefaultFinancialCategories } from '../../../billing/billing_public.js';
 import { Role } from '../../enum/role/role.enum.js';
 import { addDays, buildTenantSlug } from '../../helpers/slug.helper.js';
 import { SignupProvisionRepository } from '../../repositories/signup/signup_provision.repository.js';
@@ -69,6 +70,11 @@ export class CreateAction {
       });
 
       await seedDefaultAnamnesisForm(tx, {
+        tenantId,
+        idNext: () => this.ids.next(),
+      });
+
+      await seedDefaultFinancialCategories(tx, {
         tenantId,
         idNext: () => this.ids.next(),
       });
