@@ -54,7 +54,7 @@ export async function seedMessaging(prisma: PrismaClient, tenantId: string) {
         providerName: 'quote_sent',
         body: 'Olá {{nome}}, a {{clinica}} enviou um orçamento de {{valor}}: {{link}}',
         variables: ['nome', 'clinica', 'valor', 'link'],
-        status: 'APPROVED',
+        status: 'ACTIVE',
       },
     });
   }

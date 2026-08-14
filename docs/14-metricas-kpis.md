@@ -49,7 +49,7 @@ Racional: essa métrica só cresce se a clínica realmente agenda, atende, regis
 Preço médio (ARPA)                 R$ 130/mês
 Custo de infra por tenant          R$   6/mês   (doc 11: ~US$ 1 no cenário de 500 tenants)
 Custo de storage por tenant        R$   3/mês   (cota do plano)
-Mensagens (repassadas)             R$   0       (créditos pré-pagos, margem neutra a positiva)
+Mensagens (WAHA self-hosted)       R$   0       (sem tarifa Meta; custo na VPS/sessão)
 Suporte (rateio)                   R$  12/mês
 ──────────────────────────────────────────────
 Margem de contribuição             R$ 109/mês   (~84%)

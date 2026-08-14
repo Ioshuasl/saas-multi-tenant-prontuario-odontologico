@@ -5,7 +5,7 @@
 - Time de referência: **2 desenvolvedores full-stack** (ou 1 dev + apoio de IA em ritmo equivalente), com o proprietário do produto disponível para decisões rápidas.
 - Sprint de 2 semanas; velocidade assumida de ~30–40 pontos por sprint depois da Sprint 0.
 - Estimativas em **pontos** (Fibonacci) conforme o [Escopo do MVP](./04-escopo-mvp.md) e em **sprints** — não em datas de calendário, que devem ser fixadas ao iniciar o desenvolvimento.
-- Riscos externos (aprovação de número/templates no WhatsApp Business, contratação de provedores, revisão jurídica) correm em paralelo e são a principal fonte de atraso — estão marcados como dependências externas.
+- Riscos externos (sessão WAHA/QR, contratação de provedores, revisão jurídica) correm em paralelo e são a principal fonte de atraso — estão marcados como dependências externas.
 
 ## 2. Fase 1 — MVP
 
@@ -71,9 +71,9 @@ Ordem por valor comercial percebido, com base no [benchmark](./02-benchmark-merc
 
 | Dependência | Prazo típico | Ação antecipada |
 | --- | --- | --- |
-| Conta WhatsApp Business (WABA) + verificação do negócio na Meta | dias a semanas, imprevisível | Iniciar na S1, não na S3; ter número de teste para desenvolvimento |
-| Aprovação de templates de mensagem | horas a dias por template | Submeter os 6 templates do MVP com antecedência; ter fallback por SMS/e-mail |
-| Revisão jurídica (Termos, Política, DPA) | 2–4 semanas | Contratar na S3 para estar pronto na S8 |
+| Instância WAHA (GOWS) na VPS + número de teste para QR | horas a 1 dia | Já em `waha.ioshuavps.com.br`; conferir engine GOWS antes do código ([migracao-waha.md](./desenvolvimento/migracao-waha.md)) |
+| Textos de automação (não há aprovação Meta) | contínuo | Revisar copy pt-BR; botões GOWS na implementação |
+| Revisão jurídica (Termos, Política, DPA) + cláusula de risco WhatsApp não oficial | 2–4 semanas | Contratar na S3 para estar pronto na S8; checkbox de ciência no app |
 | Provedor de assinatura digital (fase 2) | negociação + integração | Levantar opções durante o MVP |
 | Clínica-piloto | recrutamento | Definir na S2; envolver no design das telas de agenda e atendimento |
 | CNPJ/meios de recebimento da própria assinatura | semanas | Necessário antes do M5 |
@@ -82,12 +82,12 @@ Ordem por valor comercial percebido, com base no [benchmark](./02-benchmark-merc
 
 | # | Risco | Prob. | Impacto | Mitigação / contingência |
 | --- | --- | --- | --- | --- |
-| R1 | Aprovação do WhatsApp atrasa e trava o marco M2 | Alta | Alto | Iniciar o processo na S1; fallback com SMS/e-mail e link de confirmação; recurso não bloqueia o resto do MVP |
+| R1 | Sessão WAHA cai / número banido / QR não fecha e trava M2 | Alta | Alto | Número dedicado + checkbox; fallback e-mail e link de confirmação; recurso não bloqueia o resto do MVP; alerta na UI |
 | R2 | Escopo do prontuário inflar (cada especialidade quer campo próprio) | Alta | Alto | Anamnese e fichas configuráveis por JSON schema; especialidades ficam para a fase 3; dizer "não" no MVP |
 | R3 | Erro de fuso horário na agenda | Média | Alto | UTC no banco, timezone por tenant, testes com DST, revisão obrigatória em PR que toca data |
 | R4 | Vazamento entre tenants | Baixa | Crítico | RLS + testes automatizados de isolamento no CI + 404 em vez de 403 |
 | R5 | Perda/corrupção de dado clínico | Baixa | Crítico | Append-only + hash + PITR + restauração ensaiada |
-| R6 | Custo de WhatsApp corroer margem | Média | Médio | Créditos pré-pagos, preferência por templates de utilidade, medição por tenant, limite por plano |
+| R6 | Custo de infra WhatsApp (RAM/sessão, suporte a QR) ou ban em massa | Média | Médio | GOWS (sem Chromium); uma sessão por tenant; kill switch; não vender campanha fria |
 | R7 | Migração de dados do sistema atual inviabilizar vendas | Alta | Alto | Importador na prioridade 1 da fase 2; oferecer migração assistida no piloto |
 | R8 | Concorrência de preço agressiva | Média | Médio | Não competir só em preço: diferenciais D1–D7 do [doc 01](./01-visao-produto.md) |
 | R9 | Performance da agenda com clínica grande | Média | Médio | Índices `(tenant_id, …)`, virtualização, teste de volume desde a S2 |
@@ -109,6 +109,7 @@ Ordem por valor comercial percebido, com base no [benchmark](./02-benchmark-merc
 8. ~~KMS / segredos~~ → **KEK + secrets locais na VPS** agora; intenção **Vault self-hosted** ([ADR-0013](./adr/0013-kms-local-vps.md)).
 9. ~~Domínio / TLS / deploy~~ → **EasyPanel** na VPS; HTTPS pelo EasyPanel; **domínio app + domínio api** (flexíveis); Dockerfile (+ Nginx se preciso) ([ADR-0014](./adr/0014-deploy-easypanel-dominios.md)).
 10. ~~Formato ciphertext / `tenant_crypto_key`~~ → blob Base64 `v1|nonce|ct|tag` + tabela em [docs/07 §14](./07-modelo-de-dados.md#14-envelope-encryption--tenant_crypto_key-e-formato-de-ciphertext); explicação leiga em [docs/17 §3.2](./17-seguranca-baseline.md).
+11. ~~WhatsApp provedor~~ → **WAHA GOWS** default ([ADR-0016](./adr/0016-waha-default-messaging.md)); Cloud API opcional por env ([ADR-0005](./adr/0005-whatsapp-cloud-api.md) supersedido).
 
 Cada decisão fechada gera um ADR em `docs/adr/` (ou atualiza o ADR existente).
 

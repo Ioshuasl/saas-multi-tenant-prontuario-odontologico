@@ -4,14 +4,20 @@ import type { WhatsappAccountStatus } from '../enum/whatsapp_account/whatsapp_ac
 
 export type WhatsappAccountSummary = {
   id: string;
-  wabaId: string;
-  phoneNumberId: string;
-  displayPhone: string;
+  sessionName: string;
+  displayPhone: string | null;
   status: WhatsappAccountStatus;
   killSwitch: boolean;
   lastError: string | null;
+  riskAcceptedAt: string | null;
   webhookVerifiedAt: string | null;
   createdAt: string;
+};
+
+export type WhatsappAccountQr = {
+  qr: string | null;
+  status: string;
+  displayPhone: string | null;
 };
 
 export type MessageTemplateSummary = {
@@ -42,12 +48,8 @@ export type AutomationSummary = {
 };
 
 export type MessagingUsage = {
-  courtesyGranted: number;
-  balance: number;
-  consumed: number;
-  lowThreshold: number;
-  creditsLow: boolean;
-  creditsExhausted: boolean;
+  sent: number;
+  failed: number;
 };
 
 export type MessageLogItem = {

@@ -11,10 +11,7 @@ export function useAccountFormHook() {
   return useForm<AccountConnectFormValues>({
     resolver: zodResolver(AccountConnectSchema),
     defaultValues: {
-      wabaId: '',
-      phoneNumberId: '',
-      displayPhone: '',
-      accessToken: '',
+      riskAccepted: false,
     },
   });
 }

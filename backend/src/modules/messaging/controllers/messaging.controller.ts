@@ -3,11 +3,13 @@ import { AppError } from '../../../shared/middlewares/error_handler.middleware.j
 import {
   accountConnectSchema,
   accountPatchSchema,
+  accountTestSchema,
   automationKeyParamSchema,
   automationPatchSchema,
   logsQuerySchema,
 } from '../schemas/messaging.schema.js';
 import { GetService as AccountGetService } from '../services/account/account_get.service.js';
+import { GetQrService } from '../services/account/account_qr.service.js';
 import { ConnectService } from '../services/account/account_connect.service.js';
 import { TestService } from '../services/account/account_test.service.js';
 import { DeleteService } from '../services/account/account_delete.service.js';
@@ -28,6 +30,7 @@ function requireCtx(req: Request) {
 export class MessagingController {
   constructor(
     private readonly accountGet = new AccountGetService(),
+    private readonly accountQr = new GetQrService(),
     private readonly accountConnect = new ConnectService(),
     private readonly accountTest = new TestService(),
     private readonly accountDelete = new DeleteService(),
@@ -44,17 +47,26 @@ export class MessagingController {
     res.status(200).json({ data });
   };
 
+  getAccountQr = async (req: Request, res: Response): Promise<void> => {
+    const data = await this.accountQr.execute(requireCtx(req));
+    res.status(200).json({ data });
+  };
+
   connectAccount = async (req: Request, res: Response): Promise<void> => {
     const parsed = accountConnectSchema.safeParse(req.body);
     if (!parsed.success) {
-      throw new AppError('VALIDATION_ERROR', 'Dados inválidos.', 400, parsed.error);
+      throw new AppError('VALIDATION_ERROR', 'Aceite os riscos para conectar o WhatsApp.', 422, parsed.error);
     }
     const data = await this.accountConnect.execute(requireCtx(req), parsed.data);
     res.status(201).json({ data });
   };
 
   testAccount = async (req: Request, res: Response): Promise<void> => {
-    const data = await this.accountTest.execute(requireCtx(req));
+    const parsed = accountTestSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      throw new AppError('VALIDATION_ERROR', 'Telefone de teste inválido.', 422, parsed.error);
+    }
+    const data = await this.accountTest.execute(requireCtx(req), parsed.data);
     res.status(200).json({ data });
   };
 

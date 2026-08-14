@@ -27,7 +27,7 @@ Três promessas mensuráveis, que orientam as prioridades do MVP:
 
 O mercado brasileiro já é atendido por players consolidados (ver [Benchmark](./02-benchmark-mercado.md)). Não vencemos por lista de funcionalidades — vencemos por **fluxo, arquitetura e transparência**:
 
-1. **WhatsApp nativo e oficial (Cloud API), não extensão de WhatsApp Web.** Vários concorrentes entregam a integração como extensão de navegador acoplada ao WhatsApp Web do usuário. Nós tratamos a conversa como dado da clínica: caixa de entrada compartilhada, histórico vinculado ao paciente, templates aprovados e automações no servidor — funciona com o computador da recepção desligado.
+1. **WhatsApp no servidor (WAHA), não extensão no PC da recepção.** Vários concorrentes entregam a integração como extensão de navegador. Nós tratamos a conversa como dado da clínica: caixa de entrada compartilhada, histórico no paciente, automações no servidor — funciona com o computador da recepção desligado. Canal não oficial (ToS Meta); número dedicado e aviso de risco de ban ([ADR-0016](./adr/0016-waha-default-messaging.md)).
 2. **Sem paywall no essencial clínico.** Odontograma, prontuário completo, anamnese e agenda online no plano de entrada. Monetizamos escala (nº de profissionais/unidades) e consumo (mensagens, IA), não o direito de registrar o atendimento.
 3. **Precificação previsível e sem "consulte-nos".** Preço público, autosserviço, teste grátis sem cartão, implantação não obrigatória.
 4. **Dados do cliente são do cliente.** Exportação completa (pacientes, prontuários, financeiro) em formato aberto, self-service, desde o primeiro plano — o oposto do lock-in por migração.
@@ -46,7 +46,7 @@ O mercado brasileiro já é atendido por players consolidados (ver [Benchmark](.
 - **SaaS por assinatura mensal/anual**, cobrada por clínica (tenant), com faixas por número de profissionais ativos.
 - **Desconto anual** (~10–20%) para reduzir churn e melhorar caixa.
 - **Trial de 14 dias sem cartão**, com dados de demonstração que podem ser descartados em um clique.
-- **Consumo à parte:** mensagens WhatsApp de template (marketing/utilidade), transcrição por IA e consultas a bureaus de crédito, como créditos pré-pagos — o mesmo modelo praticado pelo mercado, e é o modelo que o custo real impõe.
+- **Consumo à parte:** transcrição por IA e consultas a bureaus de crédito, como créditos pré-pagos. WhatsApp no default WAHA **não** repassa tarifa Meta.
 - **Add-ons futuros:** meios de pagamento integrados (Pix/boleto/link), assinatura digital, site da clínica.
 
 ### Faixas de plano (hipótese inicial a validar)
@@ -89,7 +89,7 @@ O detalhamento por item está em [Escopo do MVP](./04-escopo-mvp.md) e nos arqui
 | Risco | Impacto | Mitigação |
 | --- | --- | --- |
 | Migração de dados do sistema atual é o maior bloqueio de venda | Alto | Importador CSV guiado desde o MVP+ e serviço de migração assistida |
-| Aprovação de templates e número no WhatsApp Business é lenta/burocrática | Alto | Onboarding com número compartilhado de teste no trial; templates pré-aprovados pela plataforma; documentação passo a passo |
+| Aprovação de templates e número no WhatsApp Business é lenta/burocrática | Alto | Mitigado pelo [ADR-0016](./adr/0016-waha-default-messaging.md) (WAHA/QR). Risco residual: ban da sessão / QR cair; fallback e-mail |
 | Concorrentes com anos de funcionalidades acumuladas | Médio | Não competir em amplitude no ano 1: vencer em prontuário+agenda+WhatsApp e em experiência de uso |
 | Sensibilidade jurídica do prontuário (LGPD, guarda, auditoria) | Alto | Requisitos de compliance tratados como funcionalidade de primeira classe ([doc 10](./10-seguranca-lgpd-compliance.md)) |
-| Custo variável de WhatsApp corroer a margem | Médio | Repasse explícito por créditos + limites por plano + preferência por templates de utilidade |
+| Ban ou queda da sessão WhatsApp (cliente não oficial) | Médio | Número dedicado, checkbox de ciência, alerta na UI, e-mail de fallback |

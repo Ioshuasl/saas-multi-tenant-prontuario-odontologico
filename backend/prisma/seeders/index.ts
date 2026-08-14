@@ -87,6 +87,7 @@ async function main() {
     console.info(`  login financeiro ${FINANCE_EMAIL} / ${SEED_PASSWORD}`);
     console.info(`  convite pendente ${INVITE_EMAIL} (token dev: ${INVITE_RAW_TOKEN})`);
     console.info('  S5: categoria Procedimentos + orçamento DRAFT da Maria (3 itens)');
+    console.info('  S6: categorias E7 (receitas/despesas) idempotentes');
   } finally {
     await prisma.$disconnect();
   }

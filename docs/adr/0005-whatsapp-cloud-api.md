@@ -1,7 +1,8 @@
 # ADR-0005 — WhatsApp Business Cloud API oficial (não WhatsApp Web)
 
-- **Status:** Aceito
+- **Status:** Supersedido
 - **Data:** 2026-08-11
+- **Supersedido em:** 2026-08-14 por [ADR-0016](./0016-waha-default-messaging.md) (WAHA GOWS default; Cloud API só por env). O texto abaixo é histórico e **não** é a decisão vigente.
 
 ## Contexto
 
@@ -80,3 +81,5 @@ Webhook: verificar assinatura → responder 200 → enfileirar job idempotente p
 - [docs/modulos/08-whatsapp-comunicacao.md](../modulos/08-whatsapp-comunicacao.md)
 - [WhatsApp Business Platform — Pricing](https://developers.facebook.com/docs/whatsapp/pricing/)
 - [docs/02-benchmark-mercado.md](../02-benchmark-mercado.md)
+- Pesquisa: [docs/pesquisa/whatsapp-provedores-self-hosted.md](../pesquisa/whatsapp-provedores-self-hosted.md) · [ADR-0015](./0015-avaliacao-gateways-whatsapp-nao-oficiais.md)
+- Decisão vigente: [ADR-0016](./0016-waha-default-messaging.md)

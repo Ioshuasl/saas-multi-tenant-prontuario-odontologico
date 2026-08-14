@@ -17,9 +17,9 @@ Critério de "MVP pronto": uma clínica-piloto opera **um mês inteiro** exclusi
 | E5 | **Prontuário clínico** | Anamnese (questionário configurável + resposta pelo paciente via link), alertas clínicos (alergias, condições), odontograma digital (permanente e decíduo, por dente e face), plano de tratamento, evolução clínica append-only com autoria/assinatura simples, anexos (imagens/PDF) com cota por plano, histórico completo por paciente |
 | E6 | **Orçamentos e tratamentos** | Montagem de orçamento a partir do catálogo + dentes/faces, descontos, validade, PDF, envio ao paciente, aprovação (presencial ou por link), geração automática do plano de tratamento e das parcelas, execução de procedimento com baixa no plano |
 | E7 | **Financeiro** | Contas a receber (parcelamento, baixa, estorno), contas a pagar (categorias, recorrência), caixa diário (abertura/fechamento por operador), fluxo de caixa (competência e caixa), inadimplência, recibo, relatório de produção por profissional |
-| E8 | **WhatsApp e comunicação** | Conexão de número via WhatsApp Cloud API, templates transacionais (confirmação, lembrete, recibo, anamnese, orçamento), automações agendadas (D-1, H-3), webhook de status e de resposta com botões, caixa de entrada compartilhada com histórico por paciente, controle de créditos e log de envio auditável, kill switch por automação |
+| E8 | **WhatsApp e comunicação** | Conexão por QR no app (WAHA/GOWS), textos transacionais (confirmação, lembrete, recibo, anamnese, orçamento), automações D-1/H-3, webhook de botão, caixa de entrada compartilhada, volume/falhas, kill switch; ciência de risco de ban |
 | E9 | **Relatórios essenciais** | Painel inicial (agenda do dia, a receber hoje, faltas do mês, produção do mês), faltas/cancelamentos, receita por período, inadimplência, procedimentos executados, produção por profissional, exportação CSV/Excel |
-| E10 | **Billing do SaaS** | Planos, trial de 14 dias, status da assinatura, limites por plano (nº de profissionais/agendas, GB de anexo, créditos de mensagem), bloqueio suave ao expirar, tela de assinatura |
+| E10 | **Billing do SaaS** | Planos, trial de 14 dias, status da assinatura, limites por plano (nº de profissionais/agendas, GB de anexo), bloqueio suave ao expirar, tela de assinatura |
 | E11 | **Plataforma e não-funcionais** | API v1 versionada, RLS multi-tenant, auditoria, jobs/filas, observabilidade, backup, LGPD (exportação e solicitação do titular), CI com lint/typecheck/testes |
 
 ## 3. Fora do escopo do MVP (com fase-alvo)
@@ -136,14 +136,14 @@ Formato: `Como <persona>, quero <ação>, para <valor>`. Critérios em Gherkin r
 ### E8 — WhatsApp e comunicação
 
 **US-8.1 (8)** Como Owner, quero conectar o número da clínica ao sistema.
-- Fluxo guiado (WABA/número/token); teste de envio; estado da conexão visível; erros com instrução acionável.
-**US-8.2 (8)** Como sistema, devo enviar confirmação em D-1 e lembrete em H-3 por template de utilidade.
-- Envio via fila com retry exponencial; respeita fuso do tenant e janela de silêncio (não enviar 21h–8h); não envia para agendamento cancelado.
+- Checkbox de ciência (ToS/ban/número dedicado); QR / pairing code no app (WAHA); teste de envio; estado visível; erros acionáveis.
+**US-8.2 (8)** Como sistema, devo enviar confirmação em D-1 e lembrete em H-3.
+- Textos nossos via fila com retry; fuso do tenant e silêncio 21h–8h; não envia se agendamento cancelado.
 **US-8.3 (5)** Como paciente, quero confirmar ou pedir remarcação por botão na mensagem.
-- Webhook idempotente por `message_id`; "Confirmar" muda status; "Remarcar" abre conversa marcada para atendimento humano.
+- Webhook idempotente por `provider_message_id`; "Confirmar" muda status; "Remarcar" abre conversa para humano; fallback texto se o engine não mandar botão.
 **US-8.4 (13)** Como recepção, quero uma caixa de entrada compartilhada vinculada ao paciente.
-- Lista de conversas com não lidas, atribuição a um atendente, envio de texto/anexo dentro da janela de 24h, indicação visível de janela fechada (só template), histórico persistido no paciente.
-**US-8.5 (5)** Como Owner, quero ver o consumo/custo de mensagens e desligar qualquer automação.
+- Lista com não lidas, atribuição, envio de texto/anexo, histórico no paciente. Sem regra de preço da janela 24 h da Meta.
+**US-8.5 (5)** Como Owner, quero ver volume/falhas de mensagens e desligar qualquer automação.
 
 ### E9 — Relatórios
 
@@ -154,7 +154,7 @@ Formato: `Como <persona>, quero <ação>, para <valor>`. Critérios em Gherkin r
 ### E10 — Billing SaaS
 
 **US-10.1 (5)** Trial de 14 dias sem cartão, com contador visível e avisos em D-3 e D-1.
-**US-10.2 (5)** Limites por plano aplicados no servidor (profissionais ativos, GB de anexos, créditos de mensagem) com mensagem clara de upgrade.
+**US-10.2 (5)** Limites por plano aplicados no servidor (profissionais ativos, GB de anexos) com mensagem clara de upgrade.
 **US-10.3 (3)** Assinatura expirada → modo somente-leitura (nunca perda de dados nem bloqueio de exportação).
 
 ### E11 — Plataforma

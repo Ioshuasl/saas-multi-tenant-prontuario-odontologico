@@ -202,9 +202,9 @@ POST   /api/v1/public/waitlist/:token/accept           (S3 Bloco 3)
 ```
 
 Resposta: `{ "data": { "bookingId": "…", "otpSentVia": "EMAIL"|"WHATSAPP", "expiresInSeconds": 300 } }`.  
-Erros: `409 SLOT_UNAVAILABLE`, `422 BUSINESS_RULE_VIOLATION` (lead time / procedimento não público / consentimento obrigatório / e-mail ausente sem WABA), `429 RATE_LIMITED`.
+Erros: `409 SLOT_UNAVAILABLE`, `422 BUSINESS_RULE_VIOLATION` (lead time / procedimento não público / consentimento obrigatório / e-mail ausente sem WhatsApp conectado), `429 RATE_LIMITED`.
 
-**POST `.../bookings/verify`:** `{ "bookingId", "code": "123456" }` → appointment (`origin=PUBLIC_BOOKING`) + patient. OTP 6 dígitos, 5 min, 3 tentativas. Sem WABA no Bloco 2, OTP vai por e-mail.
+**POST `.../bookings/verify`:** `{ "bookingId", "code": "123456" }` → appointment (`origin=PUBLIC_BOOKING`) + patient. OTP 6 dígitos, 5 min, 3 tentativas. Sem sessão WA `CONNECTED`, OTP vai por e-mail.
 
 **GET `/public/appointments/:token/confirm`:** one-shot; segunda chamada → `200` com status atual. `REQUESTED` ou cancelado → `409 INVALID_STATE_TRANSITION`. Só `SCHEDULED → CONFIRMED`.
 
@@ -286,7 +286,7 @@ POST   /api/v1/anamnesis-forms                          // settings.write (nova 
 
 **GET `/patients/:patientId/record/anamnesis`** (`clinical_records.read` + `auditRead`): histórico com `questions` da **versão respondida** + `answers` decifrados. POST (`.write`, `answered_by=PROFESSIONAL`): `{ "answers": { "allergy_meds": { "value": true, "text": "Dipirona" }, "main_complaint": "Dor no 26" } }` → `{ "id", "accepted": true }`. `alertWhen` satisfeito gera `ClinicalAlert` (`source=ANAMNESIS`); CRITICAL publica outbox `clinical_records.critical_alert_created` (emit-only).
 
-**POST `.../anamnesis/send-link`** (`.write`): `{ "channel": "WHATSAPP"|"EMAIL"|"COPY" }` → `{ "expiresAt", "sentVia", "publicUrl"? }`. Token `purpose=ANAMNESIS`, TTL 7 dias, one-shot. WA se WABA `CONNECTED` (template `anamnesis_request`); senão e-mail; `COPY` devolve URL absoluta `APP_PUBLIC_URL/anamnese/{token}`. Não logar token plaintext no `audit_log`.
+**POST `.../anamnesis/send-link`** (`.write`): `{ "channel": "WHATSAPP"|"EMAIL"|"COPY" }` → `{ "expiresAt", "sentVia", "publicUrl"? }`. Token `purpose=ANAMNESIS`, TTL 7 dias, one-shot. WA se conta `CONNECTED` (texto `anamnesis_request`); senão e-mail; `COPY` devolve URL absoluta `APP_PUBLIC_URL/anamnese/{token}`. Não logar token plaintext no `audit_log`.
 
 **GET|POST `/public/anamnesis/:token`** (sem JWT, sem slug; rate `public:anamnesis:ip:{ip}` 30/h): GET → `{ clinicName, patientFirstName, form: { name, version, questions }, expiresAt }` (sem CPF/telefone/CRO/alertas). Token usado/expirado/inexistente → `404 NOT_FOUND` (mesmo shape). POST `{ answers }` → `{ accepted: true }` (200); idempotente se `used_at` já setado; `answered_by=PATIENT` + signature SIMPLE `{ ip, userAgent, hash }`. Validação contra a versão do form no token. `showWhen.patientGender` filtra perguntas.
 
@@ -399,56 +399,74 @@ Público: `GET /api/v1/public/quotes/:token` (comercial: clínica, primeiro nome
 
 ### 2.7 Financeiro (`billing`)
 
-HTTP E7 (baixa, caixa, AP) → **S6**. S5 só persiste `receivable` / `installment` / `production_entry` via `billing_public` na transação de aprovação/execução.
+HTTP E7 (baixa, caixa, AP, fatia de relatórios) → **S6**. Fundação (Bloco 1): tabelas + RLS + counter de recibo + seed de categorias. Rotas de domínio nos Blocos 2–5. Relatórios E7 (`/reports/cash-flow|overdue|production`) são registrados em `billing.module.ts` (sem módulo `reporting` nesta sprint).
 
 ```
-GET    /api/v1/receivables                 ?patientId=&status=&from=&to=
-POST   /api/v1/receivables                 título manual
-GET    /api/v1/receivables/:id
-GET    /api/v1/installments                ?status=OVERDUE&dueFrom=&dueTo=
-POST   /api/v1/installments/:id/payments    baixa (Idempotency-Key obrigatório)
-POST   /api/v1/payments/:id/reverse         estorno com motivo
-GET    /api/v1/payments/:id/receipt         PDF
+GET    /api/v1/receivables                      ?patientId=&status=&from=&to=&cursor=&limit=
+POST   /api/v1/receivables                      título manual (quotes não)
+GET    /api/v1/receivables/:id                  inclui installments[] + payments[]
+POST   /api/v1/receivables/:id/cancel           { reason }  só sem pagamentos
 
-GET    /api/v1/payables
+GET    /api/v1/installments                     ?patientId=&status=&dueFrom=&dueTo=&cursor=&limit=
+POST   /api/v1/installments/:id/payments        Idempotency-Key
+POST   /api/v1/payments/:id/reverse             Idempotency-Key { reason }
+GET    /api/v1/payments/:id/receipt
+POST   /api/v1/payments/:id/send-receipt        { channel: WHATSAPP|EMAIL|COPY }
+POST   /api/v1/installments/:id/charge          { channel: WHATSAPP|EMAIL|COPY }
+
+GET    /api/v1/payables                         ?status=&dueFrom=&dueTo=
 POST   /api/v1/payables
-PATCH  /api/v1/payables/:id
-POST   /api/v1/payables/:id/pay
+PATCH  /api/v1/payables/:id                     só OPEN
+POST   /api/v1/payables/:id/pay                 Idempotency-Key
 
-GET    /api/v1/cash-sessions/current
-POST   /api/v1/cash-sessions               abrir caixa
-POST   /api/v1/cash-sessions/:id/close     fechar (com contagem)
-POST   /api/v1/cash-sessions/:id/movements suprimento/sangria
-GET    /api/v1/financial-categories
+GET    /api/v1/cash-sessions/current            ?unitId=
+POST   /api/v1/cash-sessions                    Idempotency-Key  abrir
+GET    /api/v1/cash-sessions/:id
+POST   /api/v1/cash-sessions/:id/close          Idempotency-Key  { countedByMethod, differenceReason? }
+POST   /api/v1/cash-sessions/:id/movements      { kind: SUPPLY|WITHDRAWAL, amountCents, method, reason }
+
+GET    /api/v1/financial-categories             ?kind=REVENUE|EXPENSE
 POST   /api/v1/financial-categories
+
+GET    /api/v1/patients/:id/credit              saldo derivado (finance.read)
+
+GET    /api/v1/reports/cash-flow                ?from=&to=&basis=CASH|ACCRUAL&unitId=   reports.financial
+GET    /api/v1/reports/overdue                  ?unitId=&professionalId=                 reports.financial
+GET    /api/v1/reports/production               ?from=&to=&professionalId=               reports.read (escopo por papel)
 ```
+
+`Idempotency-Key` obrigatório em `POST .../payments`, `POST .../reverse`, `POST /cash-sessions`, `POST .../close`, `POST .../pay`. Mesma chave + mesmo body → resposta original; body diferente → `409 IDEMPOTENCY_KEY_REUSED`.
+
+Erros estáveis: `403 FORBIDDEN`, `404 NOT_FOUND`, `409 IDEMPOTENCY_KEY_REUSED`, `422 BUSINESS_RULE_VIOLATION` / `CASH_SESSION_REQUIRED` / `RECEIVABLE_HAS_PAYMENTS`, `423 RECORD_IMMUTABLE` (caixa fechado).
 
 ### 2.8 Mensageria (`messaging`)
 
 ```
 GET    /api/v1/messaging/account
-POST   /api/v1/messaging/account            { wabaId, phoneNumberId, displayPhone, accessToken }
-PATCH  /api/v1/messaging/account            { killSwitch }   (S3)
+POST   /api/v1/messaging/account            { riskAccepted: true }  → cria sessão WAHA, devolve qr / pairingCode; status PENDING
+GET    /api/v1/messaging/account/qr         poll enquanto PENDING (qr base64 / pairingCode)
+PATCH  /api/v1/messaging/account            { killSwitch }
 POST   /api/v1/messaging/account/test       Idempotency-Key
-DELETE /api/v1/messaging/account            disconnect + kill switch + disable automations
+DELETE /api/v1/messaging/account            logout sessão WAHA + kill switch + disable automations
 
 GET    /api/v1/messaging/templates
 GET    /api/v1/messaging/automations
 PATCH  /api/v1/messaging/automations/:key   { enabled?, config? }  keys: CONFIRMATION_D1|REMINDER_H3|WAITLIST_OFFER
-GET    /api/v1/messaging/usage              cortesia + saldo + consumed + flags low/exhausted
+GET    /api/v1/messaging/usage              sent / failed / flags (sem saldo Meta)
 GET    /api/v1/messaging/logs               ?from=&to=&result=&cursor=&limit=  (sem body clínico)
 
-POST   /api/v1/webhooks/whatsapp            público, HMAC SHA-256 (raw body, 2 MB)
-GET    /api/v1/webhooks/whatsapp            handshake hub.verify_token → hub.challenge
+POST   /api/v1/webhooks/whatsapp            público, HMAC do WAHA (raw body, 2 MB)
 ```
 
-**S3 (E8a):** inbox (`/messaging/conversations*`) **não** entra — S7. Token WABA vai para KMS (`access_token_ref`); resposta de account nunca devolve o token. Teste fake em `NODE_ENV=test|development`. Débito de crédito no **delivery** (webhook status), não no send. Agenda (created/confirmation/reminder/cancelled) nunca consome crédito; utility (waitlist) usa cortesia; marketing exige consentimento (`BLOCKED_NO_CONSENT`).
+**E8a:** inbox (`/messaging/conversations*`) **não** entra — S7. Frontend **nunca** chama o WAHA. `WAHA_API_KEY` só no backend. Sem `accessToken` Meta no POST. Teste fake em `NODE_ENV=test|development`. **Não** debitar crédito no delivery. Marketing exige consentimento (`BLOCKED_NO_CONSENT`). Connect sem `riskAccepted` → 422.
 
-**Account POST → test:** status `PENDING` → `CONNECTED` (ou `ERROR` + `lastError`). Kill switch: `PATCH { killSwitch: true }` ou `DELETE`.
+**Account:** `PENDING` (QR) → `CONNECTED` (ou `ERROR` + `lastError`). Kill switch: `PATCH { killSwitch: true }` ou `DELETE`.
 
 **Automations config (exemplo):** `{ "sendAtLocalTime": "12:00", "onlyForStatuses": ["SCHEDULED","CONFIRMED"], "templateKey": "appointment_confirmation" }`.
 
 ### 2.9 Relatórios (`reporting`)
+
+S6 entrega **somente** cash-flow / overdue / production (rotas no módulo `billing`). Dashboard, no-shows, procedures e `POST /reports/:report/export` → **S7**.
 
 ```
 GET    /api/v1/reports/dashboard            ?unitId=&date=
@@ -619,33 +637,24 @@ Idempotency-Key: 018f5f01-...
 
 Invariante testada: `sum(installments.amountCents) + downPaymentCents == quote.approvedTotalCents`.
 
-### 3.5 Webhook do WhatsApp
+### 3.5 Webhook do WhatsApp (WAHA)
 
 ```http
 POST /api/v1/webhooks/whatsapp
-X-Hub-Signature-256: sha256=...
+X-Webhook-Hmac: <hmac-waha>
 {
-  "object": "whatsapp_business_account",
-  "entry": [{
-    "id": "WABA_ID",
-    "changes": [{
-      "field": "messages",
-      "value": {
-        "metadata": { "phone_number_id": "PHONE_ID" },
-        "messages": [{
-          "from": "5562999990000",
-          "id": "wamid.HBg...",
-          "timestamp": "1755701234",
-          "type": "button",
-          "button": { "payload": "CONFIRM_018f5d61", "text": "Confirmar" }
-        }]
-      }
-    }]
-  }]
+  "event": "message",
+  "session": "tenant_<uuid>",
+  "payload": {
+    "id": "true_<id>",
+    "from": "5562999990000",
+    "type": "button",
+    "button": { "payload": "CONFIRM_018f5d61", "text": "Confirmar" }
+  }
 }
 ```
 
-Processamento: verificar assinatura (HMAC-SHA256 de `X-Hub-Signature-256` sobre o **raw body**) → `401` se inválida → enfileirar `process-whatsapp-webhook` com `jobId=wamid` → responder `200`. Redis down → `503` (Meta retenta). Idempotência por `messages[].id` (`wamid`): unique parcial em `message.provider_message_id`.
+Formato ilustrativo — o payload real do WAHA/GOWS deve ser mapeado no adapter. Processamento: HMAC do WAHA sobre o **raw body** → `401` se inválida → enfileirar `process-whatsapp-webhook` com `jobId=provider_message_id` → `200`. Redis down → `503` (WAHA retenta se configurado). Idempotência: unique parcial em `message.provider_message_id`. Tenant via `session` → `whatsapp_account.session_name`. Sem handshake `hub.challenge`.
 
 | payload / texto | Efeito |
 | --- | --- |
@@ -655,7 +664,7 @@ Processamento: verificar assinatura (HMAC-SHA256 de `X-Hub-Signature-256` sobre 
 | `REBOOK_<id>` ou texto “Remarcar” | `conversation.status=PENDING` (sem inbox UI na S3) |
 | outro | persiste inbound; sem efeito de domínio |
 
-Status webhook (`delivered`) debita crédito se `message.billable`.
+Status de entrega **não** debita crédito Meta.
 
 ### 3.6 Upload de anexo (URL pré-assinada)
 
@@ -698,6 +707,66 @@ GET /api/v1/attachments/018f5e20-.../download
 DELETE /api/v1/attachments/018f5e20-...
 { "reason": "arquivo enviado por engano" }
 ```
+
+### 3.7 Financeiro — baixa, caixa e relatórios E7 (esqueleto S6)
+
+Envelope `{ data }` / `{ error }`; dinheiro `*Cents` inteiro; datas ISO com offset.
+
+**POST `/installments/:id/payments`** (`Idempotency-Key`):
+
+```json
+{
+  "amountCents": 30000,
+  "receivedAt": null,
+  "notes": null,
+  "splits": [
+    { "method": "PIX", "amountCents": 20000 },
+    { "method": "CASH", "amountCents": 10000 }
+  ]
+}
+```
+
+`amountCents` = Σ splits. Pode ser menor que o saldo (parcial) ou maior (excedente → crédito). Resposta: `{ paymentId, receiptNumber, installmentStatus, creditCentsGranted, cashSessionId }`.
+
+**POST `/payments/:id/reverse`:** `{ "reason": "lançado na parcela errada" }` (≥10).
+
+**POST `/cash-sessions`:** `{ "unitId", "openingCents", "openingByMethod"? }`. Sem `openingByMethod`, o fundo inicial conta como `CASH`. `Idempotency-Key` obrigatório. Uma sessão `OPEN` por operador/unidade.
+
+**GET `/cash-sessions/current?unitId=`:** sessão `OPEN` do ator na unidade, ou `null`. Inclui `expectedByMethod` ao vivo, `openForHours` e `openTooLong` (`true` se aberta há mais de 24h; não auto-fecha).
+
+**POST `/cash-sessions/:id/movements`:** `{ "kind": "SUPPLY"|"WITHDRAWAL", "amountCents", "method", "reason" }` (`reason` ≥10). Sessão `CLOSED` → `423 RECORD_IMMUTABLE`.
+
+**POST `/cash-sessions/:id/close`:**
+
+```json
+{
+  "countedByMethod": [
+    { "method": "CASH", "countedCents": 150000 },
+    { "method": "PIX", "countedCents": 80000 }
+  ],
+  "differenceReason": null
+}
+```
+
+**GET|POST `/financial-categories`:** query `?kind=REVENUE|EXPENSE`. POST `{ "name", "kind", "parentId"? }`.
+
+**POST `/payables`:** `{ "unitId", "categoryId", "description", "amountCents", "dueDate", "supplier?", "recurrence?" }` com `recurrence: { "frequency": "MONTHLY", "until"? }`. `POST /payables/:id/pay` exige `Idempotency-Key` e `{ "method" }`. CASH sem caixa → `422 CASH_SESSION_REQUIRED`. Pagar recorrente vigente cria o próximo `OPEN` (+1 mês civil) se `until` ainda não passou.
+
+**GET `/installments?status=OVERDUE`:** inclui parcelas `OPEN`/`PARTIALLY_PAID` com `due_date` anterior a hoje (TZ da clínica), mesmo se o job ainda não rodou.
+
+**GET `/reports/cash-flow`:** `basis` obrigatória (`CASH`|`ACCRUAL`). Shape: `openingBalanceCents`, `inflowsCents`, `outflowsCents`, `closingBalanceCents`, `byDay`, `byCategory`, `byPaymentMethod`. `openingBalanceCents` é o saldo **caixa** acumulado antes de `from` (pagamentos não estornados − contas pagas), inclusive quando `basis=ACCRUAL`.
+
+**GET `/reports/overdue`:** `{ buckets: [{ band: "1_15"|"16_30"|"31_60"|"60_plus", count, totalCents, items: [...] }] }`. Inclui `OPEN`/`PARTIALLY_PAID` já vencidas (TZ da clínica).
+
+**GET `/reports/production`:** `{ items: [{ professionalId, professionalName, executedCents, receivedCents, proceduresCount }], rows: [...] }`. DENTIST: somente o próprio profissional (`403` se `professionalId` de outro).
+
+**GET `/payments/:id/receipt`:** URL assinada 15 min (`finance.read`). `409 PDF_PENDING` até o job gravar o PDF. O PDF traz faixa “Este documento não é nota fiscal”.
+
+**POST `/payments/:id/send-receipt`:** `{ channel: WHATSAPP|EMAIL|COPY }`. Sem WA CONNECTED cai para e-mail ou COPY (texto para colar). Template `payment_receipt`.
+
+**POST `/installments/:id/charge`:** cobrança **manual** (`finance.write`) com template `payment_overdue`. Só parcela vencida em aberto.
+
+Payloads HTTP vivos (Bloco 5): recibo PDF/send, `POST /installments/:id/charge`, `GET /reports/cash-flow|overdue|production`.
 
 ## 4. Segurança dos endpoints
 

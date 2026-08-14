@@ -25,6 +25,7 @@ type PatientRow = {
   notes: string | null;
   origin?: string;
   active: boolean;
+  hasOverdue?: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -70,6 +71,7 @@ export function mapPatientSummary(row: PatientRow): PatientSummary {
     active: row.active,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    ...(row.hasOverdue === undefined ? {} : { hasOverdue: row.hasOverdue }),
   };
 }
 

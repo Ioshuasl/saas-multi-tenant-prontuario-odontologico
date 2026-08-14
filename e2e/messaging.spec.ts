@@ -17,11 +17,13 @@ test.describe('Messaging WhatsApp (E8a ops)', () => {
 
     const connectButton = page.getByRole('button', { name: 'Conectar' });
     if (await connectButton.isVisible().catch(() => false)) {
-      await page.getByLabel('WABA ID').fill('fake-waba-e2e');
-      await page.getByLabel('Phone Number ID').fill('fake-phone-e2e');
-      await page.getByLabel('Telefone de exibição').fill('+556299990000');
-      await page.getByLabel('Access token').fill('fake-access-token-e2e');
+      await page.getByRole('checkbox').check();
       await connectButton.click();
+    }
+
+    const testTo = page.getByLabel('Número que receberá o teste');
+    if (await testTo.isVisible().catch(() => false)) {
+      await testTo.fill('5562999999999');
     }
 
     const testButton = page.getByRole('button', { name: 'Enviar teste' });
@@ -31,7 +33,7 @@ test.describe('Messaging WhatsApp (E8a ops)', () => {
 
     await expect(page.getByText('Conectado')).toBeVisible({ timeout: 20_000 });
     await expect(page.getByLabel('Kill switch')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Uso e créditos' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Uso' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Logs de envio' })).toBeVisible();
   });
 });

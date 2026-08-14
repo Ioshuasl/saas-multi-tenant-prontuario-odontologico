@@ -1,9 +1,6 @@
 import type { JobPayload } from '../../../shared/queue/job_payload.js';
 import { logger } from '../../../shared/config/logger.js';
 import type { RequestContext } from '../../../shared/domain/request_context.js';
-import { appendOutboxEvent } from '../../../shared/database/outbox.js';
-import { getTenantPrisma } from '../../../shared/database/tenant_prisma.js';
-import { getKeyManagement } from '../../../shared/crypto/index.js';
 import { getMessagingProvider } from '../../../shared/integrations/whatsapp/index.js';
 import { getAppointmentById } from '../../scheduling/scheduling_public.js';
 import { getPatientById, hasMarketingConsent } from '../../patients/patients_public.js';
@@ -14,27 +11,29 @@ import {
 } from '../repositories/automation/automation.repository.js';
 import { GetAccountRepository } from '../repositories/whatsapp_account/whatsapp_account.repository.js';
 import { GetTemplateByKeyRepository } from '../repositories/template/template.repository.js';
-import {
-  GetCreditBalanceRepository,
-  GetTenantMessagingContextRepository,
-} from '../repositories/credit/credit.repository.js';
+import { GetTenantMessagingContextRepository } from '../repositories/credit/credit.repository.js';
 import { UpsertConversationRepository } from '../repositories/conversation/conversation.repository.js';
 import { CreateMessageRepository } from '../repositories/message/message.repository.js';
-import { isAgendaTemplate, renderTemplateBody } from '../helpers/template.helper.js';
+import { renderTemplateBody } from '../helpers/template.helper.js';
 import { formatHmInTz, formatYmdInTz } from '../helpers/quiet_hours.helper.js';
+import type { ReplyButton } from '../types/ports/messaging_provider.port.js';
 
 const getAccount = new GetAccountRepository();
 const getTemplate = new GetTemplateByKeyRepository();
 const getRun = new GetAutomationRunRepository();
 const markRun = new MarkAutomationRunRepository();
-const getBalance = new GetCreditBalanceRepository();
 const tenantCtxRepo = new GetTenantMessagingContextRepository();
 const upsertConversation = new UpsertConversationRepository();
 const createMessage = new CreateMessageRepository();
-const kms = getKeyManagement();
 
 function str(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function buttonsFor(key: string): ReplyButton[] | undefined {
+  if (key === 'appointment_confirmation') return [{ text: 'Confirmar' }, { text: 'Cancelar' }];
+  if (key === 'waitlist_offer') return [{ text: 'Quero este horário' }];
+  return undefined;
 }
 
 export async function sendWhatsappMessageJob(payload: JobPayload): Promise<void> {
@@ -49,7 +48,6 @@ export async function sendWhatsappMessageJob(payload: JobPayload): Promise<void>
   if (channel === 'EMAIL' || channel === 'COPY') return;
   const appointmentId = str(payload.appointmentId);
   const patientIdHint = str(payload.patientId);
-  const buttonPayload = str(payload.buttonPayload);
   const relatedType = str(payload.relatedType);
   const relatedId = str(payload.relatedId);
 
@@ -67,7 +65,7 @@ export async function sendWhatsappMessageJob(payload: JobPayload): Promise<void>
   if (!account || account.status !== 'CONNECTED' || account.killSwitch) {
     if (automationRunId) {
       await markRun.execute(ctx, automationRunId, {
-        result: account?.killSwitch ? 'SKIPPED_KILL_SWITCH' : 'SKIPPED_NO_ACCOUNT',
+        result: account?.killSwitch ? 'SKIPPED_KILL_SWITCH' : 'SKIPPED_DISCONNECTED',
       });
     }
     return;
@@ -75,7 +73,7 @@ export async function sendWhatsappMessageJob(payload: JobPayload): Promise<void>
 
   const key = templateKey ?? 'appointment_created';
   const template = await getTemplate.execute(ctx, key);
-  if (!template || template.status !== 'APPROVED') {
+  if (!template || template.status !== 'ACTIVE') {
     if (automationRunId) await markRun.execute(ctx, automationRunId, { result: 'FAILED' });
     logger.warn({ tenantId: ctx.tenantId, templateKey: key }, 'messaging_template_missing');
     return;
@@ -131,24 +129,6 @@ export async function sendWhatsappMessageJob(payload: JobPayload): Promise<void>
     }
   }
 
-  const agenda = isAgendaTemplate(key);
-  if (!agenda) {
-    const credits = await getBalance.execute(ctx);
-    if (credits.balance <= 0) {
-      if (automationRunId) await markRun.execute(ctx, automationRunId, { result: 'SKIPPED_NO_CREDIT' });
-      await getTenantPrisma().runInTenantContext(ctx, async (tx) => {
-        await appendOutboxEvent(tx, {
-          tenantId: ctx.tenantId,
-          event: {
-            name: 'messaging.credits_exhausted',
-            payload: { requestId: ctx.requestId, templateKey: key },
-          },
-        });
-      });
-      return;
-    }
-  }
-
   const tenant = await tenantCtxRepo.execute(ctx);
   const startsAt = appointment ? new Date(appointment.startsAt) : new Date();
   const publicUrl = str(payload.publicUrl) ?? str(payload.link) ?? '';
@@ -163,15 +143,11 @@ export async function sendWhatsappMessageJob(payload: JobPayload): Promise<void>
   const body = renderTemplateBody(template.body, variables);
 
   try {
-    const accessToken = await kms.unsealSecret(account.accessTokenRef);
     const sent = await getMessagingProvider().sendTemplate({
-      phoneNumberId: account.phoneNumberId,
-      accessToken,
+      sessionName: account.sessionName,
       to: toE164Br(patient.phonePrimary),
-      templateName: template.providerName,
-      language: template.language,
-      variables,
-      buttonPayload,
+      body,
+      buttons: buttonsFor(key),
       marketing: template.category === 'MARKETING',
     });
 
@@ -189,7 +165,7 @@ export async function sendWhatsappMessageJob(payload: JobPayload): Promise<void>
       body,
       providerMessageId: sent.providerMessageId,
       status: 'SENT',
-      billable: !agenda,
+      billable: false,
       relatedType: relatedType ?? (appointmentId ? 'APPOINTMENT' : null),
       relatedId: relatedId ?? appointmentId,
     });

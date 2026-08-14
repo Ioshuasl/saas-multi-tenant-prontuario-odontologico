@@ -320,10 +320,8 @@ async function main() {
       data: {
         id: waA,
         tenantId: tenantA,
-        wabaId: 'waba-a',
-        phoneNumberId: `pn-${waA.slice(0, 8)}`,
+        sessionName: `t${tenantA.replace(/-/g, '')}`,
         displayPhone: '5562999900001',
-        accessTokenRef: 'sealed-ref',
         status: 'PENDING',
       },
     });
@@ -365,6 +363,7 @@ async function main() {
   const categoryA = randomUUID();
   const planA = randomUUID();
   const receivableA = randomUUID();
+  const installmentA = randomUUID();
   await tenantDb.runInTenantContext(ctxA, async (tx) => {
     await tx.financialCategory.create({
       data: {
@@ -397,7 +396,7 @@ async function main() {
     });
     await tx.installment.create({
       data: {
-        id: randomUUID(),
+        id: installmentA,
         tenantId: tenantA,
         receivableId: receivableA,
         number: 1,
@@ -447,6 +446,186 @@ async function main() {
   ) {
     console.error('FAIL: sem tenant_id deveria ver 0 treatments/billing');
     failed = true;
+  }
+
+  const receiptCounterA = await tenantDb.runInTenantContext(ctxA, async (tx) => {
+    await tx.receiptNumberCounter.create({
+      data: { tenantId: tenantA, lastNumber: BigInt(1) },
+    });
+    return tx.receiptNumberCounter.findMany();
+  });
+  const receiptCounterB = await tenantDb.runInTenantContext(ctxB, (tx) =>
+    tx.receiptNumberCounter.findMany(),
+  );
+  if (receiptCounterA.length !== 1) {
+    console.error('FAIL: tenant A deveria ver 1 receipt_number_counter, viu', receiptCounterA.length);
+    failed = true;
+  }
+  if (receiptCounterB.length !== 0) {
+    console.error('FAIL: tenant B deveria ver 0 receipt_number_counter, viu', receiptCounterB.length);
+    failed = true;
+  }
+
+  const cashSessionA = randomUUID();
+  const paymentA = randomUUID();
+  const payableA = randomUUID();
+  const expenseCategoryA = randomUUID();
+  await tenantDb.runInTenantContext(ctxA, async (tx) => {
+    await tx.financialCategory.create({
+      data: {
+        id: expenseCategoryA,
+        tenantId: tenantA,
+        name: 'Aluguel e condomínio',
+        kind: 'EXPENSE',
+      },
+    });
+    await tx.cashSession.create({
+      data: {
+        id: cashSessionA,
+        tenantId: tenantA,
+        unitId: unitA,
+        openedBy: ctxA.userId,
+        openingCents: BigInt(0),
+        status: 'OPEN',
+      },
+    });
+    await tx.payment.create({
+      data: {
+        id: paymentA,
+        tenantId: tenantA,
+        unitId: unitA,
+        installmentId: installmentA,
+        cashSessionId: cashSessionA,
+        amountCents: BigInt(3000),
+        receivedBy: ctxA.userId,
+        receiptNumber: BigInt(1),
+        idempotencyKey: `rls-${paymentA}`,
+      },
+    });
+    await tx.paymentSplit.create({
+      data: {
+        id: randomUUID(),
+        tenantId: tenantA,
+        paymentId: paymentA,
+        method: 'PIX',
+        amountCents: BigInt(2000),
+      },
+    });
+    await tx.paymentSplit.create({
+      data: {
+        id: randomUUID(),
+        tenantId: tenantA,
+        paymentId: paymentA,
+        method: 'CASH',
+        amountCents: BigInt(1000),
+      },
+    });
+    await tx.patientCreditLedger.create({
+      data: {
+        id: randomUUID(),
+        tenantId: tenantA,
+        patientId: patientA,
+        paymentId: paymentA,
+        amountCents: BigInt(100),
+        kind: 'CREDIT',
+      },
+    });
+    await tx.cashMovement.create({
+      data: {
+        id: randomUUID(),
+        tenantId: tenantA,
+        cashSessionId: cashSessionA,
+        kind: 'PAYMENT_IN',
+        amountCents: BigInt(1000),
+        method: 'CASH',
+        paymentId: paymentA,
+        createdBy: ctxA.userId,
+      },
+    });
+    await tx.payable.create({
+      data: {
+        id: payableA,
+        tenantId: tenantA,
+        unitId: unitA,
+        categoryId: expenseCategoryA,
+        description: 'Aluguel',
+        amountCents: BigInt(250000),
+        dueDate: new Date('2026-09-10T00:00:00.000Z'),
+        status: 'OPEN',
+      },
+    });
+    await tx.installment.update({
+      where: { id: installmentA },
+      data: { status: 'PARTIALLY_PAID', paidCents: BigInt(3000) },
+    });
+  });
+
+  const billingE7A = await tenantDb.runInTenantContext(ctxA, async (tx) => ({
+    payment: await tx.payment.findMany(),
+    split: await tx.paymentSplit.findMany(),
+    credit: await tx.patientCreditLedger.findMany(),
+    cash: await tx.cashSession.findMany(),
+    movement: await tx.cashMovement.findMany(),
+    payable: await tx.payable.findMany(),
+  }));
+  const billingE7B = await tenantDb.runInTenantContext(ctxB, async (tx) => ({
+    payment: await tx.payment.findMany(),
+    split: await tx.paymentSplit.findMany(),
+    credit: await tx.patientCreditLedger.findMany(),
+    cash: await tx.cashSession.findMany(),
+    movement: await tx.cashMovement.findMany(),
+    payable: await tx.payable.findMany(),
+  }));
+  const billingE7Without = {
+    payment: await prisma.payment.findMany(),
+    split: await prisma.paymentSplit.findMany(),
+    cash: await prisma.cashSession.findMany(),
+    payable: await prisma.payable.findMany(),
+  };
+
+  if (billingE7A.payment.length !== 1 || billingE7A.split.length !== 2 || billingE7A.cash.length !== 1) {
+    console.error('FAIL: tenant A deveria ver payment/splits/caixa S6');
+    failed = true;
+  }
+  if (
+    billingE7B.payment.length !== 0 ||
+    billingE7B.split.length !== 0 ||
+    billingE7B.credit.length !== 0 ||
+    billingE7B.cash.length !== 0 ||
+    billingE7B.movement.length !== 0 ||
+    billingE7B.payable.length !== 0
+  ) {
+    console.error('FAIL: tenant B deveria ver 0 linhas de payment/caixa/AP');
+    failed = true;
+  }
+  if (
+    billingE7Without.payment.length !== 0 ||
+    billingE7Without.split.length !== 0 ||
+    billingE7Without.cash.length !== 0 ||
+    billingE7Without.payable.length !== 0
+  ) {
+    console.error('FAIL: sem tenant_id deveria ver 0 payment/caixa/AP');
+    failed = true;
+  }
+
+  try {
+    await tenantDb.runInTenantContext(ctxA, async (tx) => {
+      await tx.payment.create({
+        data: {
+          id: randomUUID(),
+          tenantId: tenantB,
+          unitId: unitA,
+          installmentId: installmentA,
+          amountCents: BigInt(1),
+          receivedBy: ctxA.userId,
+          receiptNumber: BigInt(2),
+        },
+      });
+    });
+    console.error('FAIL: INSERT payment cross-tenant deveria falhar');
+    failed = true;
+  } catch {
+    // esperado
   }
 
   try {

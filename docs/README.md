@@ -32,6 +32,8 @@ Planejamento do MVP de um software odontológico completo (prontuário digital, 
 | [17 — Baseline de Segurança Enterprise](./17-seguranca-baseline.md) | Criptografia (envelope), auditoria, anomalias, endpoints, OWASP, Secure SDLC |
 | [desenvolvimento/](./desenvolvimento/README.md) | Diário e progresso de implementação (não substitui a especificação) |
 | [frontend/odontograma.md](./frontend/odontograma.md) | Odontograma (referência FDI + overlay de faces, contrato API) |
+| [pesquisa/whatsapp-provedores-self-hosted.md](./pesquisa/whatsapp-provedores-self-hosted.md) | Comparativo Evolution API × OpenWA × WAHA vs Cloud API; TCO e risco de ToS (ago/2026) |
+| [desenvolvimento/migracao-waha.md](./desenvolvimento/migracao-waha.md) | Plano Cloud API → WAHA (decisões, QR, env, webhook; código depois) |
 
 ### Requisitos (RF / RNF)
 
@@ -60,7 +62,7 @@ Catálogo rastreável do MVP — ver [requisitos/README.md](./requisitos/README.
 - [ADR-0002 — Multi-tenancy com banco compartilhado + RLS](./adr/0002-multi-tenancy-rls.md)
 - [ADR-0003 — Versionamento da API por prefixo de URL](./adr/0003-versionamento-api.md)
 - [ADR-0004 — Prisma como ORM e camada de persistência](./adr/0004-orm-prisma.md)
-- [ADR-0005 — WhatsApp Cloud API oficial em vez de WhatsApp Web não oficial](./adr/0005-whatsapp-cloud-api.md)
+- [ADR-0005 — WhatsApp Cloud API oficial](./adr/0005-whatsapp-cloud-api.md) (**supersedido** pelo 0016)
 - [ADR-0006 — Filas com BullMQ/Redis dentro do monólito](./adr/0006-filas-bullmq.md)
 - [ADR-0007 — Envelope encryption por tenant (modelo enterprise)](./adr/0007-criptografia-envelope-tenant.md)
 - [ADR-0008 — Hospedagem VPS Hostinger + AWS S3 para anexos](./adr/0008-hospedagem-vps-hostinger-s3.md)
@@ -70,6 +72,8 @@ Catálogo rastreável do MVP — ver [requisitos/README.md](./requisitos/README.
 - [ADR-0012 — Observabilidade Sentry + logs (self-hosted depois)](./adr/0012-observabilidade-sentry-logs.md)
 - [ADR-0013 — KEK/segredos locais na VPS (Vault self-hosted depois)](./adr/0013-kms-local-vps.md)
 - [ADR-0014 — Deploy EasyPanel; domínios app e api](./adr/0014-deploy-easypanel-dominios.md)
+- [ADR-0015 — Avaliação Evolution / OpenWA / WAHA (pesquisa)](./adr/0015-avaliacao-gateways-whatsapp-nao-oficiais.md)
+- [ADR-0016 — WAHA (GOWS) default no messaging](./adr/0016-waha-default-messaging.md)
 
 ## Como usar estes documentos
 

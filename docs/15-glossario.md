@@ -72,10 +72,12 @@ Este vocabulário é obrigatório em código, banco, API e conversas. Se um term
 | Unit of Work | Abstração de transação que agrupa escritas + publicação de eventos |
 | RLS (Row Level Security) | Filtro de linhas aplicado pelo PostgreSQL por política |
 | Idempotência | Propriedade de uma operação que, repetida, não muda o resultado |
-| Janela de atendimento (WhatsApp) | Período de 24h aberto por mensagem do paciente, em que mensagens livres são gratuitas |
-| Template (WhatsApp) | Mensagem pré-aprovada pela Meta, categorizada em marketing / utility / authentication |
-| WABA | WhatsApp Business Account |
-| `wamid` | Identificador único de mensagem do WhatsApp, usado para idempotência |
+| Janela de atendimento (WhatsApp) | Histórico Cloud API (24 h / preço). No WAHA **não** é regra de cobrança; UX “conversa recente” a decidir na implementação |
+| Texto de automação (WhatsApp) | `message_template` nosso, renderizado pelo adapter; não é template aprovado pela Meta |
+| WAHA | Gateway self-hosted (default, [ADR-0016](./adr/0016-waha-default-messaging.md)); engine GOWS |
+| Sessão WAHA | Uma conexão WhatsApp por tenant (`session_name`) |
+| WABA | WhatsApp Business Account (Cloud API; adapter opcional por env) |
+| `provider_message_id` | Id da mensagem no provedor (WAHA); idempotência de webhook. `wamid` = equivalente Cloud API |
 | Break-glass | Acesso emergencial de suporte a dado de tenant, aprovado e auditado |
 | Fitness function | Teste automatizado que valida uma característica arquitetural |
 | Expand/contract | Estratégia de migração em duas etapas para evitar downtime |

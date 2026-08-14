@@ -11,8 +11,11 @@ import { ensureMedicalRecordJob } from './modules/clinical_records/jobs/ensure_m
 import { generateAttachmentThumbnailJob } from './modules/clinical_records/jobs/generate_attachment_thumbnail.job.js';
 import { generateQuotePdfJob } from './modules/treatments/jobs/generate_quote_pdf.job.js';
 import { expireQuotesJob } from './modules/treatments/jobs/expire_quotes.job.js';
+import { markOverdueInstallmentsJob } from './modules/billing/jobs/mark_overdue_installments.job.js';
+import { generateReceiptPdfJob } from './modules/billing/jobs/generate_receipt_pdf.job.js';
 import { listTenantsForScheduledJobs } from './modules/clinic/clinic_public.js';
 import { todayInTimezone } from './modules/treatments/helpers/quote_valid_until.helper.js';
+import { hourInTimezone } from './modules/billing/helpers/civil_date.helper.js';
 import { BullmqJobQueue } from './shared/queue/bullmq_job_queue.js';
 import { setJobQueue } from './shared/queue/job_queue_singleton.js';
 import type { JobPayload } from './shared/queue/job_payload.js';
@@ -20,6 +23,22 @@ import { JOB, QUEUE } from './shared/queue/queue_names.js';
 
 const DISPATCH_INTERVAL_MS = 5_000;
 const EXPIRE_QUOTES_INTERVAL_MS = 15 * 60_000;
+const MARK_OVERDUE_INTERVAL_MS = 15 * 60_000;
+
+async function enqueueMarkOverdue(queue: BullmqJobQueue): Promise<void> {
+  if (!queue.isConnected()) return;
+  const tenants = await listTenantsForScheduledJobs();
+  for (const tenant of tenants) {
+    if (hourInTimezone(tenant.timezone) < 3) continue;
+    const ymd = todayInTimezone(tenant.timezone);
+    await queue.add(
+      QUEUE.billing,
+      JOB.markOverdueInstallments,
+      { tenantId: tenant.id, requestId: `mark-overdue:${ymd}` },
+      { jobId: `mark-overdue:${tenant.id}:${ymd}` },
+    );
+  }
+}
 
 async function enqueueExpireQuotes(queue: BullmqJobQueue): Promise<void> {
   if (!queue.isConnected()) return;
@@ -43,7 +62,9 @@ async function main(): Promise<void> {
   queue.register(QUEUE.platform, JOB.ensureMedicalRecord, ensureMedicalRecordJob);
   queue.register(QUEUE.platform, JOB.generateAttachmentThumbnail, generateAttachmentThumbnailJob);
   queue.register(QUEUE.platform, JOB.generateQuotePdf, generateQuotePdfJob);
+  queue.register(QUEUE.platform, JOB.generateReceiptPdf, generateReceiptPdfJob);
   queue.register(QUEUE.platform, JOB.expireQuotes, expireQuotesJob);
+  queue.register(QUEUE.billing, JOB.markOverdueInstallments, markOverdueInstallmentsJob);
   queue.register(QUEUE.platform, JOB.smokePing, async (payload: JobPayload) => {
     logger.info(
       { tenantId: payload.tenantId, requestId: payload.requestId, eventId: payload.eventId },
@@ -103,6 +124,15 @@ async function main(): Promise<void> {
     logger.error({ err }, 'expire_quotes_enqueue_error');
   });
 
+  const overdueInterval = setInterval(() => {
+    void enqueueMarkOverdue(queue).catch((err) => {
+      logger.error({ err }, 'mark_overdue_enqueue_error');
+    });
+  }, MARK_OVERDUE_INTERVAL_MS);
+  void enqueueMarkOverdue(queue).catch((err) => {
+    logger.error({ err }, 'mark_overdue_enqueue_error');
+  });
+
   const health = startWorkerHealth(() => ({
     status: 'ok',
     service: 'worker',
@@ -112,6 +142,7 @@ async function main(): Promise<void> {
   const shutdown = async (): Promise<void> => {
     clearInterval(interval);
     clearInterval(expireInterval);
+    clearInterval(overdueInterval);
     health.close();
     await queue.close();
     await getPrismaClient().$disconnect();

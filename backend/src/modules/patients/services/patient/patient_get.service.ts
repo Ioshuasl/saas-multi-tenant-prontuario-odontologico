@@ -3,6 +3,10 @@ import { GetPatientRepository } from '../../repositories/patient/patient.reposit
 import { isMinor } from '../../helpers/patient.helper.js';
 import type { PatientDetail, PatientWarning } from '../../types/patients.types.js';
 
+function canSeeOverdue(ctx: RequestContext): boolean {
+  return (ctx.permissions ?? []).includes('finance.read');
+}
+
 export class GetService {
   constructor(private readonly get = new GetPatientRepository()) {}
 
@@ -13,6 +17,10 @@ export class GetService {
     const warnings: PatientWarning[] = [];
     if (isMinor(patient.birthDate) && patient.guardians.length === 0) {
       warnings.push('MINOR_WITHOUT_GUARDIAN');
+    }
+    if (!canSeeOverdue(ctx)) {
+      const { hasOverdue: _hidden, ...rest } = patient;
+      return { ...rest, warnings };
     }
     return { ...patient, warnings };
   }

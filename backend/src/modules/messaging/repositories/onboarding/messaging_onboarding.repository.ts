@@ -68,22 +68,44 @@ export class MessagingOnboardingRepository {
       });
     }
 
-    const quoteTemplate = await tx.messageTemplate.findFirst({
-      where: { tenantId: input.tenantId, key: 'quote_sent' },
-      select: { id: true },
-    });
-    if (!quoteTemplate) {
+    const defaults: Array<{
+      key: string;
+      body: string;
+      variables: string[];
+    }> = [
+      {
+        key: 'quote_sent',
+        body: 'Olá {{nome}}, a {{clinica}} enviou um orçamento de {{valor}}: {{link}}',
+        variables: ['nome', 'clinica', 'valor', 'link'],
+      },
+      {
+        key: 'payment_receipt',
+        body: 'Olá {{nome}}, a {{clinica}} enviou o recibo {{valor}}: {{link}}',
+        variables: ['nome', 'clinica', 'valor', 'link'],
+      },
+      {
+        key: 'payment_overdue',
+        body: 'Olá {{nome}}, a {{clinica}} informa parcela em atraso de {{valor}} (vencimento {{data}}).',
+        variables: ['nome', 'clinica', 'valor', 'data'],
+      },
+    ];
+    for (const template of defaults) {
+      const existing = await tx.messageTemplate.findFirst({
+        where: { tenantId: input.tenantId, key: template.key },
+        select: { id: true },
+      });
+      if (existing) continue;
       await tx.messageTemplate.create({
         data: {
           id: input.idNext(),
           tenantId: input.tenantId,
-          key: 'quote_sent',
+          key: template.key,
           category: 'UTILITY',
           language: 'pt_BR',
-          providerName: 'quote_sent',
-          body: 'Olá {{nome}}, a {{clinica}} enviou um orçamento de {{valor}}: {{link}}',
-          variables: ['nome', 'clinica', 'valor', 'link'],
-          status: 'APPROVED',
+          providerName: template.key,
+          body: template.body,
+          variables: template.variables,
+          status: 'ACTIVE',
         },
       });
     }

@@ -9,23 +9,23 @@ import { parseTemplateVariables } from './template.helper.js';
 
 export function mapAccount(row: {
   id: string;
-  wabaId: string;
-  phoneNumberId: string;
-  displayPhone: string;
+  sessionName: string;
+  displayPhone: string | null;
   status: string;
   killSwitch: boolean;
   lastError: string | null;
+  riskAcceptedAt: Date | null;
   webhookVerifiedAt: Date | null;
   createdAt: Date;
 }): WhatsappAccountSummary {
   return {
     id: row.id,
-    wabaId: row.wabaId,
-    phoneNumberId: row.phoneNumberId,
+    sessionName: row.sessionName,
     displayPhone: row.displayPhone,
     status: row.status as WhatsappAccountSummary['status'],
     killSwitch: row.killSwitch,
     lastError: row.lastError,
+    riskAcceptedAt: row.riskAcceptedAt?.toISOString() ?? null,
     webhookVerifiedAt: row.webhookVerifiedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
   };

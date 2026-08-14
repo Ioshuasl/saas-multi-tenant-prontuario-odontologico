@@ -2,23 +2,30 @@ import type { WhatsappAccountStatus } from '@/packages/messaging/enum/Account/Wh
 
 export type WhatsappAccountSummary = {
   id: string;
-  wabaId: string;
-  phoneNumberId: string;
-  displayPhone: string;
+  sessionName: string;
+  displayPhone: string | null;
   status: WhatsappAccountStatus;
   killSwitch: boolean;
   lastError: string | null;
+  riskAcceptedAt: string | null;
   webhookVerifiedAt: string | null;
   createdAt: string;
 };
 
 export type AccountConnectInput = {
-  wabaId: string;
-  phoneNumberId: string;
-  displayPhone: string;
-  accessToken: string;
+  riskAccepted: true;
 };
 
 export type AccountPatchInput = {
   killSwitch: boolean;
+};
+
+export type AccountTestInput = {
+  to: string;
+};
+
+export type WhatsappAccountQr = {
+  qr: string | null;
+  status: string;
+  displayPhone?: string | null;
 };

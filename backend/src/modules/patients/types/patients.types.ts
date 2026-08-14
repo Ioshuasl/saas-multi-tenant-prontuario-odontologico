@@ -29,6 +29,7 @@ export type PatientSummary = {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  hasOverdue?: boolean;
 };
 
 export type PatientDetail = PatientSummary & {

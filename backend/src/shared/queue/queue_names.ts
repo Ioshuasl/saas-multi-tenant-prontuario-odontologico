@@ -23,6 +23,7 @@ export const JOB = {
   ensureMedicalRecord: 'ensure-medical-record',
   generateAttachmentThumbnail: 'generate-attachment-thumbnail',
   generateQuotePdf: 'generate-quote-pdf',
+  generateReceiptPdf: 'generate-receipt-pdf',
   expireQuotes: 'expire-quotes',
 } as const;
 
@@ -49,6 +50,7 @@ export const JOB_RETRY: Record<JobName, JobRetry> = {
   [JOB.ensureMedicalRecord]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
   [JOB.generateAttachmentThumbnail]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
   [JOB.generateQuotePdf]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
+  [JOB.generateReceiptPdf]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
   [JOB.expireQuotes]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
 };
 

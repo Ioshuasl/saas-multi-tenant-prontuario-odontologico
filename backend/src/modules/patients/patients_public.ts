@@ -1,4 +1,6 @@
 import type { RequestContext } from '../../shared/domain/request_context.js';
+import type { DbTransaction } from '../../shared/database/db_transaction.js';
+import { getTenantPrisma } from '../../shared/database/tenant_prisma.js';
 import { AppError } from '../../shared/middlewares/error_handler.middleware.js';
 import { assertPatientName, toE164Br } from './helpers/patient.helper.js';
 import { InvalidPatientNameError } from './models/errors/patients.errors.js';
@@ -10,6 +12,7 @@ import {
   GetPatientRepository,
   ListConsentsRepository,
 } from './repositories/patient/patient.repository.js';
+import { SetOverdueRepository } from './repositories/patient/patient_set_overdue.repository.js';
 import { GetService } from './services/patient/patient_get.service.js';
 import type { PatientDetail } from './types/patients.types.js';
 
@@ -20,6 +23,7 @@ const getDefaultUnit = new GetDefaultUnitRepository();
 const createPatient = new CreateAction();
 const getPatientRepo = new GetPatientRepository();
 const createConsent = new CreateConsentRepository();
+const setOverdue = new SetOverdueRepository();
 
 const PUBLIC_CONSENT_VERSION = 'v1';
 
@@ -159,4 +163,19 @@ export type { PatientDetail, PatientSummary } from './types/patients.types.js';
 
 function normalizeName(value: string): string {
   return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+export async function setPatientHasOverdue(
+  ctx: RequestContext,
+  patientId: string,
+  hasOverdue: boolean,
+  tx?: DbTransaction,
+): Promise<void> {
+  if (tx) {
+    await setOverdue.executeInTx(tx, patientId, hasOverdue);
+    return;
+  }
+  await getTenantPrisma().runInTenantContext(ctx, (inner) =>
+    setOverdue.executeInTx(inner, patientId, hasOverdue),
+  );
 }

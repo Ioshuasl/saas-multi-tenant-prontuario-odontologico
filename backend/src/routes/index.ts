@@ -16,6 +16,7 @@ import {
   buildWhatsappWebhookRouter,
 } from '../modules/messaging/messaging.module.js';
 import { buildTreatmentsRouter, buildPublicQuotesRouter } from '../modules/treatments/treatments.module.js';
+import { buildBillingRouter } from '../modules/billing/billing.module.js';
 
 /** Monta rotas versionadas em `/api/v1`. Módulos de domínio entram aqui. */
 export function buildApiRouter(): Router {
@@ -29,6 +30,7 @@ export function buildApiRouter(): Router {
   api.use(buildMessagingRouter());
   api.use('/webhooks/whatsapp', buildWhatsappWebhookRouter());
   api.use(buildTreatmentsRouter());
+  api.use(buildBillingRouter());
   api.use('/public', buildPublicRouter());
   api.use('/public', buildPublicAnamnesisRouter());
   api.use('/public', buildPublicQuotesRouter());

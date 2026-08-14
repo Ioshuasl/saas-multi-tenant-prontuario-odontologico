@@ -81,6 +81,9 @@ async function main() {
       if (eq > 0) jar.set(pair.slice(0, eq), pair.slice(eq + 1));
     }
     const text = await res.text();
+    if (text && (text.startsWith('<') || text.startsWith('<!'))) {
+      throw new Error(`HTML instead of JSON ${res.status} ${path}: ${text.slice(0, 120)}`);
+    }
     return { status: res.status, body: text ? (JSON.parse(text) as Record<string, unknown>) : null };
   }
 
@@ -118,20 +121,29 @@ async function main() {
   console.log('account_missing', missing.status);
   if (missing.status !== 404) failed = true;
 
-  const phoneNumberId = `pnid-${stamp}`;
-  const displayPhone = `5562999${String(stamp).slice(-6)}`;
+  const rejected = await request('/api/v1/messaging/account', {
+    method: 'POST',
+    headers: { ...authHeaders(accessToken, tenantId), 'content-type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  console.log('account_connect_rejected', rejected.status);
+  if (rejected.status !== 422) failed = true;
+
   const connect = await request('/api/v1/messaging/account', {
     method: 'POST',
     headers: { ...authHeaders(accessToken, tenantId), 'content-type': 'application/json' },
     body: JSON.stringify({
-      wabaId: `waba-${stamp}`,
-      phoneNumberId,
-      displayPhone,
-      accessToken: `fake-token-${stamp}`,
+      riskAccepted: true,
     }),
   });
   console.log('account_connect', connect.status, dataOf(connect).status);
   if (connect.status !== 201 || dataOf(connect).status !== 'PENDING') failed = true;
+
+  const qr = await request('/api/v1/messaging/account/qr', {
+    headers: authHeaders(accessToken, tenantId),
+  });
+  console.log('account_qr', qr.status, dataOf(qr).qr);
+  if (qr.status !== 200 || !dataOf(qr).qr) failed = true;
 
   const test = await request('/api/v1/messaging/account/test', {
     method: 'POST',
@@ -182,11 +194,11 @@ async function main() {
   console.log('automation_patch', patchAuto.status);
   if (patchAuto.status !== 200) failed = true;
 
-  const usage = await request('/api/v1/messaging/usage', {
+  const usageEarly = await request('/api/v1/messaging/usage', {
     headers: authHeaders(accessToken, tenantId),
   });
-  console.log('usage', usage.status, dataOf(usage).balance);
-  if (usage.status !== 200 || Number(dataOf(usage).balance) < 1) failed = true;
+  console.log('usage_early', usageEarly.status, dataOf(usageEarly).sent);
+  if (usageEarly.status !== 200 || typeof dataOf(usageEarly).sent !== 'number') failed = true;
 
   const professional = await request('/api/v1/clinic/professionals', {
     method: 'POST',
@@ -238,57 +250,53 @@ async function main() {
   console.log('send_jobs', sentCreated.length);
   if (sentCreated.length < 1) failed = true;
 
+  const usage = await request('/api/v1/messaging/usage', {
+    headers: authHeaders(accessToken, tenantId),
+  });
+  console.log('usage', usage.status, dataOf(usage).sent, dataOf(usage).failed);
+  if (usage.status !== 200 || Number(dataOf(usage).sent) < 1) failed = true;
+
   const handshake = await fetch(
     `${origin}/api/v1/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${process.env.WHATSAPP_VERIFY_TOKEN}&hub.challenge=ok-challenge`,
   );
-  const handshakeText = await handshake.text();
-  console.log('webhook_handshake', handshake.status, handshakeText);
-  if (handshake.status !== 200 || handshakeText !== 'ok-challenge') failed = true;
+  console.log('webhook_handshake', handshake.status);
+  if (handshake.status !== 404) failed = true;
 
   const invalidSig = await request('/api/v1/webhooks/whatsapp', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-hub-signature-256': 'sha256=deadbeef' },
-    body: JSON.stringify({ object: 'whatsapp_business_account' }),
+    headers: { 'content-type': 'application/json', 'x-webhook-hmac': 'deadbeef' },
+    body: JSON.stringify({ event: 'message', session: 'x' }),
   });
   console.log('webhook_invalid_sig', invalidSig.status);
   if (invalidSig.status !== 401) failed = true;
 
+  const sessionName = `t${tenantId.replace(/-/g, '')}`;
   const wamid = `wamid.confirm.${stamp}`;
   const webhookRaw = JSON.stringify({
-    object: 'whatsapp_business_account',
-    entry: [
-      {
-        id: `waba-${stamp}`,
-        changes: [
-          {
-            field: 'messages',
-            value: {
-              metadata: { phone_number_id: phoneNumberId },
-              messages: [
-                {
-                  from: patientE164,
-                  id: wamid,
-                  timestamp: '1755701234',
-                  type: 'button',
-                  button: { payload: `CONFIRM_${appointmentId}`, text: 'Confirmar' },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    ],
+    event: 'message',
+    session: sessionName,
+    payload: {
+      id: wamid,
+      timestamp: 1755701234,
+      from: `${patientE164}@c.us`,
+      fromMe: false,
+      type: 'button',
+      body: 'Confirmar',
+      button: { payload: `CONFIRM_${appointmentId}`, text: 'Confirmar' },
+    },
   });
-  const signature = `sha256=${createHmac('sha256', process.env.WHATSAPP_APP_SECRET ?? '').update(webhookRaw).digest('hex')}`;
+  const hmac = createHmac('sha512', process.env.WAHA_HMAC_KEY ?? process.env.WHATSAPP_APP_SECRET ?? '')
+    .update(webhookRaw)
+    .digest('hex');
 
   const webhook1 = await fetch(`${origin}/api/v1/webhooks/whatsapp`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-hub-signature-256': signature },
+    headers: { 'content-type': 'application/json', 'x-webhook-hmac': hmac },
     body: webhookRaw,
   });
   const webhook2 = await fetch(`${origin}/api/v1/webhooks/whatsapp`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-hub-signature-256': signature },
+    headers: { 'content-type': 'application/json', 'x-webhook-hmac': hmac },
     body: webhookRaw,
   });
   console.log('webhook_confirm', webhook1.status, webhook2.status);
@@ -327,7 +335,7 @@ async function main() {
           providerName: 'marketing_sample',
           body: 'Oi {{nome}} da {{clinica}} em {{data}} {{hora}}',
           variables: ['nome', 'clinica', 'data', 'hora'],
-          status: 'APPROVED',
+          status: 'ACTIVE',
         },
       });
     },

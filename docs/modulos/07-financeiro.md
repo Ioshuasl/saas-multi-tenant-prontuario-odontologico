@@ -90,7 +90,7 @@ Cada item de tratamento executado gera `production_entry` (profissional, procedi
 
 ## 8. Inadimplência
 
-Job diário por tenant marca parcelas vencidas e publica `billing.installment_overdue`. O MVP entrega: relatório de inadimplentes com aging (1–30, 31–60, 61–90, 90+ dias), filtro por profissional/período, ação rápida de "cobrar por WhatsApp" (template de utilidade, envio manual) e bloqueio configurável de novo agendamento para devedor (default desligado — decisão comercial da clínica). A **régua automática** de cobrança é fase 2.
+Job diário por tenant marca parcelas vencidas e publica `billing.installment_overdue`. O MVP entrega: relatório de inadimplentes com aging (**1–15, 16–30, 31–60, 60+ dias**), filtro por profissional/unidade, ação rápida de "cobrar por WhatsApp" (template de utilidade, envio **manual**) e bloqueio configurável de novo agendamento para devedor (default desligado — decisão comercial da clínica). A **régua automática** de cobrança é fase 2.
 
 ## 9. Casos de uso
 

@@ -19,7 +19,6 @@ export function buildWhatsappWebhookRoutes(): Router {
     key: (req) => `wa-webhook:${clientIp(req)}`,
   });
 
-  router.get('/', limit, asyncHandler(controller.handshake));
   router.post('/', limit, asyncHandler(controller.receive));
   return router;
 }

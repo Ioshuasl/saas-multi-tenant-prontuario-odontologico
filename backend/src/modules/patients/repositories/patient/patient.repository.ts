@@ -39,6 +39,7 @@ const patientSelect = {
   notes: true,
   origin: true,
   active: true,
+  hasOverdue: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.PatientSelect;

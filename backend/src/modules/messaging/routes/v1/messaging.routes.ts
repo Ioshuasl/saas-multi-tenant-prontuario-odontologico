@@ -29,6 +29,7 @@ export function buildMessagingRoutes(): Router {
   const controller = new MessagingController();
 
   router.get('/account', ...readStack, asyncHandler(controller.getAccount));
+  router.get('/account/qr', ...readStack, asyncHandler(controller.getAccountQr));
   router.post('/account', ...configureStack, asyncHandler(controller.connectAccount));
   router.patch('/account', ...configureStack, asyncHandler(controller.patchAccount));
   router.delete('/account', ...configureStack, asyncHandler(controller.deleteAccount));

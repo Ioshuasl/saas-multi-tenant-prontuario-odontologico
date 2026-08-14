@@ -4,6 +4,8 @@ import { getTenantPrisma } from '../../shared/database/tenant_prisma.js';
 import { SeedRepository } from './repositories/financial_category/financial_category_seed.repository.js';
 import { CreateFromQuoteRepository } from './repositories/receivable/receivable_create_from_quote.repository.js';
 import { CreateRepository as ProductionCreateRepository } from './repositories/production_entry/production_entry_create.repository.js';
+import { HasOverdueRepository } from './repositories/installment/installment_overdue.repository.js';
+import { tenantToday } from './helpers/tenant_today.helper.js';
 import type {
   CreateProductionEntryInput,
   CreateReceivableFromApprovedQuoteInput,
@@ -13,6 +15,7 @@ import type {
 const seedCategory = new SeedRepository();
 const createReceivable = new CreateFromQuoteRepository();
 const createProduction = new ProductionCreateRepository();
+const hasOverdue = new HasOverdueRepository();
 
 let failReceivableForQuoteId: string | null = null;
 
@@ -21,7 +24,7 @@ export function setCreateReceivableFailureForTests(quoteId: string | null): void
   failReceivableForQuoteId = quoteId;
 }
 
-/** Seed categoria “Procedimentos” no signup (idempotente). */
+/** Seed categorias E7 (Procedimentos + receitas/despesas) no signup (idempotente). */
 export async function seedDefaultFinancialCategories(
   tx: DbTransaction,
   input: { tenantId: string; idNext: () => string },
@@ -56,6 +59,12 @@ export async function createProductionEntry(
   return getTenantPrisma().runInTenantContext(ctx, (inner) =>
     createProduction.executeInTx(inner, ctx, productionSchema),
   );
+}
+
+/** Há parcela vencida (OVERDUE ou aberta com due_date < hoje TZ). Usado por scheduling (RF-E7-19). */
+export async function patientHasOverdue(ctx: RequestContext, patientId: string): Promise<boolean> {
+  const today = await tenantToday(ctx);
+  return hasOverdue.execute(ctx, patientId, today);
 }
 
 export type {

@@ -17,5 +17,6 @@ export function useAccountGetHook() {
       }
     },
     retry: false,
+    refetchInterval: (query) => (query.state.data?.status === 'PENDING' ? 2_000 : false),
   });
 }

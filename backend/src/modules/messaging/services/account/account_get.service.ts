@@ -9,7 +9,6 @@ export class GetService {
   async execute(ctx: RequestContext): Promise<WhatsappAccountSummary> {
     const account = await this.get.execute(ctx);
     if (!account) throw new AccountNotFoundError();
-    const { accessTokenRef: _token, ...summary } = account;
-    return summary;
+    return account;
   }
 }

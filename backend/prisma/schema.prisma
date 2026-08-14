@@ -68,6 +68,13 @@ model Tenant {
   receivables     Receivable[]
   installments    Installment[]
   productionEntries ProductionEntry[]
+  receiptNumberCounters ReceiptNumberCounter[]
+  payments        Payment[]
+  paymentSplits   PaymentSplit[]
+  patientCreditLedger PatientCreditLedger[]
+  payables        Payable[]
+  cashSessions    CashSession[]
+  cashMovements   CashMovement[]
 
   @@map("tenant")
 }
@@ -224,6 +231,9 @@ model Unit {
   quotes          Quote[]
   receivables     Receivable[]
   productionEntries ProductionEntry[]
+  payments        Payment[]
+  payables        Payable[]
+  cashSessions    CashSession[]
 
   @@map("unit")
 }
@@ -356,6 +366,7 @@ model Patient {
   notes          String?
   photoKey       String?         @map("photo_key")
   origin         String          @default("INTERNAL")
+  hasOverdue     Boolean         @default(false) @map("has_overdue")
   active         Boolean         @default(true)
   deletedAt      DateTime?       @map("deleted_at") @db.Timestamptz
   createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
@@ -374,6 +385,7 @@ model Patient {
   treatmentPlans  TreatmentPlan[]
   receivables     Receivable[]
   productionEntries ProductionEntry[]
+  creditLedger    PatientCreditLedger[]
 
   @@unique([tenantId, code], map: "uq_patient_tenant_code")
   @@index([tenantId, name], map: "idx_patient_name")
@@ -556,15 +568,17 @@ model PublicBookingToken {
   @@map("public_booking_token")
 }
 
-/// Conta WABA (1 por tenant no MVP). docs/07 §8
+/// Conta WhatsApp / sessão WAHA (1 por tenant no MVP). ADR-0016
 model WhatsappAccount {
   id                String         @id @db.Uuid
   tenantId          String         @map("tenant_id") @db.Uuid
   unitId            String?        @map("unit_id") @db.Uuid
-  wabaId            String         @map("waba_id")
-  phoneNumberId     String         @map("phone_number_id")
-  displayPhone      String         @map("display_phone")
-  accessTokenRef    String         @map("access_token_ref")
+  sessionName       String         @map("session_name")
+  wabaId            String?        @map("waba_id")
+  phoneNumberId     String?        @map("phone_number_id")
+  displayPhone      String?        @map("display_phone")
+  accessTokenRef    String?        @map("access_token_ref")
+  riskAcceptedAt    DateTime?      @map("risk_accepted_at") @db.Timestamptz
   webhookVerifiedAt DateTime?      @map("webhook_verified_at") @db.Timestamptz
   status            String         @default("PENDING")
   killSwitch        Boolean        @default(false) @map("kill_switch")
@@ -576,7 +590,7 @@ model WhatsappAccount {
   conversations     Conversation[]
 
   @@unique([tenantId], map: "uq_whatsapp_account_tenant")
-  @@unique([phoneNumberId], map: "uq_whatsapp_account_phone_number_id")
+  @@unique([sessionName], map: "uq_whatsapp_account_session_name")
   @@map("whatsapp_account")
 }
 
@@ -590,7 +604,7 @@ model MessageTemplate {
   providerName String    @map("provider_name")
   body         String
   variables    Json      @default("[]")
-  status       String    @default("PENDING")
+  status       String    @default("ACTIVE")
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
   tenant       Tenant?   @relation(fields: [tenantId], references: [id])
   messages     Message[]
@@ -1000,6 +1014,7 @@ model FinancialCategory {
   parent   FinancialCategory?  @relation("FinancialCategoryTree", fields: [parentId], references: [id])
   children FinancialCategory[] @relation("FinancialCategoryTree")
   receivables Receivable[]
+  payables    Payable[]
 
   @@unique([tenantId, name, kind])
   @@map("financial_category")
@@ -1043,6 +1058,7 @@ model Installment {
   paidAt       DateTime? @map("paid_at") @db.Timestamptz
   tenant       Tenant    @relation(fields: [tenantId], references: [id])
   receivable   Receivable @relation(fields: [receivableId], references: [id], onDelete: Cascade)
+  payments     Payment[]
 
   @@unique([tenantId, receivableId, number])
   @@map("installment")
@@ -1068,4 +1084,149 @@ model ProductionEntry {
 
   @@index([tenantId, professionalId, executedAt], map: "idx_production_period")
   @@map("production_entry")
+}
+
+/// Contador de nº de recibo por tenant (S6 — não IDENTITY global).
+model ReceiptNumberCounter {
+  tenantId   String @id @map("tenant_id") @db.Uuid
+  lastNumber BigInt @default(0) @map("last_number")
+  tenant     Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("receipt_number_counter")
+}
+
+/// Caixa do operador na unidade. Unique OPEN parcial está na migração SQL.
+model CashSession {
+  id                String    @id @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  unitId            String    @map("unit_id") @db.Uuid
+  openedBy          String    @map("opened_by") @db.Uuid
+  openedAt          DateTime  @default(now()) @map("opened_at") @db.Timestamptz
+  openingCents      BigInt    @default(0) @map("opening_cents")
+  openingByMethod   Json?     @map("opening_by_method")
+  closedBy          String?   @map("closed_by") @db.Uuid
+  closedAt          DateTime? @map("closed_at") @db.Timestamptz
+  countedCents      BigInt?   @map("counted_cents")
+  expectedCents     BigInt?   @map("expected_cents")
+  differenceCents   BigInt?   @map("difference_cents")
+  countedByMethod   Json?     @map("counted_by_method")
+  expectedByMethod  Json?     @map("expected_by_method")
+  differenceReason  String?   @map("difference_reason")
+  status            String    @default("OPEN")
+  idempotencyKey    String?   @map("idempotency_key")
+  closeIdempotencyKey String? @map("close_idempotency_key")
+  tenant            Tenant    @relation(fields: [tenantId], references: [id])
+  unit              Unit      @relation(fields: [unitId], references: [id])
+  payments          Payment[]
+  movements         CashMovement[]
+
+  @@map("cash_session")
+}
+
+/// Cabeçalho de recebimento. Splits em `payment_split`. Unique parcial de idempotency na migração SQL.
+model Payment {
+  id              String    @id @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  unitId          String    @map("unit_id") @db.Uuid
+  installmentId   String    @map("installment_id") @db.Uuid
+  cashSessionId   String?   @map("cash_session_id") @db.Uuid
+  amountCents     BigInt    @map("amount_cents")
+  receivedAt      DateTime  @default(now()) @map("received_at") @db.Timestamptz
+  receivedBy      String    @map("received_by") @db.Uuid
+  reversedAt      DateTime? @map("reversed_at") @db.Timestamptz
+  reversalReason  String?   @map("reversal_reason")
+  reversedBy      String?   @map("reversed_by") @db.Uuid
+  receiptNumber   BigInt    @map("receipt_number")
+  pdfStorageKey   String?   @map("pdf_storage_key")
+  notes           String?
+  idempotencyKey  String?   @map("idempotency_key")
+  reversalIdempotencyKey String? @map("reversal_idempotency_key")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  unit            Unit      @relation(fields: [unitId], references: [id])
+  installment     Installment @relation(fields: [installmentId], references: [id])
+  cashSession     CashSession? @relation(fields: [cashSessionId], references: [id])
+  splits          PaymentSplit[]
+  creditLedger    PatientCreditLedger[]
+  cashMovements   CashMovement[]
+
+  @@unique([tenantId, receiptNumber], map: "uq_payment_receipt")
+  @@index([tenantId, unitId, receivedAt], map: "idx_payment_period")
+  @@index([tenantId, installmentId], map: "idx_payment_installment")
+  @@map("payment")
+}
+
+model PaymentSplit {
+  id              String  @id @db.Uuid
+  tenantId        String  @map("tenant_id") @db.Uuid
+  paymentId       String  @map("payment_id") @db.Uuid
+  method          String
+  amountCents     BigInt  @map("amount_cents")
+  cardBrand       String? @map("card_brand")
+  installmentsQty Int?    @map("installments_qty") @db.SmallInt
+  tenant          Tenant  @relation(fields: [tenantId], references: [id])
+  payment         Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, paymentId], map: "idx_payment_split_payment")
+  @@map("payment_split")
+}
+
+/// Lançamentos com sinal. Saldo = SUM(amount_cents). Proibido campo saldo editável.
+model PatientCreditLedger {
+  id          String   @id @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  patientId   String   @map("patient_id") @db.Uuid
+  paymentId   String?  @map("payment_id") @db.Uuid
+  amountCents BigInt   @map("amount_cents")
+  kind        String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  payment     Payment? @relation(fields: [paymentId], references: [id])
+
+  @@index([tenantId, patientId, createdAt], map: "idx_patient_credit_ledger_patient")
+  @@map("patient_credit_ledger")
+}
+
+model Payable {
+  id          String    @id @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  unitId      String    @map("unit_id") @db.Uuid
+  categoryId  String?   @map("category_id") @db.Uuid
+  supplier    String?
+  description String
+  amountCents BigInt    @map("amount_cents")
+  dueDate     DateTime  @map("due_date") @db.Date
+  paidAt      DateTime? @map("paid_at") @db.Timestamptz
+  paidCents   BigInt?   @map("paid_cents")
+  method      String?
+  recurrence  Json?
+  status      String    @default("OPEN")
+  payIdempotencyKey String? @map("pay_idempotency_key")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  unit        Unit      @relation(fields: [unitId], references: [id])
+  category    FinancialCategory? @relation(fields: [categoryId], references: [id])
+
+  @@index([tenantId, dueDate, status], map: "idx_payable_due")
+  @@map("payable")
+}
+
+model CashMovement {
+  id            String   @id @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  cashSessionId String   @map("cash_session_id") @db.Uuid
+  kind          String
+  amountCents   BigInt   @map("amount_cents")
+  method        String
+  paymentId     String?  @map("payment_id") @db.Uuid
+  description   String?
+  createdBy     String   @map("created_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  cashSession   CashSession @relation(fields: [cashSessionId], references: [id])
+  payment       Payment?    @relation(fields: [paymentId], references: [id])
+
+  @@index([tenantId, cashSessionId, createdAt], map: "idx_cash_movement_session")
+  @@map("cash_movement")
 }

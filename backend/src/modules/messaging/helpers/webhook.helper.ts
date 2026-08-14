@@ -1,16 +1,13 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { fromWahaChatId } from './waha_session.helper.js';
 
-export function verifyHubSignature(
-  rawBody: Buffer,
-  signatureHeader: string | undefined,
-  appSecret: string,
-): boolean {
-  if (!signatureHeader?.startsWith('sha256=')) return false;
-  const expectedHex = createHmac('sha256', appSecret).update(rawBody).digest('hex');
-  const actualHex = signatureHeader.slice('sha256='.length).trim().toLowerCase();
-  if (expectedHex.length !== actualHex.length) return false;
+export function verifyWahaHmac(rawBody: Buffer, signatureHeader: string | undefined, secret: string): boolean {
+  if (!signatureHeader) return false;
+  const expectedHex = createHmac('sha512', secret).update(rawBody).digest('hex');
+  const actual = signatureHeader.trim().toLowerCase().replace(/^sha512=/i, '');
+  if (expectedHex.length !== actual.length) return false;
   try {
-    return timingSafeEqual(Buffer.from(expectedHex, 'utf8'), Buffer.from(actualHex, 'utf8'));
+    return timingSafeEqual(Buffer.from(expectedHex, 'utf8'), Buffer.from(actual, 'utf8'));
   } catch {
     return false;
   }
@@ -19,7 +16,7 @@ export function verifyHubSignature(
 export type WebhookInbound = {
   wamid: string;
   from: string;
-  phoneNumberId: string;
+  sessionName: string;
   type: string;
   text?: string;
   buttonPayload?: string;
@@ -29,73 +26,82 @@ export type WebhookInbound = {
 export type WebhookStatus = {
   wamid: string;
   status: string;
-  phoneNumberId: string;
+  sessionName: string;
+};
+
+export type WebhookSession = {
+  sessionName: string;
+  status: string;
+  displayPhone: string | null;
 };
 
 export type ParsedWhatsappWebhook = {
+  sessionName: string | null;
   inbounds: WebhookInbound[];
   statuses: WebhookStatus[];
+  session: WebhookSession | null;
   firstWamid: string | null;
-  phoneNumberId: string | null;
 };
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+}
+
+function ackToStatus(ack: unknown): string | null {
+  if (ack === 1 || ack === '1') return 'sent';
+  if (ack === 2 || ack === '2') return 'delivered';
+  if (ack === 3 || ack === '3') return 'read';
+  if (typeof ack === 'string') return ack.toLowerCase();
+  return null;
+}
 
 export function parseWhatsappWebhook(body: unknown): ParsedWhatsappWebhook {
   const inbounds: WebhookInbound[] = [];
   const statuses: WebhookStatus[] = [];
-  if (!body || typeof body !== 'object') {
-    return { inbounds, statuses, firstWamid: null, phoneNumberId: null };
+  const root = asRecord(body);
+  if (!root) {
+    return { sessionName: null, inbounds, statuses, session: null, firstWamid: null };
   }
-  const root = body as { entry?: unknown };
-  const entries = Array.isArray(root.entry) ? root.entry : [];
-  for (const entry of entries) {
-    if (!entry || typeof entry !== 'object') continue;
-    const changes = Array.isArray((entry as { changes?: unknown }).changes)
-      ? (entry as { changes: unknown[] }).changes
-      : [];
-    for (const change of changes) {
-      if (!change || typeof change !== 'object') continue;
-      const value = (change as { value?: unknown }).value;
-      if (!value || typeof value !== 'object') continue;
-      const metadata = (value as { metadata?: { phone_number_id?: unknown } }).metadata;
-      const phoneNumberId =
-        typeof metadata?.phone_number_id === 'string' ? metadata.phone_number_id : '';
-      const messages = Array.isArray((value as { messages?: unknown }).messages)
-        ? (value as { messages: unknown[] }).messages
-        : [];
-      for (const message of messages) {
-        if (!message || typeof message !== 'object') continue;
-        const msg = message as {
-          id?: unknown;
-          from?: unknown;
-          type?: unknown;
-          text?: { body?: unknown };
-          button?: { payload?: unknown; text?: unknown };
-        };
-        if (typeof msg.id !== 'string' || typeof msg.from !== 'string') continue;
-        inbounds.push({
-          wamid: msg.id,
-          from: msg.from,
-          phoneNumberId,
-          type: typeof msg.type === 'string' ? msg.type : 'text',
-          text: typeof msg.text?.body === 'string' ? msg.text.body : undefined,
-          buttonPayload: typeof msg.button?.payload === 'string' ? msg.button.payload : undefined,
-          buttonText: typeof msg.button?.text === 'string' ? msg.button.text : undefined,
-        });
-      }
-      const statusRows = Array.isArray((value as { statuses?: unknown }).statuses)
-        ? (value as { statuses: unknown[] }).statuses
-        : [];
-      for (const row of statusRows) {
-        if (!row || typeof row !== 'object') continue;
-        const st = row as { id?: unknown; status?: unknown };
-        if (typeof st.id !== 'string' || typeof st.status !== 'string') continue;
-        statuses.push({ wamid: st.id, status: st.status, phoneNumberId });
-      }
+  const sessionName = typeof root.session === 'string' ? root.session : null;
+  const event = typeof root.event === 'string' ? root.event : '';
+  const payload = asRecord(root.payload) ?? {};
+
+  let session: WebhookSession | null = null;
+  if (event === 'session.status' && sessionName) {
+    const status = typeof payload.status === 'string' ? payload.status : '';
+    const me = asRecord(payload.me);
+    const meId = typeof me?.id === 'string' ? fromWahaChatId(me.id) : null;
+    session = { sessionName, status, displayPhone: meId };
+  }
+
+  if ((event === 'message' || event === 'message.any') && sessionName) {
+    const fromMe = payload.fromMe === true;
+    const id = typeof payload.id === 'string' ? payload.id : '';
+    const from = typeof payload.from === 'string' ? fromWahaChatId(payload.from) : '';
+    if (!fromMe && id && from) {
+      const button = asRecord(payload.button);
+      inbounds.push({
+        wamid: id,
+        from,
+        sessionName,
+        type: typeof payload.type === 'string' ? payload.type : 'text',
+        text: typeof payload.body === 'string' ? payload.body : undefined,
+        buttonPayload: typeof button?.payload === 'string' ? button.payload : undefined,
+        buttonText: typeof button?.text === 'string' ? button.text : undefined,
+      });
     }
   }
+
+  if (event === 'message.ack' && sessionName) {
+    const id = typeof payload.id === 'string' ? payload.id : '';
+    const mapped = ackToStatus(payload.ack);
+    if (id && mapped) {
+      statuses.push({ wamid: id, status: mapped, sessionName });
+    }
+  }
+
   const firstWamid = inbounds[0]?.wamid ?? statuses[0]?.wamid ?? null;
-  const phoneNumberId = inbounds[0]?.phoneNumberId || statuses[0]?.phoneNumberId || null;
-  return { inbounds, statuses, firstWamid, phoneNumberId: phoneNumberId || null };
+  return { sessionName, inbounds, statuses, session, firstWamid };
 }
 
 export function parseButtonAction(payload: string | undefined, text: string | undefined): {
@@ -107,7 +113,10 @@ export function parseButtonAction(payload: string | undefined, text: string | un
   if (value.startsWith('CANCEL_')) return { kind: 'CANCEL', targetId: value.slice('CANCEL_'.length) };
   if (value.startsWith('WAITLIST_')) return { kind: 'WAITLIST', targetId: value.slice('WAITLIST_'.length) };
   if (value.startsWith('REBOOK_')) return { kind: 'REBOOK', targetId: value.slice('REBOOK_'.length) };
-  const label = (text ?? '').trim().toLowerCase();
+  const label = (text ?? '').trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+  if (label === 'confirmar' || label.startsWith('confirmar')) return { kind: 'CONFIRM' };
+  if (label === 'cancelar' || label.startsWith('cancelar')) return { kind: 'CANCEL' };
+  if (label.includes('quero este horario') || label === 'quero este horário') return { kind: 'WAITLIST' };
   if (label === 'remarcar' || label === 'reagendar') return { kind: 'REBOOK' };
   return { kind: 'NONE' };
 }

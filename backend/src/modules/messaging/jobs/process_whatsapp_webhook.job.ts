@@ -10,7 +10,8 @@ import {
 } from '../../scheduling/scheduling_public.js';
 import { findPatientIdByPhone, toE164Br } from '../../patients/patients_public.js';
 import { GetAccountRepository } from '../repositories/whatsapp_account/whatsapp_account.repository.js';
-import { AppendCreditLedgerRepository } from '../repositories/credit/credit.repository.js';
+import { UpdateAccountRepository } from '../repositories/whatsapp_account/whatsapp_account.repository.js';
+import { GetLastRelatedRepository } from '../repositories/message/message_last_related.repository.js';
 import {
   UpdateConversationStatusRepository,
   UpsertConversationRepository,
@@ -22,13 +23,12 @@ import {
 import { parseButtonAction, parseWhatsappWebhook } from '../helpers/webhook.helper.js';
 
 const getAccount = new GetAccountRepository();
+const updateAccount = new UpdateAccountRepository();
 const upsertConversation = new UpsertConversationRepository();
 const updateConversation = new UpdateConversationStatusRepository();
 const createMessage = new CreateMessageRepository();
 const updateByProvider = new UpdateMessageByProviderIdRepository();
-const appendCredit = new AppendCreditLedgerRepository();
-
-const LOW_THRESHOLD = 10;
+const lastRelated = new GetLastRelatedRepository();
 
 function mapProviderStatus(status: string): string | null {
   if (status === 'sent') return 'SENT';
@@ -51,27 +51,27 @@ export async function processWhatsappWebhookJob(payload: JobPayload): Promise<vo
     return;
   }
 
+  if (parsed.session?.status === 'WORKING' || parsed.session?.status === 'CONNECTED') {
+    await updateAccount.execute(ctx, {
+      status: 'CONNECTED',
+      lastError: null,
+      webhookVerifiedAt: new Date(),
+      displayPhone: parsed.session.displayPhone,
+    });
+  } else if (parsed.session?.status === 'FAILED' || parsed.session?.status === 'STOPPED') {
+    await updateAccount.execute(ctx, {
+      status: parsed.session.status === 'STOPPED' ? 'DISCONNECTED' : 'ERROR',
+      lastError: parsed.session.status,
+    });
+  }
+
   for (const status of parsed.statuses) {
     const mapped = mapProviderStatus(status.status);
     if (!mapped) continue;
-    const updated = await updateByProvider.execute(ctx, status.wamid, { status: mapped });
-    if (!updated) continue;
-    if (mapped === 'DELIVERED' && updated.billable && !updated.debited) {
-      const after = await appendCredit.execute(ctx, {
-        kind: 'CONSUMPTION',
-        amountCents: -1,
-        messageId: updated.id,
-      });
-      if (after.balanceAfter <= 0) {
-        await publish(ctx, 'messaging.credits_exhausted', { messageId: updated.id });
-      } else if (after.balanceAfter <= LOW_THRESHOLD) {
-        await publish(ctx, 'messaging.credits_low', {
-          messageId: updated.id,
-          balance: after.balanceAfter,
-        });
-      }
-    }
+    await updateByProvider.execute(ctx, status.wamid, { status: mapped });
   }
+
+  const windowUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   for (const inbound of parsed.inbounds) {
     const phone = toE164Br(inbound.from);
@@ -80,11 +80,12 @@ export async function processWhatsappWebhookJob(payload: JobPayload): Promise<vo
       whatsappAccountId: account.id,
       contactPhone: phone,
       patientId,
+      serviceWindowExpiresAt: windowUntil,
     });
     const created = await createMessage.execute(ctx, {
       conversationId: conversation.id,
       direction: 'INBOUND',
-      type: inbound.type === 'button' ? 'INTERACTIVE' : 'TEXT',
+      type: inbound.type === 'button' || inbound.buttonText ? 'INTERACTIVE' : 'TEXT',
       body: inbound.text ?? inbound.buttonText ?? null,
       providerMessageId: inbound.wamid,
       status: 'DELIVERED',
@@ -94,22 +95,29 @@ export async function processWhatsappWebhookJob(payload: JobPayload): Promise<vo
     if (!created.created) continue;
 
     const action = parseButtonAction(inbound.buttonPayload, inbound.buttonText ?? inbound.text);
-    if (action.kind === 'CONFIRM' && action.targetId) {
-      await applyConfirmationFromPatient(ctx, action.targetId);
+    let targetId = action.targetId;
+    if ((action.kind === 'CONFIRM' || action.kind === 'CANCEL') && !targetId) {
+      targetId = (await lastRelated.execute(ctx, conversation.id, 'APPOINTMENT'))?.relatedId;
+    }
+    if (action.kind === 'WAITLIST' && !targetId) {
+      targetId = (await lastRelated.execute(ctx, conversation.id, 'WAITLIST'))?.relatedId;
+    }
+    if (action.kind === 'CONFIRM' && targetId) {
+      await applyConfirmationFromPatient(ctx, targetId);
       await publish(ctx, 'messaging.confirmation_received', {
-        appointmentId: action.targetId,
+        appointmentId: targetId,
         wamid: inbound.wamid,
       });
-    } else if (action.kind === 'CANCEL' && action.targetId) {
-      await applyCancellationFromPatient(ctx, action.targetId);
+    } else if (action.kind === 'CANCEL' && targetId) {
+      await applyCancellationFromPatient(ctx, targetId);
       await publish(ctx, 'messaging.cancellation_received', {
-        appointmentId: action.targetId,
+        appointmentId: targetId,
         wamid: inbound.wamid,
       });
-    } else if (action.kind === 'WAITLIST' && action.targetId) {
-      await applyWaitlistAcceptByOfferId(ctx, action.targetId);
+    } else if (action.kind === 'WAITLIST' && targetId) {
+      await applyWaitlistAcceptByOfferId(ctx, targetId);
       await publish(ctx, 'messaging.waitlist_offer_accepted', {
-        offerId: action.targetId,
+        offerId: targetId,
         wamid: inbound.wamid,
       });
     } else if (action.kind === 'REBOOK') {

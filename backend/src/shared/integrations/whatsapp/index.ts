@@ -1,21 +1,47 @@
-import { env } from '../../config/env.js';
-import type { MessagingProvider } from '../../../modules/messaging/types/ports/messaging_provider.port.js';
+import { messagingMode } from '../../config/env.js';
+import type {
+  MessagingProvider,
+  WahaSessionPort,
+} from '../../../modules/messaging/types/ports/messaging_provider.port.js';
 import { FakeMessagingProvider } from './fake.adapter.js';
 import { WhatsAppCloudProvider } from './cloud.adapter.js';
+import { WahaClient } from './waha.client.js';
 
-let singleton: MessagingProvider | undefined;
+let singleton: (MessagingProvider & Partial<WahaSessionPort>) | undefined;
 
-/** Fake em test/dev; Cloud em production (ADR-0005). */
 export function getMessagingProvider(): MessagingProvider {
+  if (process.env.NODE_ENV === 'test') {
+    if (!(singleton instanceof FakeMessagingProvider)) {
+      singleton = new FakeMessagingProvider();
+    }
+    return singleton;
+  }
   if (!singleton) {
-    singleton =
-      env.NODE_ENV === 'production' ? new WhatsAppCloudProvider() : new FakeMessagingProvider();
+    const mode = messagingMode();
+    if (mode === 'cloud') singleton = new WhatsAppCloudProvider();
+    else if (mode === 'waha') singleton = new WahaClient();
+    else singleton = new FakeMessagingProvider();
   }
   return singleton;
 }
 
+function isWahaSessionPort(value: MessagingProvider): value is MessagingProvider & WahaSessionPort {
+  const candidate = value as Partial<WahaSessionPort>;
+  return (
+    typeof candidate.ensureSession === 'function' &&
+    typeof candidate.getQr === 'function' &&
+    typeof candidate.logout === 'function'
+  );
+}
+
+export function getWahaSessionPort(): WahaSessionPort {
+  const provider = getMessagingProvider();
+  if (isWahaSessionPort(provider)) return provider;
+  return new FakeMessagingProvider();
+}
+
 export function setMessagingProvider(provider: MessagingProvider | undefined): void {
-  singleton = provider;
+  singleton = provider as MessagingProvider & Partial<WahaSessionPort>;
 }
 
 export type { MessagingProvider } from '../../../modules/messaging/types/ports/messaging_provider.port.js';

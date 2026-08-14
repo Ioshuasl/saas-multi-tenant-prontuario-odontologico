@@ -3,10 +3,7 @@ import { AUTOMATION_KEYS } from '../enum/automation/automation.enum.js';
 
 export const accountConnectSchema = z
   .object({
-    wabaId: z.string().min(1).max(64),
-    phoneNumberId: z.string().min(1).max(64),
-    displayPhone: z.string().min(8).max(20),
-    accessToken: z.string().min(8).max(4096),
+    riskAccepted: z.literal(true),
     unitId: z.string().uuid().optional().nullable(),
   })
   .strict();
@@ -20,6 +17,14 @@ export const accountPatchSchema = z
   .strict();
 
 export type AccountPatchSchema = z.infer<typeof accountPatchSchema>;
+
+export const accountTestSchema = z
+  .object({
+    to: z.string().min(10).max(20).optional(),
+  })
+  .strict();
+
+export type AccountTestSchema = z.infer<typeof accountTestSchema>;
 
 export const automationKeyParamSchema = z.object({
   key: z.enum(AUTOMATION_KEYS),

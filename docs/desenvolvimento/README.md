@@ -8,6 +8,7 @@ Pasta **somente** para acompanhamento do desenvolvimento (scaffold, sprints, dec
 | --- | --- |
 | [PROGRESSO.md](./PROGRESSO.md) | Log cronológico do que foi feito (append-only) |
 | [sprints/](./sprints/) | Notas por sprint (checklist, bloqueios, entregáveis) |
+| [migracao-waha.md](./migracao-waha.md) | Plano Cloud API → WAHA (docs; código depois) |
 | Este README | Índice e convenções |
 
 ## Convenções
@@ -19,12 +20,13 @@ Pasta **somente** para acompanhamento do desenvolvimento (scaffold, sprints, dec
 
 ## Status atual
 
-- **Fase:** Sprint 5 — Orçamento → tratamento (E6) — **fechada** (código + aceite local)
-- **Próxima:** Sprint 6 (E7 baixa/caixa)
-- **Anterior:** Sprint 4 — Prontuário (E5) — **código Must fechado** (M3 uso real pendente; smokes S4 no CI nesta S5)
+- **Fase:** Sprint 6 — Financeiro (E7) — **planejada** (checklist)
+- **Anterior:** Sprint 5 — Orçamento → tratamento (E6) — **fechada** (código + aceite local)
+- **Sprint 4:** Prontuário (E5) — **código Must fechado** (M3 uso real pendente)
 - **Código base:** Sprint 0 concluída (monorepo, CI, RLS, KeyManagementPort)
 - **Especificação:** [`../README.md`](../README.md)
-- **Checklist S5 (planejada):** [`sprints/S5-orcamentos-tratamentos.md`](./sprints/S5-orcamentos-tratamentos.md)
+- **Checklist S6 (planejada):** [`sprints/S6-financeiro.md`](./sprints/S6-financeiro.md)
+- **Checklist S5 (fechada):** [`sprints/S5-orcamentos-tratamentos.md`](./sprints/S5-orcamentos-tratamentos.md)
 - **Checklist S4 (código Must):** [`sprints/S4-prontuario.md`](./sprints/S4-prontuario.md)
 - **Checklist S3 (código Must):** [`sprints/S3-canal-paciente.md`](./sprints/S3-canal-paciente.md)
 - **Checklist S2 (fechada):** [`sprints/S2-pacientes-agenda.md`](./sprints/S2-pacientes-agenda.md)

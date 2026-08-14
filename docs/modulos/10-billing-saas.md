@@ -18,8 +18,8 @@
 | Unidades | 1 | 1 | até 5 |
 | Prontuário, agenda, financeiro completos | ✔ | ✔ | ✔ |
 | Autoagendamento público | ✔ | ✔ | ✔ |
-| WhatsApp oficial | ✔ | ✔ | ✔ |
-| Franquia de mensagens/mês | 300 | 1.000 | 3.000 |
+| WhatsApp (WAHA, QR no app) | ✔ | ✔ | ✔ |
+| Franquia de mensagens Meta | — | — | — |
 | Storage de anexos | 5 GB | 25 GB | 100 GB |
 | Inbox compartilhada | ✔ | ✔ | ✔ |
 | Relatórios | essenciais | completos | completos + consolidado |
@@ -82,7 +82,7 @@ Downgrade com uso acima do novo limite: bloqueado até a clínica ajustar (com l
 
 Campos `external_customer_id` / `external_subscription_id` já previstos em `subscription`. Cobrança em BRL, ciclo mensal ou anual, quando houver gateway.
 
-Créditos de mensagem (excedente da franquia) no MVP: crédito **manual** pela operação; compra avulsa automatizada junto com o gateway futuro.
+Créditos/franquia Meta de mensagem: **não** no default WAHA ([ADR-0016](../adr/0016-waha-default-messaging.md)). Texto comercial do plano: perguntar na implementação se ainda citar “pacote de mensagens”.
 
 E-mail transacional: **Resend** ([ADR-0009](../adr/0009-email-resend.md)).
 

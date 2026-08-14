@@ -6,6 +6,8 @@ export const TEMPLATE_KEYS = [
   'waitlist_offer',
   'anamnesis_request',
   'quote_sent',
+  'payment_receipt',
+  'payment_overdue',
 ] as const;
 
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];

@@ -4,6 +4,60 @@ Append-only. Entradas mais recentes no topo.
 
 ---
 
+## 2026-08-14 — S6 Bloco 5: recibo PDF, send, relatórios E7
+
+### Feito
+
+- Job `generate-receipt-pdf` (outbox `billing.payment_registered`); `GET /payments/:id/receipt` URL 15 min; PDF sem clínico + “não é nota fiscal”
+- `POST /payments/:id/send-receipt` (WA CONNECTED → senão e-mail → COPY) + templates `payment_receipt` / `payment_overdue`
+- `POST /installments/:id/charge` (RF-E7-18, envio manual)
+- `GET /reports/cash-flow` (CASH ≠ ACCRUAL), `/overdue` (faixas 1–15/16–30/31–60/60+), `/production` (escopo dentista)
+- Smoke `pnpm test:billing-reports`; CI passo correspondente
+
+### Validação
+
+- `pnpm --filter @repo/backend db:migrate` + `db:generate` + typecheck + `test:billing-reports` + `arch:check`
+
+### Próximo
+
+- S6 Bloco 6 — frontend AR + baixa + recibo
+
+---
+
+## 2026-08-14 — S6 planejada (checklist)
+
+### Feito
+
+- Checklist [`sprints/S6-financeiro.md`](./sprints/S6-financeiro.md) no mesmo nível da S5
+- Escopo: E7 Must (AR + baixa/estorno + crédito + AP + caixa + fluxo + overdue + recibo + produção); marco M4
+- 7 blocos (5 backend + 2 frontend); cortes fechados (sem módulo `reporting`; sem NFS-e/export job; crédito via ledger; CASH exige sessão; aging = RF 1–15/16–30/31–60/60+)
+- README desenvolvimento aponta S6 como fase atual
+
+### Validação
+
+- Fontes: RF E7, módulo billing, docs/08 §2.7, docs/07 §7, docs/09 §4.5, herança S5 (`billing_public` + parcelas)
+
+### Próximo
+
+- S6 Bloco 1 (DDL payment/caixa/AP/crédito + RLS + counter de recibo)
+
+---
+
+## 2026-08-14 — Docs: Cloud API → WAHA (sem código)
+
+### Feito
+
+- [ADR-0016](../adr/0016-waha-default-messaging.md) Aceito; [ADR-0005](../adr/0005-whatsapp-cloud-api.md) supersedido; [ADR-0015](../adr/0015-avaliacao-gateways-whatsapp-nao-oficiais.md) como pesquisa
+- Plano [migracao-waha.md](./migracao-waha.md) (QR no app, GOWS, sem crédito Meta, botões + fallback)
+- RF E8, módulo 08, API §2.8 / §3.5, DDL `whatsapp_account`, roadmap R1, visão D1 alinhados
+
+### Próximo
+
+- Código do adapter WAHA **só quando pedido**
+- S6 — E7 baixa/caixa (M4)
+
+---
+
 ## 2026-08-14 — S5 fechada: smokes, Playwright, aceite, CI S4
 
 ### Feito

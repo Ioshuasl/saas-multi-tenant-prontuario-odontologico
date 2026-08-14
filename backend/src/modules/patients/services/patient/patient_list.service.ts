@@ -10,11 +10,16 @@ export class ListService {
     ctx: RequestContext,
     query: PatientListQuerySchema,
   ): Promise<PatientListResult> {
-    return this.list.execute(ctx, {
+    const result = await this.list.execute(ctx, {
       search: query.search,
       cursor: query.cursor,
       limit: query.limit ?? 20,
       active: query.active === undefined ? undefined : query.active === 'true',
     });
+    if ((ctx.permissions ?? []).includes('finance.read')) return result;
+    return {
+      ...result,
+      items: result.items.map(({ hasOverdue: _hidden, ...item }) => item),
+    };
   }
 }

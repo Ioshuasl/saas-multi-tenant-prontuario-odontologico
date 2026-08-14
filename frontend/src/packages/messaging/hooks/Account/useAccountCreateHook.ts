@@ -10,6 +10,7 @@ export function useAccountCreateHook() {
     mutationFn: AccountCreateService,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: messagingQueryKeys.account });
+      await queryClient.invalidateQueries({ queryKey: messagingQueryKeys.qr });
     },
   });
 }

@@ -138,7 +138,7 @@ Esses itens são **expectativa mínima** — não implementá-los é ser descart
 
 | # | Diferencial | Justificativa vinda do benchmark |
 | --- | --- | --- |
-| D1 | **WhatsApp servidor-side com Cloud API oficial + caixa de entrada compartilhada** | Três dos quatro entregam via extensão de WhatsApp Web, dependente da máquina da recepção; a conversa fica no celular/PC de alguém, não na clínica |
+| D1 | **WhatsApp no servidor (WAHA) + caixa de entrada compartilhada** | Três dos quatro entregam via extensão de WhatsApp Web, dependente da máquina da recepção; a conversa fica no celular/PC de alguém, não na clínica |
 | D2 | **Prontuário, agenda e financeiro completos no plano de entrada** | Concorrentes reservam fluxo de caixa, comissão, CRM e relatórios para planos superiores |
 | D3 | **Fila de espera com reencaixe automático** | Nenhum player promove reencaixe: quando um paciente cancela, a cadeira fica vazia; podemos oferecer a vaga ativamente pelo WhatsApp |
 | D4 | **Exportação total dos dados self-service** | Nenhum concorrente promove saída fácil; vira argumento de confiança e reduz medo de lock-in |

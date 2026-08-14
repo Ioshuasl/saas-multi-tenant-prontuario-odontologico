@@ -10,7 +10,8 @@ export function useAccountTestHook() {
     mutationFn: AccountTestService,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: messagingQueryKeys.account });
-      await queryClient.invalidateQueries({ queryKey: ['messaging-logs'] });
+      await queryClient.invalidateQueries({ queryKey: messagingQueryKeys.logs() });
+      await queryClient.invalidateQueries({ queryKey: messagingQueryKeys.usage });
     },
     onError: async () => {
       await queryClient.invalidateQueries({ queryKey: messagingQueryKeys.account });

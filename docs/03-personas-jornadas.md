@@ -173,4 +173,4 @@ Titular solicita acesso/cópia/correção/eliminação
 | A5 | Tenant A tenta acessar paciente do tenant B por ID direto | 404 (não 403, para não revelar existência) e alerta de segurança |
 | A6 | Evolução clínica editada | Nova versão criada; versão anterior permanece consultável com autor e data |
 | A7 | Cancelamento às 14h de consulta das 16h com 3 pacientes na fila de espera | Ofertas enviadas; primeiro a aceitar fica com o slot; slot não fica duplicado |
-| A8 | Clínica sem crédito de mensagem | Automação não dispara, alerta aparece no painel, agendamento não é bloqueado |
+| A8 | Sessão WhatsApp desconectada ou kill switch | Automação não dispara, alerta no painel, agendamento não é bloqueado |

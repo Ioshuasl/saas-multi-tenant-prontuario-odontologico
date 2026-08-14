@@ -31,6 +31,13 @@ const envSchema = z.object({
   ATTACHMENT_QUOTA_BYTES: z.coerce.number().int().positive().default(1_073_741_824),
   WHATSAPP_APP_SECRET: z.string().min(1),
   WHATSAPP_VERIFY_TOKEN: z.string().min(1),
+  MESSAGING_PROVIDER: z.enum(['waha', 'cloud', 'fake']).optional(),
+  WAHA_BASE_URL: z.string().url().default('https://waha.ioshuavps.com.br'),
+  WAHA_API_KEY: z.string().min(1).optional(),
+  WAHA_HMAC_KEY: z.string().min(1).optional(),
+  WAHA_WEBHOOK_URL: z.string().url().optional(),
+  WAHA_ENGINE: z.enum(['WEBJS', 'GOWS', 'NOWEB']).default('WEBJS'),
+  WAHA_SESSION_NAME: z.string().min(1).optional(),
   MAIL_DSN: z.string().min(1),
   MAIL_FROM: z.string().min(1).default('noreply@localhost'),
   RESEND_API_KEY: z.string().optional(),
@@ -46,3 +53,18 @@ export const env: Env = envSchema.parse(process.env);
 
 export const jwtPrivateKey = decodePemKey(env.JWT_PRIVATE_KEY);
 export const jwtPublicKey = decodePemKey(env.JWT_PUBLIC_KEY);
+
+export function messagingMode(): 'waha' | 'cloud' | 'fake' {
+  if (process.env.NODE_ENV === 'test') return 'fake';
+  if (env.MESSAGING_PROVIDER) return env.MESSAGING_PROVIDER;
+  return env.NODE_ENV === 'production' ? 'waha' : 'fake';
+}
+
+export function wahaHmacKey(): string {
+  return env.WAHA_HMAC_KEY ?? env.WHATSAPP_APP_SECRET;
+}
+
+export function wahaWebhookUrl(): string {
+  if (env.WAHA_WEBHOOK_URL) return env.WAHA_WEBHOOK_URL;
+  return 'http://localhost:3333/api/v1/webhooks/whatsapp';
+}

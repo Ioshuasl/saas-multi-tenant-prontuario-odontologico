@@ -34,12 +34,12 @@ export async function getWhatsappAccountStatus(
   if (!account) return null;
   return {
     id: account.id,
-    wabaId: account.wabaId,
-    phoneNumberId: account.phoneNumberId,
+    sessionName: account.sessionName,
     displayPhone: account.displayPhone,
     status: account.status,
     killSwitch: account.killSwitch,
     lastError: account.lastError,
+    riskAcceptedAt: account.riskAcceptedAt,
     webhookVerifiedAt: account.webhookVerifiedAt,
     createdAt: account.createdAt,
   };

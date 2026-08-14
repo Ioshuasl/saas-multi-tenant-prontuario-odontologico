@@ -38,7 +38,7 @@ Monólito modular deployado como uma única aplicação Node.js, com módulos in
                                      │ Worker (mesmo código)│  consumidores de fila
                                      └──────┬───────────────┘
                                             │
-                        WhatsApp Cloud API · e-mail (SES/Resend) · storage
+                        WAHA (GOWS) · e-mail (Resend) · storage
 ```
 
 Duas execuções do **mesmo artefato**: processo `api` (HTTP) e processo `worker` (filas/cron). Isso mantém um único deploy conceitual sem acoplar latência de request a trabalho assíncrono.
@@ -60,7 +60,7 @@ Detalhado em [ADR-0001](./adr/0001-monolito-modular.md). Em resumo: com um time 
 | `clinical-records` | Anamnese, odontograma, evoluções, anexos, alertas clínicos | `MedicalRecord`, `Anamnesis`, `Odontogram`, `ClinicalNote`, `Attachment` |
 | `treatments` | Orçamentos, planos de tratamento, execução de procedimentos | `Quote`, `TreatmentPlan`, `TreatmentItem` |
 | `billing` | Financeiro da clínica: AR/AP, caixa, fluxo de caixa, inadimplência, produção | `Receivable`, `Payable`, `Payment`, `CashSession`, `LedgerEntry` |
-| `messaging` | WhatsApp Cloud API, templates, automações, inbox, créditos, log de envio | `Conversation`, `Message`, `MessageTemplate`, `Automation`, `MessageCredit` |
+| `messaging` | WAHA (GOWS), textos/automações, inbox, volume/falhas, log de envio | `Conversation`, `Message`, `MessageTemplate`, `Automation` |
 | `reporting` | Consultas de leitura/relatórios (CQRS-lite: acesso somente leitura a views) | — (read models) |
 | `subscription` | Assinatura do SaaS, planos, limites, trial | `Subscription`, `Plan`, `UsageCounter` |
 | `platform` (capacidades transversais, implementadas em `shared/`) | Erros e tipos base, tenant context, auditoria, outbox, exportação/LGPD, feature flags, integrações, filas | `TenantId`, `DomainEvent`, `AuditLog` |

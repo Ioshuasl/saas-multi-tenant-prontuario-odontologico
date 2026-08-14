@@ -10,6 +10,7 @@ export class UpsertConversationRepository {
       contactPhone: string;
       contactName?: string | null;
       patientId?: string | null;
+      serviceWindowExpiresAt?: Date | null;
     },
   ): Promise<{ id: string; status: string }> {
     const tenantPrisma = getTenantPrisma();
@@ -28,6 +29,7 @@ export class UpsertConversationRepository {
             lastMessageAt: new Date(),
             ...(input.contactName ? { contactName: input.contactName } : {}),
             ...(input.patientId && !existing.patientId ? { patientId: input.patientId } : {}),
+            ...(input.serviceWindowExpiresAt ? { serviceWindowExpiresAt: input.serviceWindowExpiresAt } : {}),
           },
         });
         return { id: row.id, status: row.status };
@@ -41,6 +43,7 @@ export class UpsertConversationRepository {
           contactName: input.contactName ?? null,
           patientId: input.patientId ?? null,
           lastMessageAt: new Date(),
+          serviceWindowExpiresAt: input.serviceWindowExpiresAt ?? null,
         },
       });
       return { id: row.id, status: row.status };

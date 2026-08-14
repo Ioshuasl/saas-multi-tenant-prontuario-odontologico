@@ -45,7 +45,7 @@ Assim, ou o dado e o evento existem juntos, ou nenhum dos dois existe. Nunca há
 4. **Retry com backoff exponencial** e limite; falha definitiva vai para DLQ com alerta.
 5. **Timeout por job** e log estruturado com `requestId` propagado.
 6. **Cron por tenant respeitando timezone** (parcela vence à meia-noite do fuso da clínica, não do servidor).
-7. Job que envia mensagem verifica **janela de silêncio**, consentimento e créditos antes de enviar.
+7. Job que envia mensagem verifica **janela de silêncio**, consentimento, kill switch e sessão `CONNECTED` antes de enviar.
 
 ## Consequências
 

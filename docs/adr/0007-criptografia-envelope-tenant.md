@@ -12,7 +12,7 @@ Precisamos proteger dado clínico sensível além do isolamento por RLS e da cri
 2. **Envelope encryption por tenant (AES-GCM, KEK no KMS)** — servidor descriptografa em memória no request autorizado.
 3. **E2EE verdadeira no cliente** — servidor só armazena ciphertext; chave com o usuário/dispositivo.
 
-O produto exige busca de paciente, agenda operacional, relatórios, WhatsApp Cloud API, exportação LGPD e break-glass auditado — todos incompatíveis com E2EE completa no MVP sem redesenhar o domínio.
+O produto exige busca de paciente, agenda operacional, relatórios, WhatsApp (WAHA), exportação LGPD e break-glass auditado — todos incompatíveis com E2EE completa no MVP sem redesenhar o domínio.
 
 ## Decisão
 
