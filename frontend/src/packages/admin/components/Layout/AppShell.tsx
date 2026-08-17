@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { AppHeader } from '@/packages/admin/components/Layout/AppHeader';
 import { AppSidebar } from '@/packages/admin/components/Layout/AppSidebar';
+import { SubscriptionBanner } from '@/packages/admin/components/Subscription/SubscriptionBanner';
 import { useClinicGetHook } from '@/packages/admin/hooks/Clinic/useClinicGetHook';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { Skeleton } from '@/shared/ui/skeleton';
@@ -13,9 +14,10 @@ import { TooltipProvider } from '@/shared/ui/tooltip';
 
 type AppShellProps = {
   children: ReactNode;
+  inboxBadge?: ReactNode;
 };
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, inboxBadge }: AppShellProps) {
   const { ready, isAuthenticated } = useAuth();
   const router = useRouter();
   const clinicQuery = useClinicGetHook({ enabled: ready && isAuthenticated });
@@ -37,10 +39,13 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <AppSidebar clinicName={clinicQuery.data?.name} />
+        <AppSidebar clinicName={clinicQuery.data?.name} inboxBadge={inboxBadge} />
         <SidebarInset>
           <AppHeader />
-          <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">{children}</div>
+          <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+            <SubscriptionBanner />
+            {children}
+          </div>
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>

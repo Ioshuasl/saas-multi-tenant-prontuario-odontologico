@@ -86,6 +86,17 @@ async function main() {
   const membershipId = (dataOf(signup).membership as { id: string }).id;
   const smokeCtx = { tenantId, userId: ownerUserId, requestId: 'smoke-billing-reports' };
 
+  const clinica = await prisma.plan.findFirst({ where: { code: 'CLINICA' } });
+  if (!clinica) failed = true;
+  else {
+    await tenantDb.runInTenantContext(smokeCtx, async (tx) => {
+      await tx.subscription.update({
+        where: { tenantId },
+        data: { planId: clinica.id },
+      });
+    });
+  }
+
   const units = await request('/api/v1/clinic/units', { headers: authHeaders(token, tenantId) });
   const unitId = ((units.body?.data as Array<{ id: string }>) ?? [])[0]?.id;
   if (!unitId) failed = true;

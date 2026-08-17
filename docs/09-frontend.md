@@ -38,8 +38,10 @@ frontend/src/
 │   │   ├── atendimento/[appointmentId]/page.tsx
 │   │   ├── orcamentos/
 │   │   ├── financeiro/…
-│   │   ├── whatsapp/page.tsx
-│   │   ├── relatorios/
+│   │   ├── whatsapp/page.tsx            # conta/QR/config (E8a)
+│   │   ├── inbox/page.tsx               # caixa de entrada (E8b)
+│   │   ├── relatorios/                  # dashboard E9 + export + reuso E7
+│   │   ├── assinatura/page.tsx          # plano/trial (OWNER)
 │   │   └── configuracoes/…
 │   ├── api/auth/[...]/route.ts
 │   ├── layout.tsx
@@ -161,11 +163,10 @@ Layout de três áreas em uma única rota (sem navegação entre telas durante o
 
 ### 4.3 Inbox WhatsApp
 
-- Três colunas: lista de conversas (não lidas primeiro) · thread · painel do paciente (agendamentos, débitos, ações rápidas).
-- Indicador explícito da janela de 24h: "janela aberta até 18:32" ou "janela fechada — só templates".
-- Envio de template com preview das variáveis preenchidas.
+- Três colunas: lista de conversas (não lidas primeiro) · thread · painel do paciente (ficha, atribuição, resolvido, ações rápidas).
+- Sem bloqueio de envio por “janela de 24h” (WAHA / ADR-0016 — não há tarifa Meta). Indicador opcional de recência: “última mensagem há X”.
 - Atribuição de conversa a atendente; marcação de "resolvido".
-- Ações contextuais: criar agendamento, enviar orçamento, enviar link de anamnese, enviar recibo.
+- Ações contextuais navegam para telas existentes (agendar, orçamento, anamnese, recibo, cobrar) com `patientId` — não reimplementam o fluxo no thread.
 
 ### 4.4 Autoagendamento público
 
@@ -180,6 +181,15 @@ Layout de três áreas em uma única rota (sem navegação entre telas durante o
 - Baixa em modal, sem sair da lista; múltiplas formas de pagamento em um recebimento.
 - Caixa do dia com conferência por forma de pagamento e destaque de divergência.
 - Fluxo de caixa com alternância competência/caixa e exportação.
+
+### 4.6 Dashboard, relatórios e assinatura
+
+- `/app`: cards do dia (agenda, a receber/recebido se `reports.financial`, faltas, produção) com drill-down.
+- `/app/relatorios`: índice + exportação CSV assíncrona (solicita job e oferece Baixar / copiar URL quando pronto). XLSX fora do MVP.
+- Rotas E7 (`cash-flow`, `overdue`, `production`) reaparecem sob `/app/relatorios/*` reusando as telas do package `financeiro`.
+- Dentista: produção própria ok; sem receita/fluxo/inadimplência consolidados.
+- `/app/assinatura` (`subscription.manage`): plano, uso vs limite, dias de trial, CTA “fale conosco” — sem checkout de cartão.
+- Banner global se trial ≤ 3 dias, atraso ou suspensão (OWNER). SUSPENDED/EXPIRED: UI de somente leitura; listagens e export seguem.
 
 ## 5. Padrões de implementação
 

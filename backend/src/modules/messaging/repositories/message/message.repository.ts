@@ -21,6 +21,8 @@ export class CreateMessageRepository {
       relatedType?: string | null;
       relatedId?: string | null;
       sentBy?: string | null;
+      idempotencyKey?: string | null;
+      mediaKey?: string | null;
     },
   ): Promise<{ id: string; created: boolean }> {
     const tenantPrisma = getTenantPrisma();
@@ -50,6 +52,8 @@ export class CreateMessageRepository {
             relatedType: input.relatedType ?? null,
             relatedId: input.relatedId ?? null,
             sentBy: input.sentBy ?? null,
+            idempotencyKey: input.idempotencyKey ?? null,
+            mediaKey: input.mediaKey ?? null,
           },
         });
         return { id: row.id, created: true };

@@ -1,13 +1,18 @@
 import type { NextFunction, Request, Response } from 'express';
 import { findActiveMembership } from '../../modules/identity/identity_public.js';
+import { subscriptionGuard } from './subscription_guard.middleware.js';
 import { AppError } from './error_handler.middleware.js';
 
 /**
  * Resolve tenant a partir do JWT.
  * `X-Tenant-Id` troca o contexto se o usuário tiver membership ativo nesse tenant (RF-E1-14).
  */
-export function tenantContextMiddleware(req: Request, _res: Response, next: NextFunction): void {
-  void resolveTenantContext(req).then(next).catch(next);
+export function tenantContextMiddleware(req: Request, res: Response, next: NextFunction): void {
+  void resolveTenantContext(req)
+    .then(() => {
+      subscriptionGuard(req, res, next);
+    })
+    .catch(next);
 }
 
 async function resolveTenantContext(req: Request): Promise<void> {

@@ -1,5 +1,6 @@
 import type {
   MessagingProvider,
+  SendMediaInput,
   SendResult,
   SendTemplateInput,
   SendTextInput,
@@ -11,6 +12,10 @@ export class WhatsAppCloudProvider implements MessagingProvider {
   }
 
   async sendText(_input: SendTextInput): Promise<SendResult> {
+    throw new Error('Cloud API não está ativa. Use WAHA (ADR-0016).');
+  }
+
+  async sendMedia(_input: SendMediaInput): Promise<SendResult> {
     throw new Error('Cloud API não está ativa. Use WAHA (ADR-0016).');
   }
 }

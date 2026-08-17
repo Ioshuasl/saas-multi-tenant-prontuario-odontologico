@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type {
   MessagingProvider,
+  SendMediaInput,
   SendResult,
   SendTemplateInput,
   SendTextInput,
@@ -10,6 +11,7 @@ import type {
 export class FakeMessagingProvider implements MessagingProvider, WahaSessionPort {
   readonly sentTemplates: SendTemplateInput[] = [];
   readonly sentTexts: SendTextInput[] = [];
+  readonly sentMedia: SendMediaInput[] = [];
 
   async ensureSession(_sessionName: string): Promise<void> {}
 
@@ -26,6 +28,11 @@ export class FakeMessagingProvider implements MessagingProvider, WahaSessionPort
 
   async sendText(input: SendTextInput): Promise<SendResult> {
     this.sentTexts.push(input);
+    return { providerMessageId: `waha.fake.${randomUUID()}` };
+  }
+
+  async sendMedia(input: SendMediaInput): Promise<SendResult> {
+    this.sentMedia.push(input);
     return { providerMessageId: `waha.fake.${randomUUID()}` };
   }
 }

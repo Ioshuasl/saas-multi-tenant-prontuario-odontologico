@@ -4,6 +4,7 @@ import type { RequestContext } from '../../../shared/domain/request_context.js';
 import { getMessagingProvider } from '../../../shared/integrations/whatsapp/index.js';
 import { getAppointmentById } from '../../scheduling/scheduling_public.js';
 import { getPatientById, hasMarketingConsent } from '../../patients/patients_public.js';
+import { canAutomate } from '../../subscription/subscription_public.js';
 import { toE164Br } from '../../patients/patients_public.js';
 import {
   GetAutomationRunRepository,
@@ -52,6 +53,13 @@ export async function sendWhatsappMessageJob(payload: JobPayload): Promise<void>
   const relatedId = str(payload.relatedId);
 
   if (automationRunId) {
+    if (!(await canAutomate(ctx))) {
+      const run = await getRun.execute(ctx, automationRunId);
+      if (run && !run.executedAt) {
+        await markRun.execute(ctx, run.id, { result: 'SKIPPED_CANCELLED' });
+      }
+      return;
+    }
     const run = await getRun.execute(ctx, automationRunId);
     if (!run) return;
     if (run.executedAt) return;

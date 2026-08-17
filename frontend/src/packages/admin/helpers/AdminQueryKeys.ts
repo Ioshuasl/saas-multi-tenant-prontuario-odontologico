@@ -9,4 +9,12 @@ export const adminQueryKeys = {
   invitations: ['invitations'] as const,
   onboarding: ['onboarding'] as const,
   anamnesisForms: ['anamnesis-forms'] as const,
+  dashboard: (date?: string) => ['reports-dashboard', date ?? ''] as const,
+  noShows: (query: object) => ['reports-no-shows', query] as const,
+  revenue: (query: object) => ['reports-revenue', query] as const,
+  procedureReport: (query: object) => ['reports-procedures', query] as const,
+  export: (id: string) => ['report-export', id] as const,
+  subscription: ['subscription'] as const,
+  subscriptionPlans: ['subscription-plans'] as const,
+  subscriptionUsage: ['subscription-usage'] as const,
 };

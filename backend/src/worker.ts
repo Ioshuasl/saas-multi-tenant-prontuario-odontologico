@@ -13,6 +13,11 @@ import { generateQuotePdfJob } from './modules/treatments/jobs/generate_quote_pd
 import { expireQuotesJob } from './modules/treatments/jobs/expire_quotes.job.js';
 import { markOverdueInstallmentsJob } from './modules/billing/jobs/mark_overdue_installments.job.js';
 import { generateReceiptPdfJob } from './modules/billing/jobs/generate_receipt_pdf.job.js';
+import { reportExportJob } from './modules/reporting/jobs/report_export.job.js';
+import {
+  expireTrialsJob,
+  recalculateUsageCountersJob,
+} from './modules/subscription/jobs/subscription_lifecycle.job.js';
 import { listTenantsForScheduledJobs } from './modules/clinic/clinic_public.js';
 import { todayInTimezone } from './modules/treatments/helpers/quote_valid_until.helper.js';
 import { hourInTimezone } from './modules/billing/helpers/civil_date.helper.js';
@@ -24,6 +29,7 @@ import { JOB, QUEUE } from './shared/queue/queue_names.js';
 const DISPATCH_INTERVAL_MS = 5_000;
 const EXPIRE_QUOTES_INTERVAL_MS = 15 * 60_000;
 const MARK_OVERDUE_INTERVAL_MS = 15 * 60_000;
+const SUBSCRIPTION_INTERVAL_MS = 15 * 60_000;
 
 async function enqueueMarkOverdue(queue: BullmqJobQueue): Promise<void> {
   if (!queue.isConnected()) return;
@@ -36,6 +42,26 @@ async function enqueueMarkOverdue(queue: BullmqJobQueue): Promise<void> {
       JOB.markOverdueInstallments,
       { tenantId: tenant.id, requestId: `mark-overdue:${ymd}` },
       { jobId: `mark-overdue:${tenant.id}:${ymd}` },
+    );
+  }
+}
+
+async function enqueueSubscriptionLifecycle(queue: BullmqJobQueue): Promise<void> {
+  if (!queue.isConnected()) return;
+  const tenants = await listTenantsForScheduledJobs();
+  for (const tenant of tenants) {
+    const ymd = todayInTimezone(tenant.timezone);
+    await queue.add(
+      QUEUE.platform,
+      JOB.expireTrials,
+      { tenantId: tenant.id, requestId: `expire-trials:${ymd}` },
+      { jobId: `expire-trials:${tenant.id}:${ymd}` },
+    );
+    await queue.add(
+      QUEUE.platform,
+      JOB.recalculateUsageCounters,
+      { tenantId: tenant.id, requestId: `usage-recalc:${ymd}` },
+      { jobId: `usage-recalc:${tenant.id}:${ymd}` },
     );
   }
 }
@@ -62,6 +88,9 @@ async function main(): Promise<void> {
   queue.register(QUEUE.platform, JOB.ensureMedicalRecord, ensureMedicalRecordJob);
   queue.register(QUEUE.platform, JOB.generateAttachmentThumbnail, generateAttachmentThumbnailJob);
   queue.register(QUEUE.platform, JOB.generateQuotePdf, generateQuotePdfJob);
+  queue.register(QUEUE.reporting, JOB.generateExport, reportExportJob);
+  queue.register(QUEUE.platform, JOB.expireTrials, expireTrialsJob);
+  queue.register(QUEUE.platform, JOB.recalculateUsageCounters, recalculateUsageCountersJob);
   queue.register(QUEUE.platform, JOB.generateReceiptPdf, generateReceiptPdfJob);
   queue.register(QUEUE.platform, JOB.expireQuotes, expireQuotesJob);
   queue.register(QUEUE.billing, JOB.markOverdueInstallments, markOverdueInstallmentsJob);
@@ -133,6 +162,15 @@ async function main(): Promise<void> {
     logger.error({ err }, 'mark_overdue_enqueue_error');
   });
 
+  const subscriptionInterval = setInterval(() => {
+    void enqueueSubscriptionLifecycle(queue).catch((err) => {
+      logger.error({ err }, 'subscription_lifecycle_enqueue_error');
+    });
+  }, SUBSCRIPTION_INTERVAL_MS);
+  void enqueueSubscriptionLifecycle(queue).catch((err) => {
+    logger.error({ err }, 'subscription_lifecycle_enqueue_error');
+  });
+
   const health = startWorkerHealth(() => ({
     status: 'ok',
     service: 'worker',
@@ -143,6 +181,7 @@ async function main(): Promise<void> {
     clearInterval(interval);
     clearInterval(expireInterval);
     clearInterval(overdueInterval);
+    clearInterval(subscriptionInterval);
     health.close();
     await queue.close();
     await getPrismaClient().$disconnect();

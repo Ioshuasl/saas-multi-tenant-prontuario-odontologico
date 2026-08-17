@@ -1,14 +1,19 @@
 import type { NextFunction, Request, Response } from 'express';
 import { resolveTenantIdBySlug } from '../../modules/clinic/clinic_public.js';
+import { subscriptionGuard } from './subscription_guard.middleware.js';
 import { AppError } from './error_handler.middleware.js';
 
 /** Resolve tenant pelo slug público. Slug inválido → 404 (não revelar aproximação). */
 export function publicTenantContextMiddleware(
   req: Request,
-  _res: Response,
+  res: Response,
   next: NextFunction,
 ): void {
-  void resolvePublicTenant(req).then(next).catch(next);
+  void resolvePublicTenant(req)
+    .then(() => {
+      subscriptionGuard(req, res, next);
+    })
+    .catch(next);
 }
 
 async function resolvePublicTenant(req: Request): Promise<void> {

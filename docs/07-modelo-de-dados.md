@@ -771,10 +771,12 @@ CREATE TABLE message (
   related_type      text,                 -- APPOINTMENT|QUOTE|INSTALLMENT
   related_id        uuid,
   sent_by           uuid,                 -- NULL = automação
+  idempotency_key   text,                 -- inbox POST message (S7)
   created_at        timestamptz NOT NULL DEFAULT now(),
   updated_at        timestamptz NOT NULL DEFAULT now()
 );
 CREATE UNIQUE INDEX uq_message_provider_id ON message (provider_message_id) WHERE provider_message_id IS NOT NULL;
+CREATE UNIQUE INDEX uq_message_idempotency ON message (tenant_id, idempotency_key) WHERE idempotency_key IS NOT NULL;
 CREATE INDEX idx_message_conversation ON message (tenant_id, conversation_id, created_at);
 
 CREATE TABLE automation (

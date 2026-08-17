@@ -37,8 +37,13 @@ export async function findPatientIdByPhone(
   ctx: RequestContext,
   phone: string,
 ): Promise<string | null> {
-  const matches = await findByPhone.execute(ctx, toE164Br(phone));
-  return matches[0]?.id ?? null;
+  const e164 = toE164Br(phone);
+  const exact = await findByPhone.execute(ctx, e164);
+  if (exact[0]?.id) return exact[0].id;
+  const national = e164.startsWith('55') && e164.length >= 12 ? e164.slice(2) : e164;
+  if (national === e164) return null;
+  const local = await findByPhone.execute(ctx, national);
+  return local[0]?.id ?? null;
 }
 
 /** Consentimento de marketing ativo? (messaging — RF-E3-08). */

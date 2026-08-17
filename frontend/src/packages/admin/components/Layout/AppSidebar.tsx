@@ -11,6 +11,7 @@ import { useAuth } from '@/shared/auth/AuthProvider';
 import { hasPermission } from '@/shared/auth/permissions';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { SidebarRail } from '@/shared/ui/sidebar-chrome';
+import type { ReactNode } from 'react';
 import {
   SidebarContent,
   SidebarGroup,
@@ -30,9 +31,10 @@ const GROUPS: Array<{ id: AdminNavGroup; label: string }> = [
 
 type AppSidebarProps = {
   clinicName?: string;
+  inboxBadge?: ReactNode;
 };
 
-export function AppSidebar({ clinicName }: AppSidebarProps) {
+export function AppSidebar({ clinicName, inboxBadge }: AppSidebarProps) {
   const pathname = usePathname();
   const { me } = useAuth();
 
@@ -88,6 +90,7 @@ export function AppSidebar({ clinicName }: AppSidebarProps) {
                           <Icon />
                           <span>{item.label}</span>
                         </SidebarMenuButton>
+                        {item.href === '/app/inbox' ? inboxBadge : null}
                       </SidebarMenuItem>
                     );
                   })}

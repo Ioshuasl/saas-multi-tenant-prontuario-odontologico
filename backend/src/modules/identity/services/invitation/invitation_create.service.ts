@@ -9,6 +9,7 @@ import {
 import { GetPendingByEmailRepository } from '../../repositories/invitation/invitation.repository.js';
 import type { InvitationCreateSchema } from '../../schemas/invitation.schema.js';
 import type { InvitationSummary } from '../../types/auth.types.js';
+import { assertCanAdd, countsTowardUserLimit, UsageMetric } from '../../../subscription/subscription_public.js';
 
 export class CreateService {
   constructor(
@@ -44,6 +45,10 @@ export class CreateService {
 
     const actor = await this.getMembership.execute(ctx.userId, ctx.tenantId);
     const clinicName = actor?.tenant.name ?? 'sua clínica';
+
+    if (countsTowardUserLimit(invitationSchema.role)) {
+      await assertCanAdd(ctx, UsageMetric.USERS);
+    }
 
     const created = await this.createAction.execute(
       ctx,

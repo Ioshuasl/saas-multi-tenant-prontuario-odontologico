@@ -4,6 +4,160 @@ Append-only. Entradas mais recentes no topo.
 
 ---
 
+## 2026-08-17 — S7 Bloco 7: dashboard, relatórios e assinatura (frontend)
+
+### Feito
+
+- `/app` com KPIs E9 (agenda, a receber/recebido, faltas, produção) e drill-down; dentista sem cards financeiros
+- `/app/relatorios` no package `admin` (índice + export CSV assíncrono; XLSX fora); reuso das telas E7 via rotas `/relatorios/cash-flow|overdue|production`
+- `/app/assinatura` (OWNER): plano Essencial, uso vs limite, trial, CTA “fale conosco” sem checkout
+- Banner global de trial ≤3d / atraso / suspensão no `AppShell`; nav Relatórios (`reports.read`) e Assinatura (`subscription.manage`)
+- Seed idempotente de `subscription` TRIAL no Essencial; E2E `e2e/reports-dashboard.spec.ts` + `e2e/subscription.spec.ts`
+
+### Validação
+
+- `pnpm --filter @repo/frontend typecheck`
+- eslint nos arquivos novos de admin/relatórios/assinatura
+- Re-seed: `pnpm db:seed` (subscription se o tenant ainda não tinha linha)
+- E2E: `pnpm test:e2e e2e/reports-dashboard.spec.ts e2e/subscription.spec.ts` (worker + MinIO para o CSV)
+
+### Próximo
+
+- Aceite local S7 (inbox + dashboard + export + trial); demo de expiry via `ops-subscription-status.ts` permanece manual
+- S8 (auditoria/LGPD/piloto) — fora desta sprint
+
+---
+
+## 2026-08-17 — S7 Bloco 6: frontend inbox WhatsApp
+
+### Feito
+
+- `/app/inbox` em 3 colunas (lista · thread · painel do paciente) no package `messaging`
+- Nav Inbox (`messaging.read`) com badge PENDING/unread; `/app/whatsapp` permanece conta/QR
+- Envio de texto com Idempotency-Key; polling 8s (SSE autenticado por Bearer fica como fallback documentado)
+- Ações contextuais por deep-link (`contextActions`); copy docs/09 §4.3 sem janela Meta de 24h
+- Seed: conversa PENDING da Maria + conta WA fake CONNECTED; E2E `e2e/messaging-inbox.spec.ts` (recepção)
+
+### Validação
+
+- `pnpm --filter @repo/frontend typecheck`
+- `pnpm --filter @repo/frontend lint` (arquivos da inbox)
+- Re-seed: `pnpm db:seed` (conversa da Maria)
+- E2E: `pnpm test:e2e e2e/messaging-inbox.spec.ts` (após seed)
+
+### Próximo
+
+- S7 Bloco 7 — dashboard E9 + `/relatorios` + `/assinatura`
+
+---
+
+## 2026-08-17 — S7 Bloco 5: módulo subscription (trial, limites, guards)
+
+### Feito
+
+- DDL `plan` / `subscription` / `usage_counter` + seed Essencial/Clínica/Rede; signup cria `subscription` TRIAL no Essencial
+- `GET /subscription` · `/plans` · `/usage`; `POST /checkout` → `501 NOT_IMPLEMENTED` (ADR-0010)
+- `subscriptionGuard`: `SUSPENDED`/`EXPIRED`/trial vencido → escrita `402 SUBSCRIPTION_REQUIRED`; GET e export ok
+- `PlanLimitGuard`: profissionais, users administrativos, unidades, storage no upload → `402 PLAN_LIMIT_EXCEEDED`
+- Job `expire-trials` + recalc de `usage_counter`; automações WhatsApp não disparam se não gravável
+- Ops auditado: `backend/scripts/ops-subscription-status.ts --tenant --status ACTIVE|SUSPENDED`
+- Smoke `test:subscription`
+
+### Validação
+
+- `pnpm db:migrate` · `pnpm --filter @repo/backend test:subscription`
+- `pnpm --filter @repo/backend typecheck` · `pnpm arch:check`
+
+### Próximo
+
+- S7 Bloco 6 — frontend inbox
+
+---
+
+## 2026-08-17 — S7 Bloco 4: export assíncrono de relatórios
+
+### Feito
+
+- DDL `report_export` + RLS; job `reporting.generate-export`
+- `POST /reports/:report/export` → `202 { exportId, status }`; `GET /exports/:id` com URL assinada 15 min quando `READY`
+- CSV UTF-8 BOM + `;`; XLSX → `501 NOT_IMPLEMENTED`; audit `REPORT_EXPORTED`
+- Smoke `test:reporting-export`; docs/08 §2.9; CI
+
+### Validação
+
+- `pnpm db:migrate` · `pnpm --filter @repo/backend test:reporting-export`
+- `pnpm --filter @repo/backend typecheck` · `pnpm arch:check`
+
+### Próximo
+
+- S7 Bloco 5 — módulo `subscription` (trial, limites, guards)
+
+---
+
+## 2026-08-17 — S7 Bloco 3: reporting dashboard + GETs
+
+### Feito
+
+- Módulo `reporting/` (`reporting.module.ts` + `reporting_public.ts`) com GETs `dashboard`, `no-shows`, `revenue`, `procedures`
+- Rotas S6 `cash-flow` / `overdue` / `production` permanecem em `billing`
+- Dashboard TZ tenant: agenda do dia, a receber/recebido hoje (`reports.financial`), faltas e produção do mês; `hrefs` de drill-down
+- Teto de período 366 dias (`422 PERIOD_TOO_LONG`); default 90 dias; DENTIST escopo próprio; Redis cache 60s com fallback
+- Smoke `test:reporting-dashboard`; docs/08 §2.9; CI
+- Should RF-E9-09..12 (conversão/origem/ocupação/WA) **não** entra neste bloco
+- Export assíncrono fica no Bloco 4
+
+### Validação
+
+- `pnpm --filter @repo/backend test:reporting-dashboard`
+- `pnpm --filter @repo/backend typecheck` · `pnpm arch:check`
+
+### Próximo
+
+- S7 Bloco 4 — export assíncrono (`report_export` + job CSV)
+
+---
+
+## 2026-08-17 — S7 Bloco 2: inbox polish + realtime
+
+### Feito
+
+- `POST …/media/presign` (JPEG/PNG/WebP/PDF) + envio `mediaStorageKey` via WAHA `sendImage`/`sendFile`
+- `GET /messaging/messages?patientId=` + filtro `patientId` em conversas; timeline paciente com fonte `MESSAGE`
+- SSE `GET /api/v1/stream` (`message_received` / `message_sent`) com fallback polling documentado
+- RF-E8-10 Should: `contextActions` no GET conversa
+- Smoke `test:messaging-inbox-polish`; docs/08 §2.8 atualizado
+
+### Validação
+
+- `pnpm --filter @repo/backend test:messaging-inbox-polish`
+
+### Próximo
+
+- S7 Bloco 3 — módulo `reporting` (dashboard + GETs)
+
+---
+
+## 2026-08-17 — S7 Bloco 1: inbox HTTP foundation
+
+### Feito
+
+- Rotas `GET/PATCH /messaging/conversations[/:id]`, `GET/POST …/:id/messages`, `POST …/:id/read`
+- Send texto via WAHA (`sendText`) + persist OUT; inbound webhook incrementa `unreadCount`; `POST /read` zera
+- Filtros `status` / `q` / `unread`; vínculo `patientId` por E.164 (`patients_public`); PATCH assign/status/patientId
+- `Idempotency-Key` em POST message (`uq_message_idempotency`); outro tenant → 404
+- Smoke `test:messaging-inbox`; docs/08 §2.8 + docs/07 `idempotency_key`
+- Mídia / SSE / histórico por `patientId` ficam no Bloco 2
+
+### Validação
+
+- `pnpm --filter @repo/backend test:messaging-inbox` (após migrate)
+
+### Próximo
+
+- S7 Bloco 2 — inbox polish + realtime (mídia, histórico paciente, SSE ou polling)
+
+---
+
 ## 2026-08-17 — S7 planejada (checklist)
 
 ### Feito

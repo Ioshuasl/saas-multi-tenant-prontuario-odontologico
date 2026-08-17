@@ -16,6 +16,8 @@ import {
   UpdateConversationStatusRepository,
   UpsertConversationRepository,
 } from '../repositories/conversation/conversation.repository.js';
+import { IncrementUnreadRepository } from '../repositories/conversation/conversation_increment_unread.repository.js';
+import { publishMessagingStreamEvent } from '../helpers/messaging_stream.helper.js';
 import {
   CreateMessageRepository,
   UpdateMessageByProviderIdRepository,
@@ -25,6 +27,7 @@ import { parseButtonAction, parseWhatsappWebhook } from '../helpers/webhook.help
 const getAccount = new GetAccountRepository();
 const updateAccount = new UpdateAccountRepository();
 const upsertConversation = new UpsertConversationRepository();
+const incrementUnread = new IncrementUnreadRepository();
 const updateConversation = new UpdateConversationStatusRepository();
 const createMessage = new CreateMessageRepository();
 const updateByProvider = new UpdateMessageByProviderIdRepository();
@@ -93,6 +96,21 @@ export async function processWhatsappWebhookJob(payload: JobPayload): Promise<vo
       relatedId: null,
     });
     if (!created.created) continue;
+
+    await incrementUnread.execute(ctx, conversation.id);
+    await publish(ctx, 'messaging.message_received', {
+      conversationId: conversation.id,
+      messageId: created.id,
+      patientId,
+    });
+    publishMessagingStreamEvent(ctx.tenantId, {
+      name: 'message_received',
+      payload: {
+        conversationId: conversation.id,
+        messageId: created.id,
+        patientId,
+      },
+    });
 
     const action = parseButtonAction(inbound.buttonPayload, inbound.buttonText ?? inbound.text);
     let targetId = action.targetId;

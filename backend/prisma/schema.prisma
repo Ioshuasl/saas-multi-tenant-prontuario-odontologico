@@ -75,6 +75,9 @@ model Tenant {
   payables        Payable[]
   cashSessions    CashSession[]
   cashMovements   CashMovement[]
+  reportExports   ReportExport[]
+  subscription    Subscription?
+  usageCounters   UsageCounter[]
 
   @@map("tenant")
 }
@@ -655,6 +658,7 @@ model Message {
   relatedType       String?   @map("related_type")
   relatedId         String?   @map("related_id") @db.Uuid
   sentBy            String?   @map("sent_by") @db.Uuid
+  idempotencyKey    String?   @map("idempotency_key")
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   tenant            Tenant    @relation(fields: [tenantId], references: [id])
@@ -1229,4 +1233,69 @@ model CashMovement {
 
   @@index([tenantId, cashSessionId, createdAt], map: "idx_cash_movement_session")
   @@map("cash_movement")
+}
+
+/// Export assíncrono de relatórios (S7 Bloco 4).
+model ReportExport {
+  id          String   @id @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  report      String
+  format      String
+  status      String   @default("PENDING")
+  filters     Json     @default("{}")
+  storageKey  String?  @map("storage_key")
+  requestedBy String   @map("requested_by") @db.Uuid
+  error       String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_report_export_tenant_created")
+  @@map("report_export")
+}
+
+/// Catálogo global de planos SaaS (sem tenant / sem RLS). docs/07 §9 · ADR-0010.
+model Plan {
+  id          String         @id @db.Uuid
+  code        String         @unique
+  name        String
+  priceCents  BigInt         @map("price_cents")
+  interval    String
+  limits      Json
+  active      Boolean        @default(true)
+  subscriptions Subscription[]
+
+  @@map("plan")
+}
+
+/// Contrato plataforma → clínica (trial, limites, cobrança manual).
+model Subscription {
+  id                     String    @id @db.Uuid
+  tenantId               String    @unique @map("tenant_id") @db.Uuid
+  planId                 String    @map("plan_id") @db.Uuid
+  status                 String
+  currentPeriodEnd       DateTime? @map("current_period_end") @db.Timestamptz
+  trialEndsAt            DateTime? @map("trial_ends_at") @db.Timestamptz
+  externalCustomerId     String?   @map("external_customer_id")
+  externalSubscriptionId String?   @map("external_subscription_id")
+  cancelAt               DateTime? @map("cancel_at") @db.Timestamptz
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  tenant                 Tenant    @relation(fields: [tenantId], references: [id])
+  plan                   Plan      @relation(fields: [planId], references: [id])
+
+  @@map("subscription")
+}
+
+model UsageCounter {
+  id        String   @id @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  metric    String
+  period    String
+  value     BigInt   @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, metric, period], map: "uq_usage_counter_metric_period")
+  @@map("usage_counter")
 }

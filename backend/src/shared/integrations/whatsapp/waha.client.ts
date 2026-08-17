@@ -1,6 +1,7 @@
 import { env, wahaHmacKey, wahaWebhookUrl } from '../../config/env.js';
 import type {
   MessagingProvider,
+  SendMediaInput,
   SendResult,
   SendTemplateInput,
   SendTextInput,
@@ -85,6 +86,22 @@ export class WahaClient implements MessagingProvider, WahaSessionPort {
       text: input.body,
     });
     if (!sent.ok) throw new Error(sent.error ?? `WAHA sendText HTTP ${sent.status}`);
+    return { providerMessageId: this.messageId(sent.json) };
+  }
+
+  async sendMedia(input: SendMediaInput): Promise<SendResult> {
+    const path = input.kind === 'IMAGE' ? '/api/sendImage' : '/api/sendFile';
+    const sent = await this.request('POST', path, {
+      session: input.sessionName,
+      chatId: toWahaChatId(input.to),
+      file: {
+        url: input.fileUrl,
+        mimetype: input.mimeType,
+        filename: input.fileName,
+      },
+      ...(input.caption ? { caption: input.caption } : {}),
+    });
+    if (!sent.ok) throw new Error(sent.error ?? `WAHA ${path} HTTP ${sent.status}`);
     return { providerMessageId: this.messageId(sent.json) };
   }
 

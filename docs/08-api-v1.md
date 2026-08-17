@@ -455,10 +455,77 @@ PATCH  /api/v1/messaging/automations/:key   { enabled?, config? }  keys: CONFIRM
 GET    /api/v1/messaging/usage              sent / failed / flags (sem saldo Meta)
 GET    /api/v1/messaging/logs               ?from=&to=&result=&cursor=&limit=  (sem body clínico)
 
+GET    /api/v1/messaging/conversations      ?status=OPEN|PENDING|CLOSED&patientId=&q=&unread=true|false&cursor=&limit=
+GET    /api/v1/messaging/conversations/:id
+GET    /api/v1/messaging/conversations/:id/messages  ?cursor=&limit=
+POST   /api/v1/messaging/conversations/:id/media/presign  { fileName, mimeType, sizeBytes }
+POST   /api/v1/messaging/conversations/:id/messages  Idempotency-Key  { text?, mediaStorageKey? }
+PATCH  /api/v1/messaging/conversations/:id           { assignedToUserId?, status?, patientId? }
+POST   /api/v1/messaging/conversations/:id/read
+GET    /api/v1/messaging/messages              ?patientId=&cursor=&limit=
+
+GET    /api/v1/stream                           SSE (messaging.read) — eventos message_received|message_sent
+
 POST   /api/v1/webhooks/whatsapp            público, HMAC do WAHA (raw body, 2 MB)
 ```
 
-**E8a:** inbox (`/messaging/conversations*`) **não** entra — S7. Frontend **nunca** chama o WAHA. `WAHA_API_KEY` só no backend. Sem `accessToken` Meta no POST. Teste fake em `NODE_ENV=test|development`. **Não** debitar crédito no delivery. Marketing exige consentimento (`BLOCKED_NO_CONSENT`). Connect sem `riskAccepted` → 422.
+**Inbox (E8b):** `messaging.read` lista/detalha; `messaging.write` envia, presign de mídia, atribui, marca lida. Paginação cursor (`meta.nextCursor`). Busca `q` por nome ou telefone; filtro `patientId` na lista de conversas. `unread=true` filtra `unreadCount > 0`. Envio: `text` e/ou `mediaStorageKey` (JPEG/PNG/WebP/PDF até 20 MB via presign PUT → WAHA sendImage/sendFile). Sem janela Meta de preço (ADR-0016). `Idempotency-Key` obrigatório no POST message. Histórico por paciente: `GET /messaging/messages?patientId=` e timeline do paciente (`MESSAGE`). SSE em `/stream` com heartbeat; **fallback aceito:** polling 5–10s na inbox. RF-E8-10 Should: `contextActions` no GET conversa (deep-links para agenda/orçamento/anamnese/recibo/cobrança). Conversa de outro tenant → `404`.
+
+**Conversation**
+
+```json
+{
+  "id": "018f…",
+  "patientId": "018f…",
+  "contactPhone": "5562981…",
+  "contactName": "Maria Inbox",
+  "status": "OPEN",
+  "assignedToUserId": null,
+  "lastMessageAt": "2026-08-17T12:00:00.000Z",
+  "unreadCount": 1,
+  "createdAt": "2026-08-17T12:00:00.000Z"
+}
+```
+
+**Message (inbox)**
+
+```json
+{
+  "id": "018f…",
+  "conversationId": "018f…",
+  "direction": "OUTBOUND",
+  "type": "TEXT",
+  "body": "Horário confirmado.",
+  "mediaKey": null,
+  "status": "SENT",
+  "sentBy": "018f…",
+  "createdAt": "2026-08-17T12:00:00.000Z"
+}
+```
+
+**Conversation detail** inclui `contextActions[]` quando `patientId` está definido (RF-E8-10 Should):
+
+```json
+{
+  "contextActions": [
+    { "key": "SCHEDULE", "label": "Agendar", "href": "/app/agenda/novo?patientId=018f…" }
+  ]
+}
+```
+
+**Media presign**
+
+```json
+{
+  "uploadUrl": "https://…",
+  "method": "PUT",
+  "headers": { "Content-Type": "image/jpeg" },
+  "storageKey": "tenants/…/messaging/…/rx.jpg",
+  "expiresIn": 900
+}
+```
+
+**E8a:** Frontend **nunca** chama o WAHA. `WAHA_API_KEY` só no backend. Sem `accessToken` Meta no POST. Teste fake em `NODE_ENV=test|development`. **Não** debitar crédito no delivery. Marketing exige consentimento (`BLOCKED_NO_CONSENT`). Connect sem `riskAccepted` → 422.
 
 **Account:** `PENDING` (QR) → `CONNECTED` (ou `ERROR` + `lastError`). Kill switch: `PATCH { killSwitch: true }` ou `DELETE`.
 
@@ -466,27 +533,127 @@ POST   /api/v1/webhooks/whatsapp            público, HMAC do WAHA (raw body, 2 
 
 ### 2.9 Relatórios (`reporting`)
 
-S6 entrega **somente** cash-flow / overdue / production (rotas no módulo `billing`). Dashboard, no-shows, procedures e `POST /reports/:report/export` → **S7**.
+S6: `cash-flow` / `overdue` / `production` permanecem no módulo `billing` (paths estáveis). S7 Bloco 3: dashboard, no-shows, revenue e procedures no módulo `reporting`. Export assíncrono → Bloco 4.
 
 ```
-GET    /api/v1/reports/dashboard            ?unitId=&date=
-GET    /api/v1/reports/no-shows              ?from=&to=&professionalId=
-GET    /api/v1/reports/revenue               ?from=&to=&groupBy=day|month|professional
-GET    /api/v1/reports/overdue
-GET    /api/v1/reports/production            ?from=&to=&professionalId=
-GET    /api/v1/reports/procedures            ?from=&to=
-GET    /api/v1/reports/cash-flow             ?from=&to=&basis=CASH|ACCRUAL
-POST   /api/v1/reports/:report/export        { format: CSV|XLSX } → job assíncrono
-GET    /api/v1/exports/:id                   status + URL de download
+GET    /api/v1/reports/dashboard            ?unitId=&date=          reports.read
+GET    /api/v1/reports/no-shows             ?from=&to=&professionalId=&unitId=   reports.read
+GET    /api/v1/reports/revenue              ?from=&to=&groupBy=day|month|professional&unitId=   reports.financial
+GET    /api/v1/reports/procedures           ?from=&to=&professionalId=&unitId=   reports.read
+GET    /api/v1/reports/overdue              (billing S6)
+GET    /api/v1/reports/production           (billing S6)
+GET    /api/v1/reports/cash-flow            (billing S6)
+POST   /api/v1/reports/:report/export       reports.read (revenue → reports.financial)
+GET    /api/v1/exports/:id                  reports.read (revenue → reports.financial)
 ```
+
+Período (`from`/`to`, civil YYYY-MM-DD, fuso do tenant): omitidos → últimos 90 dias; intervalo > 366 dias → `422 PERIOD_TOO_LONG`; `from` > `to` → `422 PERIOD_INVALID`. Cache Redis do dashboard ≤60 s (tenant+filtros); Redis down → calcula sem cache (não 503).
+
+DENTIST (`reports.read`, sem `reports.financial`): dashboard omite `receivableToday`/`receivedToday` (`null`); produção, procedimentos e faltas só do próprio profissional; `professionalId` de outro → `403`. `GET /revenue` → `403`.
+
+**GET `/reports/dashboard`:** TZ do tenant. `date` default = hoje.
+
+```json
+{
+  "date": "2026-08-17",
+  "timezone": "America/Sao_Paulo",
+  "agenda": { "total": 12, "byStatus": { "CONFIRMED": 9, "NO_SHOW": 1 } },
+  "receivableToday": { "count": 2, "amountCents": 234000 },
+  "receivedToday": { "count": 1, "amountCents": 118000 },
+  "noShowsMonth": { "count": 3 },
+  "productionMonth": { "executedCents": 3820000 },
+  "hrefs": {
+    "agenda": "/app/agenda?date=2026-08-17",
+    "receivableToday": "/app/relatorios/overdue",
+    "receivedToday": "/app/relatorios/cash-flow?from=2026-08-17&to=2026-08-17",
+    "noShowsMonth": "/app/relatorios/no-shows?from=2026-08-01&to=2026-08-31",
+    "productionMonth": "/app/relatorios/production?from=2026-08-01&to=2026-08-31"
+  }
+}
+```
+
+Valores `*Cents` são inteiros. `hrefs` alimentam drill-down (RF-E9-02).
+
+**GET `/reports/no-shows`:** faltas (`NO_SHOW`) e cancelamentos no período. `estimatedLossCents` = soma do `priceCents` do procedimento nas faltas (não é caixa).
+
+```json
+{
+  "from": "2026-08-01",
+  "to": "2026-08-17",
+  "noShowCount": 3,
+  "cancelledCount": 1,
+  "estimatedLossCents": 45000,
+  "items": [
+    {
+      "appointmentId": "…",
+      "status": "NO_SHOW",
+      "startsAt": "2026-08-17T11:00:00.000Z",
+      "professionalId": "…",
+      "professionalName": "Dra. Ana",
+      "procedureName": "Restauração",
+      "estimatedLossCents": 15000
+    }
+  ]
+}
+```
+
+**GET `/reports/revenue`:** `groupBy=day|month` agrega pagamentos não estornados (caixa). `groupBy=professional` agrega produção executada no período (mesmo critério de `GET /reports/production`).
+
+```json
+{
+  "from": "2026-08-01",
+  "to": "2026-08-17",
+  "groupBy": "day",
+  "totalCents": 118000,
+  "count": 4,
+  "items": [{ "key": "2026-08-17", "amountCents": 118000, "count": 4 }]
+}
+```
+
+**GET `/reports/procedures`:** mix de produção no período (`production_entry`).
+
+```json
+{
+  "from": "2026-08-01",
+  "to": "2026-08-17",
+  "items": [
+    { "procedureId": "…", "procedureName": "Restauração", "count": 8, "executedCents": 120000 }
+  ]
+}
+```
+
+**POST `/reports/:report/export`:** `:report` = `no-shows` | `revenue` | `procedures`. Body `{ format: "CSV"|"XLSX", from?, to?, professionalId?, unitId?, groupBy? }`. Resposta `202`:
+
+```json
+{ "exportId": "…", "status": "PENDING" }
+```
+
+CSV Must (`;`, UTF-8 BOM). XLSX → `501 NOT_IMPLEMENTED`. Job `reporting.generate-export` grava em object storage. Audit `REPORT_EXPORTED` (filtros no metadata). Idempotência do job por `exportId`.
+
+**GET `/exports/:id`:**
+
+```json
+{
+  "id": "…",
+  "report": "procedures",
+  "format": "CSV",
+  "status": "READY",
+  "url": "https://…",
+  "expiresIn": 900,
+  "error": null,
+  "createdAt": "2026-08-17T12:00:00.000Z"
+}
+```
+
+`PENDING`/`RUNNING`: sem `url`. `FAILED`: `error` preenchido. Outro tenant → `404`.
 
 ### 2.10 Assinatura, auditoria e LGPD
 
 ```
 GET    /api/v1/subscription
 GET    /api/v1/subscription/plans
-POST   /api/v1/subscription/checkout
 GET    /api/v1/subscription/usage
+POST   /api/v1/subscription/checkout      501 NOT_IMPLEMENTED (ADR-0010 — cobrança manual)
 
 GET    /api/v1/audit-logs                   ?patientId=&actorId=&action=&from=&to=
 POST   /api/v1/privacy/data-subject-requests
@@ -495,6 +662,37 @@ POST   /api/v1/privacy/exports              exportação completa do tenant
 GET    /api/v1/health                        liveness
 GET    /api/v1/ready                         readiness (db, redis, storage)
 ```
+
+**GET `/subscription`** (OWNER, `subscription.manage`; DENTIST/ASB → `403`):
+
+```json
+{
+  "id": "…",
+  "status": "TRIAL",
+  "writable": true,
+  "plan": {
+    "id": "…",
+    "code": "ESSENCIAL",
+    "name": "Essencial",
+    "priceCents": 9900,
+    "interval": "MONTHLY",
+    "limits": { "professionals": 1, "users": 2, "units": 1, "storageGb": 5, "monthlyMessages": null },
+    "active": true
+  },
+  "trialEndsAt": "2026-08-31T12:00:00.000Z",
+  "currentPeriodEnd": "2026-08-31T12:00:00.000Z",
+  "daysRemaining": 14,
+  "contactMessage": "Fale conosco para ativar ou reativar o plano."
+}
+```
+
+Status: `TRIAL` | `ACTIVE` | `PAST_DUE` | `SUSPENDED` | `EXPIRED` | `CANCELLED`. `SUSPENDED`/`EXPIRED`/`CANCELLED` (e trial com `currentPeriodEnd` no passado): escritas HTTP → `402 SUBSCRIPTION_REQUIRED`; GET e `POST /reports/:report/export` permanecem. Automações WhatsApp não disparam.
+
+**GET `/subscription/plans`:** catálogo ativo (Essencial / Clínica / Rede). **GET `/subscription/usage`:** `professionals` / `users` / `units` / `storageBytes` / `messagesMonth` com `{ metric, current, limit }` (`limit` nulo = ilimitado).
+
+**POST `/subscription/checkout`:** `501 NOT_IMPLEMENTED` — “Checkout não está disponível neste momento. Fale conosco para ativar o plano.” Ativação/suspensão: script ops auditado `backend/scripts/ops-subscription-status.ts`.
+
+Estouro de limite (profissionais, usuários administrativos, unidades, storage no upload): `402 PLAN_LIMIT_EXCEEDED` com mensagem acionável (`details.href` = `/app/assinatura`). `messages_month` é observado, não bloqueia envio da inbox.
 
 ## 3. Contratos detalhados dos fluxos críticos
 
@@ -794,6 +992,8 @@ Payloads HTTP vivos (Bloco 5): recibo PDF/send, `POST /installments/:id/charge`,
 | `POST /patients/:id/record/notes` | ✔ | ✔ | ✖ | ✖ | ✖ |
 | `POST /quotes/:id/decision` | ✔ | ✔ | ✔ | ✖ | ✖ |
 | `GET /reports/cash-flow` | ✔ | ✖ | ✖ | ✖ | ✔ |
+| `GET /reports/dashboard` | ✔ | ✔ (sem financeiro consolidado) | ✔ (sem financeiro) | ✖ | ✔ |
+| `GET /reports/revenue` | ✔ | ✖ | ✖ | ✖ | ✔ |
 | `POST /installments/:id/payments` | ✔ | ✖ | ✔ | ✖ | ✔ |
 | `GET /clinic/professionals` | ✔ | ✔ | ✔ | ✔ | ✖ |
 | `PATCH /clinic` | ✔ | ✖ | ✖ | ✖ | ✖ |

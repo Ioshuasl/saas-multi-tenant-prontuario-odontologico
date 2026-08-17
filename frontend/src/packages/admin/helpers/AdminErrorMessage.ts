@@ -2,6 +2,18 @@ import { ApiClientError } from '@/shared/api/api-client';
 
 export function adminErrorMessage(error: unknown): string {
   if (error instanceof ApiClientError) {
+    if (error.code === 'SUBSCRIPTION_REQUIRED') {
+      return error.message || 'Assinatura inativa. A clínica está em somente leitura.';
+    }
+    if (error.code === 'PERIOD_TOO_LONG') {
+      return 'O período máximo é de 366 dias.';
+    }
+    if (error.code === 'PERIOD_INVALID') {
+      return 'Informe um período válido (de ≤ até).';
+    }
+    if (error.code === 'NOT_IMPLEMENTED') {
+      return error.message || 'Exportação XLSX ainda não está disponível. Use CSV.';
+    }
     return error.message;
   }
   if (error instanceof Error) {

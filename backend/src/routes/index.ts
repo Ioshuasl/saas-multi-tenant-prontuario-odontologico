@@ -13,10 +13,13 @@ import {
 } from '../modules/scheduling/scheduling.module.js';
 import {
   buildMessagingRouter,
+  buildStreamRouter,
   buildWhatsappWebhookRouter,
 } from '../modules/messaging/messaging.module.js';
 import { buildTreatmentsRouter, buildPublicQuotesRouter } from '../modules/treatments/treatments.module.js';
 import { buildBillingRouter } from '../modules/billing/billing.module.js';
+import { buildReportingRouter } from '../modules/reporting/reporting.module.js';
+import { buildSubscriptionRouter } from '../modules/subscription/subscription.module.js';
 
 /** Monta rotas versionadas em `/api/v1`. Módulos de domínio entram aqui. */
 export function buildApiRouter(): Router {
@@ -28,9 +31,12 @@ export function buildApiRouter(): Router {
   api.use(buildClinicalRecordsRouter());
   api.use(buildSchedulingRouter());
   api.use(buildMessagingRouter());
+  api.use(buildStreamRouter());
   api.use('/webhooks/whatsapp', buildWhatsappWebhookRouter());
   api.use(buildTreatmentsRouter());
   api.use(buildBillingRouter());
+  api.use(buildReportingRouter());
+  api.use(buildSubscriptionRouter());
   api.use('/public', buildPublicRouter());
   api.use('/public', buildPublicAnamnesisRouter());
   api.use('/public', buildPublicQuotesRouter());

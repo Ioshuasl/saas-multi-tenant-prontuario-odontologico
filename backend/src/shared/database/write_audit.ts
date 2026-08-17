@@ -13,6 +13,8 @@ export const AuditAction = {
   PERMISSION_DENIED: 'PERMISSION_DENIED',
   REFRESH_REUSE_DETECTED: 'REFRESH_REUSE_DETECTED',
   READ: 'READ',
+  REPORT_EXPORTED: 'REPORT_EXPORTED',
+  SUBSCRIPTION_STATUS_CHANGED: 'SUBSCRIPTION_STATUS_CHANGED',
 } as const;
 
 export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction];

@@ -5,6 +5,7 @@ import { DuplicateNameError } from '../../models/errors/clinic.errors.js';
 import { FindByNameRepository, seedDefaultHoursForUnit } from '../../repositories/unit/unit.repository.js';
 import type { UnitCreateSchema } from '../../schemas/clinic.schema.js';
 import type { ClinicAddress, UnitSummary } from '../../types/clinic.types.js';
+import { assertCanAdd, UsageMetric } from '../../../subscription/subscription_public.js';
 
 function mapAddress(value: unknown): ClinicAddress | null {
   if (!value || typeof value !== 'object') return null;
@@ -19,6 +20,8 @@ export class CreateService {
     if (duplicate) {
       throw new DuplicateNameError('Unidade', unitSchema.name);
     }
+
+    await assertCanAdd(ctx, UsageMetric.UNITS);
 
     const tenantPrisma = getTenantPrisma();
     return tenantPrisma.runInTenantContext(ctx, async (tx) => {

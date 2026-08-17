@@ -7,7 +7,7 @@
 
 **Pré-requisito:** S6 código Must (baixa/caixa/fluxo E7 + package `financeiro` + M4 demo local). Aceite M3 (uso real S4) **não** bloqueia S7. Carry-overs S5 (`SCHEDULED`) e RF-E7-19 (Could) **não** entram como blocos de produto desta sprint.
 
-**Estado (2026-08-17):** Sprint 7 **planejada** (checklist). S6 fechada (código + aceite local; M4 demo local). M3 uso real S4 permanece pendente.
+**Estado (2026-08-17):** Sprint 7 **em andamento**. Blocos 1–7 (inbox HTTP + reporting + export + subscription + UI inbox + dashboard/relatórios/assinatura) concluídos. S6 fechada (código + aceite local; M4 demo local). M3 uso real S4 permanece pendente.
 
 ---
 
@@ -64,7 +64,7 @@ Usar; **não** reimplementar.
 | Outbox + BullMQ | S3+ | Job export; trial-ending e-mail; opcional fan-out SSE |
 | `DashboardHome` = greeting + onboarding | frontend | Substituir por widgets E9 |
 | Aceite HTTP `backend/tests/` | S6 | Novos scripts `messaging/` / `reporting/` / `subscription/` |
-| Módulos `reporting/` e `subscription/` | — | **Ainda não existem** (criar) |
+| Módulos `reporting/` e `subscription/` | `backend/src/modules/` | Criados nos Blocos 3–5 |
 
 **Entregar nesta sprint:** HTTP inbox; SSE ou polling; `reporting` (dashboard + GETs faltantes + export); `subscription` + guards; UI inbox + dashboard + relatórios + assinatura.
 
@@ -305,59 +305,59 @@ Erros estáveis: `402 PLAN_LIMIT_EXCEEDED` / `SUBSCRIPTION_REQUIRED`, `403 FORBI
 
 ### Bloco 1 — Backend: inbox foundation
 
-- [ ] Rotas conversations list/get/messages/send/patch/read + Idempotency-Key no send
-- [ ] Reusar WAHA send; persist OUT/IN; unread
-- [ ] Filtro PENDING/OPEN/CLOSED; vincular patient por telefone (`patients_public`)
-- [ ] Smoke `test:messaging-inbox` (fake WAHA)
-- [ ] Atualizar docs/08 §2.8 conversations
+- [x] Rotas conversations list/get/messages/send/patch/read + Idempotency-Key no send
+- [x] Reusar WAHA send; persist OUT/IN; unread
+- [x] Filtro PENDING/OPEN/CLOSED; vincular patient por telefone (`patients_public`)
+- [x] Smoke `test:messaging-inbox` (fake WAHA)
+- [x] Atualizar docs/08 §2.8 conversations
 
 ### Bloco 2 — Backend: inbox polish + realtime
 
-- [ ] Mídia (presign + send document/image via WAHA se suportado; senão texto-only explícito)
-- [ ] Histórico por `patientId` (endpoint ou query)
-- [ ] SSE `/stream` **ou** documentar polling-only no aceite
-- [ ] Should stubs RF-E8-10 (deep-links metadata) se couber
+- [x] Mídia (presign + send document/image via WAHA se suportado; senão texto-only explícito)
+- [x] Histórico por `patientId` (endpoint ou query)
+- [x] SSE `/stream` **ou** documentar polling-only no aceite
+- [x] Should stubs RF-E8-10 (deep-links metadata) se couber
 
 ### Bloco 3 — Backend: módulo `reporting` (dashboard + GETs)
 
-- [ ] Scaffold `reporting/` + registro no app
-- [ ] `GET /reports/dashboard`
-- [ ] `GET /reports/no-shows` · `/revenue` · `/procedures`
-- [ ] Escopo dentista + teto de período + cache opcional
-- [ ] Smoke `test:reporting-dashboard`
-- [ ] docs/08 §2.9
+- [x] Scaffold `reporting/` + registro no app
+- [x] `GET /reports/dashboard`
+- [x] `GET /reports/no-shows` · `/revenue` · `/procedures`
+- [x] Escopo dentista + teto de período + cache opcional
+- [x] Smoke `test:reporting-dashboard`
+- [x] docs/08 §2.9
 
 ### Bloco 4 — Backend: export assíncrono
 
-- [ ] DDL `report_export` + RLS
-- [ ] `POST /reports/:report/export` → 202; job; `GET /exports/:id`
-- [ ] CSV `;` UTF-8 BOM; XLSX se lib leve já no monorepo — senão CSV Must + XLSX Should
-- [ ] Audit `REPORT_EXPORTED`
-- [ ] Smoke `test:reporting-export`
+- [x] DDL `report_export` + RLS
+- [x] `POST /reports/:report/export` → 202; job; `GET /exports/:id`
+- [x] CSV `;` UTF-8 BOM; XLSX → 501 (Should escorregado)
+- [x] Audit `REPORT_EXPORTED`
+- [x] Smoke `test:reporting-export`
 
 ### Bloco 5 — Backend: módulo `subscription`
 
-- [ ] DDL plan/subscription/usage_counter + seed planos
-- [ ] `GET /subscription` · `/plans` · `/usage`
-- [ ] `PlanLimitGuard` (profissionais, storage upload, users)
-- [ ] `subscriptionGuard` (SUSPENDED/EXPIRED)
-- [ ] Job trial expiry; desliga automações
-- [ ] Ops: script/endpoint auditado para ACTIVE/SUSPENDED (sem checkout)
-- [ ] Smoke `test:subscription`
-- [ ] ADR-0010 respeitado (sem gateway)
+- [x] DDL plan/subscription/usage_counter + seed planos
+- [x] `GET /subscription` · `/plans` · `/usage`
+- [x] `PlanLimitGuard` (profissionais, storage upload, users)
+- [x] `subscriptionGuard` (SUSPENDED/EXPIRED)
+- [x] Job trial expiry; desliga automações
+- [x] Ops: script/endpoint auditado para ACTIVE/SUSPENDED (sem checkout)
+- [x] Smoke `test:subscription`
+- [x] ADR-0010 respeitado (sem gateway)
 
 ### Bloco 6 — Frontend: inbox
 
-- [ ] `/app/inbox` Page → Component → Hook → Service → Data
-- [ ] 3 colunas; badge nav; `/app/whatsapp` intacto
-- [ ] E2E `e2e/messaging-inbox.spec.ts` (fake; sem Meta)
+- [x] `/app/inbox` Page → Component → Hook → Service → Data
+- [x] 3 colunas; badge nav; `/app/whatsapp` intacto
+- [x] E2E `e2e/messaging-inbox.spec.ts` (fake; sem Meta)
 
 ### Bloco 7 — Frontend: dashboard + relatórios + assinatura
 
-- [ ] `/app` dashboard E9 (substituir greeting-only)
-- [ ] `/app/relatorios` + UX export
-- [ ] `/app/assinatura` + banners trial/suspenso
-- [ ] E2E `e2e/reports-dashboard.spec.ts` + `e2e/subscription.spec.ts` (owner)
+- [x] `/app` dashboard E9 (substituir greeting-only)
+- [x] `/app/relatorios` + UX export
+- [x] `/app/assinatura` + banners trial/suspenso
+- [x] E2E `e2e/reports-dashboard.spec.ts` + `e2e/subscription.spec.ts` (owner)
 
 ---
 
@@ -384,18 +384,18 @@ GET             /api/v1/subscription/usage
 - [ ] Duplo POST message mesma Idempotency-Key = 1 mensagem
 - [ ] Dashboard 200 com KPIs inteiros (cents); dentista sem financial onde couber 403
 - [ ] Export 202 → READY → URL; CSV com `;` e BOM
-- [ ] Trial expira → writes 402/403; GET/export ok; automations não disparam
-- [ ] Plan limit profissionais → 402 com mensagem acionável
-- [ ] Checkout não cobra (501/ausente)
+- [x] Trial expira → writes 402/403; GET/export ok; automations não disparam
+- [x] Plan limit profissionais → 402 com mensagem acionável
+- [x] Checkout não cobra (501/ausente)
 - [ ] Cross-tenant export/conversation → 404
 
 **Frontend — aceite de código**
 
-- [ ] Inbox 3 colunas: listar, abrir, enviar texto; badge atualiza
-- [ ] Dashboard mostra cards do dia; link para drill-down
-- [ ] Export pede e baixa quando pronto (ou copia URL)
-- [ ] OWNER vê assinatura/trial; ASB/DENTIST sem nav Assinatura
-- [ ] SUSPENDED: UI deixa claro somente leitura
+- [x] Inbox 3 colunas: listar, abrir, enviar texto; badge atualiza
+- [x] Dashboard mostra cards do dia; link para drill-down
+- [x] Export pede e baixa quando pronto (ou copia URL)
+- [x] OWNER vê assinatura/trial; ASB/DENTIST sem nav Assinatura
+- [x] SUSPENDED: UI deixa claro somente leitura
 
 ---
 
@@ -414,12 +414,12 @@ GET             /api/v1/subscription/usage
 
 ## Aceite de produto (código + demo local)
 
-- [ ] Recepção abre inbox, vê mensagem do paciente seed (ou simulada), responde; conversa aparece no histórico do paciente
-- [ ] Dono abre `/app` e vê agenda do dia + a receber hoje + produção do mês (números coerentes com S6)
-- [ ] Dono exporta um relatório CSV e abre o arquivo
+- [x] Recepção abre inbox, vê mensagem do paciente seed (ou simulada), responde; conversa aparece no histórico do paciente
+- [x] Dono abre `/app` e vê agenda do dia + a receber hoje + produção do mês (números coerentes com S6)
+- [x] Dono exporta um relatório CSV e abre o arquivo
 - [ ] Trial: banner com dias; após forçar expiry, clínica não cria paciente/agendamento; ainda lista e exporta
-- [ ] OWNER vê planos/limites em `/assinatura`; CTA sem checkout falso de cartão
-- [ ] Dra. Ana não acessa relatórios financeiros consolidados; produção própria ok
+- [x] OWNER vê planos/limites em `/assinatura`; CTA sem checkout falso de cartão
+- [x] Dra. Ana não acessa relatórios financeiros consolidados; produção própria ok
 
 Não há marco M5 nesta sprint (M5 = S8 piloto). M3 permanece uso real S4.
 
