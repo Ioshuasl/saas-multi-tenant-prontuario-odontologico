@@ -28,6 +28,12 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
+      command: 'pnpm dev:worker',
+      url: `${API_URL}/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
       command: 'pnpm dev:web',
       url: `${WEB_URL}/login`,
       reuseExistingServer: !process.env.CI,

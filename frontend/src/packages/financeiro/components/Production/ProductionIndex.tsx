@@ -1,0 +1,145 @@
+'use client';
+
+import { useState } from 'react';
+import { financeiroErrorMessage } from '@/packages/financeiro/helpers/FinanceiroErrorMessage';
+import { formatCents } from '@/packages/financeiro/helpers/FormatCents';
+import { useProfessionalListHook } from '@/packages/financeiro/hooks/Professional/useProfessionalListHook';
+import { useProductionGetHook } from '@/packages/financeiro/hooks/Report/useProductionGetHook';
+import { useAuth } from '@/shared/auth/AuthProvider';
+import { Input } from '@/shared/ui/input';
+import { NativeSelect, NativeSelectOption } from '@/shared/ui/native-select';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/shared/ui/table';
+
+function monthRange(): { from: string; to: string } {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+  return { from, to };
+}
+
+export function ProductionIndex() {
+  const { me } = useAuth();
+  const isDentist = me?.current.role === 'DENTIST';
+  const initial = monthRange();
+  const [from, setFrom] = useState(initial.from);
+  const [to, setTo] = useState(initial.to);
+  const [professionalId, setProfessionalId] = useState('');
+  const professionals = useProfessionalListHook(!isDentist);
+  const report = useProductionGetHook({
+    from,
+    to,
+    professionalId: !isDentist && professionalId ? professionalId : undefined,
+  });
+
+  return (
+    <div className="grid gap-4">
+      <h1 className="text-xl font-semibold">Produção</h1>
+      {isDentist ? (
+        <p className="text-sm text-muted-foreground">Exibindo apenas a sua produção.</p>
+      ) : null}
+
+      <div className="flex flex-wrap gap-3">
+        <Input
+          type="date"
+          aria-label="De"
+          className="w-40"
+          value={from}
+          onChange={(event) => setFrom(event.target.value)}
+        />
+        <Input
+          type="date"
+          aria-label="Até"
+          className="w-40"
+          value={to}
+          onChange={(event) => setTo(event.target.value)}
+        />
+        {!isDentist ? (
+          <NativeSelect
+            aria-label="Profissional"
+            className="w-64"
+            value={professionalId}
+            onChange={(event) => setProfessionalId(event.target.value)}
+          >
+            <NativeSelectOption value="">Todos</NativeSelectOption>
+            {(professionals.data ?? [])
+              .filter((item) => item.active)
+              .map((item) => (
+                <NativeSelectOption key={item.id} value={item.id}>
+                  {item.name}
+                </NativeSelectOption>
+              ))}
+          </NativeSelect>
+        ) : null}
+      </div>
+
+      {report.isLoading ? (
+        <p className="text-sm text-muted-foreground">Carregando produção…</p>
+      ) : report.isError ? (
+        <Alert variant="destructive">
+          <AlertDescription>{financeiroErrorMessage(report.error)}</AlertDescription>
+        </Alert>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Profissional</TableHead>
+                <TableHead>Procedimentos</TableHead>
+                <TableHead>Executado</TableHead>
+                <TableHead>Recebido</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(report.data?.items ?? []).map((item) => (
+                <TableRow key={item.professionalId}>
+                  <TableCell>{item.professionalName}</TableCell>
+                  <TableCell>{item.proceduresCount}</TableCell>
+                  <TableCell>{formatCents(item.executedCents)}</TableCell>
+                  <TableCell>{formatCents(item.receivedCents)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          <div>
+            <h2 className="mb-2 text-sm font-medium">Detalhe</h2>
+            {(report.data?.rows.length ?? 0) === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma execução no período.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Profissional</TableHead>
+                    <TableHead>Procedimento</TableHead>
+                    <TableHead>Paciente</TableHead>
+                    <TableHead>Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(report.data?.rows ?? []).map((row, index) => (
+                    <TableRow key={`${row.professionalId}-${row.executedAt}-${index}`}>
+                      <TableCell>{row.executedAt.slice(0, 10)}</TableCell>
+                      <TableCell>{row.professionalName}</TableCell>
+                      <TableCell>{row.procedureName}</TableCell>
+                      <TableCell>#{row.patientCode}</TableCell>
+                      <TableCell>{formatCents(row.executedCents)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

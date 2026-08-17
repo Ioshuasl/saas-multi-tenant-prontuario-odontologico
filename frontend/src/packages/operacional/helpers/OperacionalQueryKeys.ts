@@ -14,4 +14,6 @@ export const operacionalQueryKeys = {
   quotes: (patientId?: string, status?: string) =>
     ['quotes', patientId ?? '', status ?? ''] as const,
   quote: (id: string) => ['quote', id] as const,
+  patientFinance: (patientId: string) => ['patient-finance', patientId] as const,
+  patientCredit: (patientId: string) => ['patient-credit', patientId] as const,
 };

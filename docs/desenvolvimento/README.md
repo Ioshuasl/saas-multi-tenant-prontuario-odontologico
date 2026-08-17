@@ -20,12 +20,14 @@ Pasta **somente** para acompanhamento do desenvolvimento (scaffold, sprints, dec
 
 ## Status atual
 
-- **Fase:** Sprint 6 — Financeiro (E7) — **planejada** (checklist)
-- **Anterior:** Sprint 5 — Orçamento → tratamento (E6) — **fechada** (código + aceite local)
+- **Fase:** Sprint 7 — Inbox / relatórios / billing SaaS (E8b + E9 + E10) — **planejada** (checklist)
+- **Anterior:** Sprint 6 — Financeiro (E7) — **fechada** (código + aceite local; M4 demo local)
+- **Sprint 5:** Orçamento → tratamento (E6) — **fechada**
 - **Sprint 4:** Prontuário (E5) — **código Must fechado** (M3 uso real pendente)
 - **Código base:** Sprint 0 concluída (monorepo, CI, RLS, KeyManagementPort)
 - **Especificação:** [`../README.md`](../README.md)
-- **Checklist S6 (planejada):** [`sprints/S6-financeiro.md`](./sprints/S6-financeiro.md)
+- **Checklist S7 (planejada):** [`sprints/S7-inbox-relatorios-billing-saas.md`](./sprints/S7-inbox-relatorios-billing-saas.md)
+- **Checklist S6 (fechada):** [`sprints/S6-financeiro.md`](./sprints/S6-financeiro.md)
 - **Checklist S5 (fechada):** [`sprints/S5-orcamentos-tratamentos.md`](./sprints/S5-orcamentos-tratamentos.md)
 - **Checklist S4 (código Must):** [`sprints/S4-prontuario.md`](./sprints/S4-prontuario.md)
 - **Checklist S3 (código Must):** [`sprints/S3-canal-paciente.md`](./sprints/S3-canal-paciente.md)

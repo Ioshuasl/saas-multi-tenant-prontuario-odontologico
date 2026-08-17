@@ -3,16 +3,16 @@ import { OWNER, type E2eUser } from './credentials';
 
 export async function expectLoginPage(page: Page): Promise<void> {
   await expect(page.getByRole('button', { name: 'Entrar' })).toBeVisible();
-  await expect(page.getByLabel('E-mail')).toBeVisible();
+  await expect(page.getByLabel('E-mail', { exact: true })).toBeVisible();
 }
 
 export async function loginAs(page: Page, user: E2eUser): Promise<void> {
-  const maxAttempts = 4;
+  const maxAttempts = 8;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     await page.goto('/login');
     await expectLoginPage(page);
-    await page.getByLabel('E-mail').fill(user.email);
-    await page.getByLabel('Senha').fill(user.password);
+    await page.getByLabel('E-mail', { exact: true }).fill(user.email);
+    await page.getByLabel('Senha', { exact: true }).fill(user.password);
     await page.getByRole('button', { name: 'Entrar' }).click();
 
     try {
@@ -20,9 +20,18 @@ export async function loginAs(page: Page, user: E2eUser): Promise<void> {
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 30_000 });
       return;
     } catch (error) {
-      const alertVisible = await page.getByRole('alert').isVisible().catch(() => false);
-      if (alertVisible && attempt < maxAttempts) {
-        await page.waitForTimeout(16_000);
+      const rateLimited = await page
+        .getByText(/Muitas tentativas/i)
+        .first()
+        .isVisible()
+        .catch(() => false);
+      const alertVisible = await page
+        .getByRole('alert')
+        .first()
+        .isVisible()
+        .catch(() => false);
+      if ((rateLimited || alertVisible) && attempt < maxAttempts) {
+        await page.waitForTimeout(rateLimited ? 65_000 : 16_000);
         continue;
       }
       throw error;

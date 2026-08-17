@@ -30,7 +30,7 @@
 | **M1 — Agenda usável** | Fim da S2 | Recepcionista real agenda um dia inteiro sem treinamento formal |
 | **M2 — Faltas atacadas** | Fim da S3 | Confirmação por WhatsApp funcionando ponta a ponta com número real |
 | **M3 — Papel eliminado (uso interno)** | Fim da S4 | Dentista registra 10 atendimentos consecutivos só no sistema |
-| **M4 — Ciclo financeiro fechado** | Fim da S6 | Orçamento aprovado gera parcelas e o recebimento aparece no fluxo de caixa |
+| **M4 — Ciclo financeiro fechado** | Fim da S6 | Orçamento aprovado gera parcelas e o recebimento aparece no fluxo de caixa (**demo local 2026-08-17**; uso real em piloto = M5/S8) |
 | **M5 — Piloto pago** | Fim da S8 | 1–3 clínicas operando o mês inteiro; NPS coletado; lista de bloqueios zerada |
 
 ## 3. Fase 2 — MVP+ (pós-piloto, ~4–6 sprints)

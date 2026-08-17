@@ -4,6 +4,48 @@ Append-only. Entradas mais recentes no topo.
 
 ---
 
+## 2026-08-17 — S7 planejada (checklist)
+
+### Feito
+
+- Checklist [`sprints/S7-inbox-relatorios-billing-saas.md`](./sprints/S7-inbox-relatorios-billing-saas.md) no mesmo padrão da S6
+- Escopo: E8b Must (inbox RF-E8-07..09) + E9 Must (dashboard/GETs/export) + E10 Must (trial/limites/suspensão **manual**, ADR-0010)
+- 7 blocos (5 backend + 2 frontend); cortes fechados (sem Stripe; rotas E7 billing estáveis; `/app/inbox` vs `/app/whatsapp` settings; reporting + subscription BCs novos)
+- README desenvolvimento aponta S7 como fase atual
+
+### Validação
+
+- Fontes: RF E8/E9/E10, módulos 08–10, ADR-0010/0016, herança S3 stubs conversation + S6 reports E7
+
+### Próximo
+
+- S7 Bloco 1 — backend inbox foundation
+
+---
+
+## 2026-08-17 — S6 fechada: frontend + aceites + M4 local
+
+### Feito
+
+- Blocos 6–7: package `financeiro` (Receber, Caixa, Pagar, Fluxo, Inadimplência, Produção) + aba Financeiro na ficha
+- Playwright **12/12**: `e2e/billing-payments.spec.ts` + `billing-cash.spec.ts` + `billing-cash-flow.spec.ts` (M4)
+- Aceite backend local (smokes + curl/`backend/tests`) e frontend (nav por papel, recibo ≠ NFS-e, COPY)
+- `backend/tests/` (scripts por módulo + `Invoke-Acceptance.ps1` + `billing/Run-S6.ps1`); Compose `minio-init` para bucket `odonto-dev`
+- Checklists [S6](./sprints/S6-financeiro.md) marcados; Estado = fechada; M4 demo local
+
+### Validação
+
+- Playwright local contra FE `:3001` / API `:3333` / worker: 12 passed
+- Aceite identity + `billing/roles_permissions` via `backend/tests`
+
+### Próximo
+
+- S7 — inbox E8b + dashboard/export E9 + billing SaaS E10
+- M3 uso real S4 (não bloqueia S7)
+- Carry-over: RF-E7-19 bloqueio de agenda (Could); `appointment.treatment_item_id` → `SCHEDULED` (S5)
+
+---
+
 ## 2026-08-14 — S6 Bloco 5: recibo PDF, send, relatórios E7
 
 ### Feito

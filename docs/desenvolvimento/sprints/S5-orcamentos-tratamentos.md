@@ -7,7 +7,7 @@
 
 **Pré-requisito:** S4 código Must (prontuário + odontograma + note append-only + `clinical_records_public` + ObjectStorage + token público + outbox/worker + template `anamnesis_request`). Aceite M3 (uso real) **não** bloqueia S5. Carry-over S4 (smokes no `ci.yml`) entra na qualidade desta sprint, não como bloco de produto.
 
-**Estado (2026-08-14):** Sprint 5 fechada (código + aceite local). Próxima: S6 (E7 baixa/caixa). M3 uso real S4 permanece pendente.
+**Estado (2026-08-14):** Sprint 5 fechada (código + aceite local). S6 fechada em 2026-08-17. Próxima: S7. M3 uso real S4 permanece pendente.
 
 ---
 
@@ -518,7 +518,7 @@ Testes obrigatórios extra ([módulo treatments §11](../../modulos/06-orcamento
 - [x] Recepção envia orçamento e registra decisão presencial; sem acesso ao prontuário
 - [x] Não comunicar “contrato assinado” nem “elimine o papel” (PDF comercial ≠ validade jurídica)
 
-Não há marco M4 nesta sprint. M4 permanece S6 (baixa aparece no fluxo de caixa).
+Não há marco M4 nesta sprint. M4 foi demonstrado na S6 (baixa aparece no fluxo de caixa — demo local).
 
 ---
 

@@ -7,7 +7,7 @@
 
 **Pré-requisito:** S5 código Must (quote → decisão atômica → `receivable`/`installment`/`production_entry` + `billing_public` + execute no atendimento). Aceite M3 (uso real S4) **não** bloqueia S6. Carry-over S5 (`appointment.treatment_item_id` → `SCHEDULED`) **não** entra como bloco de produto desta sprint.
 
-**Estado (2026-08-14):** Sprint 6 **planejada** (checklist). S5 fechada (código + aceite local). M3 uso real S4 permanece pendente.
+**Estado (2026-08-17):** Sprint 6 **fechada** (código + aceite local). Próxima: [S7](./S7-inbox-relatorios-billing-saas.md) (inbox E8b + dashboard/export E9 + billing SaaS E10). Marco **M4** demonstrado em demo local (baixa PIX+CASH → fluxo CASH). M3 uso real S4 permanece pendente.
 
 ---
 
@@ -62,13 +62,14 @@ Usar; **não** reimplementar.
 | Send-link COPY/WA/e-mail | S4/S5 | Copiar padrão para `POST /payments/:id/send-receipt` |
 | Templates messaging | E8a + `quote_sent` | Acrescentar `payment_receipt` + `payment_overdue` (utility; **sem** diagnóstico) |
 | Permissões `finance.*` / `reports.financial` | identity S1 | Só **passar a usar**; DENTIST sem `finance.*`; ASB sem financeiro |
-| Package `financeiro` vazio (`export {}`) | frontend | Preencher; não criar package novo |
+| Package `financeiro` (AR/caixa/AP/fluxo/inadimplência/produção) | frontend S6 | Preenchido; não criar package novo |
 | Money = `bigint` cents | docs/07 | Todo cálculo S6 no mesmo helper-style; **proibido** float |
 | E2E Playwright workers=1 | `e2e/` | Specs: payments + cash-session + cash-flow (M4) |
+| Aceite HTTP reutilizável | `backend/tests/` | Scripts por módulo/função + `Invoke-Acceptance.ps1` |
 
 **Entregar nesta sprint:** HTTP E7 no `billing`; tabelas payment/caixa/AP/crédito + RLS; baixa idempotente + estorno; caixa imutável; overdue job; recibo; relatórios cash-flow/overdue/production; UI `financeiro`.
 
-**Pós-código (ainda aberto, não é aceite S6):** M3 uso real S4; inbox/dashboard/E10 (S7); `appointment.treatment_item_id` → `SCHEDULED` (carry-over S5); RF-E7-19 se escorregar.
+**Pós-código (ainda aberto, não é aceite S6):** M3 uso real S4; inbox/dashboard/E10 (S7); `appointment.treatment_item_id` → `SCHEDULED` (carry-over S5); RF-E7-19 bloqueio de agenda (Could — port `patientHasOverdue` entregue, default desligado).
 
 **Alinhar docs/07:** `payment.receipt_number` **não** usar `IDENTITY` global — counter por tenant (lição S2 `patient_code` / S5 `quote.number`). `installment.status` inclui `PARTIALLY_PAID` (módulo §3; DDL §7 hoje omite). Formas de pagamento = enum do módulo (não o `OTHER` genérico do DDL). Splits de um recebimento = tabela `payment_split` (DDL hoje tem `method` único em `payment`). Crédito = `patient_credit_ledger` (não saldo editável). `cash_movement.kind` = vocabulário do módulo.
 
@@ -426,20 +427,20 @@ Se `finance.read`: bloco “Financeiro” com saldo em aberto + crédito (sem im
 
 ### Bloco 6 — Frontend: AR + baixa + recibo (+ débito na ficha)
 
-- [ ] `/app/financeiro/receber` — Page → Component → Hook → Service → Data
-- [ ] FormDialog baixa (splits, crédito, Idempotency-Key); PDF; send COPY
-- [ ] Ficha: bloco financeiro se `finance.read`
-- [ ] Nav Receber/Caixa/Pagar se `finance.read`; FINANCE/ASB/DENTIST conforme matriz
-- [ ] E2E `e2e/billing-payments.spec.ts` (Maria; PIX+CASH; recibo visível; sem Meta)
+- [x] `/app/financeiro/receber` — Page → Component → Hook → Service → Data
+- [x] FormDialog baixa (splits, crédito, Idempotency-Key); PDF; send COPY
+- [x] Ficha: bloco financeiro se `finance.read`
+- [x] Nav Receber/Caixa/Pagar se `finance.read`; FINANCE/ASB/DENTIST conforme matriz
+- [x] E2E `e2e/billing-payments.spec.ts` (Maria; PIX+CASH; recibo visível; sem Meta)
 
 ### Bloco 7 — Frontend: caixa, AP, fluxo, inadimplência, produção
 
-- [ ] `/app/financeiro/caixa` abrir/fechar/sangria; 423 refletido na UI
-- [ ] `/app/financeiro/pagar`
-- [ ] `/app/financeiro/fluxo` toggle regime (OWNER/FINANCE)
-- [ ] `/app/financeiro/inadimplencia` aging (reports.financial) + cobrar WA Should
-- [ ] `/app/financeiro/producao` (dentista = próprio)
-- [ ] E2E `e2e/billing-cash.spec.ts` + `e2e/billing-cash-flow.spec.ts` (M4: baixa aparece no fluxo CASH)
+- [x] `/app/financeiro/caixa` abrir/fechar/sangria; 423 refletido na UI
+- [x] `/app/financeiro/pagar`
+- [x] `/app/financeiro/fluxo` toggle regime (OWNER/FINANCE)
+- [x] `/app/financeiro/inadimplencia` aging (reports.financial) + cobrar WA Should
+- [x] `/app/financeiro/producao` (dentista = próprio)
+- [x] E2E `e2e/billing-cash.spec.ts` + `e2e/billing-cash-flow.spec.ts` (M4: baixa aparece no fluxo CASH)
 
 ---
 
@@ -475,26 +476,26 @@ GET             /api/v1/reports/production
 
 **Backend — aceite de código**
 
-- [ ] Duplo POST payment mesma key = 1 payment + 1 receipt_number
-- [ ] Parcial → `PARTIALLY_PAID`; excedente → ledger; PATIENT_CREDIT consome ledger
-- [ ] CASH sem sessão 422; estorno com caixa CLOSED 423
-- [ ] Close com diferença sem motivo 422; sessão CLOSED imutável
-- [ ] Overdue no TZ do tenant (não UTC do servidor)
-- [ ] Aging classifica 1–15 / 16–30 / 31–60 / 60+
-- [ ] Cash-flow CASH ≠ ACCRUAL no mesmo dataset; cents inteiros; Σ splits = payment
-- [ ] Recibo PDF sem dente/diagnóstico; UI/PDF dizem que não é NFS-e
-- [ ] DENTIST 403 em payments/caixa/cash-flow; produção só própria
-- [ ] Recepção 403 em cash-flow; ASB 403 em finance*
-- [ ] Cross-tenant payment/caixa → 404
-- [ ] Título manual soma parcelas = total (helper)
+- [x] Duplo POST payment mesma key = 1 payment + 1 receipt_number
+- [x] Parcial → `PARTIALLY_PAID`; excedente → ledger; PATIENT_CREDIT consome ledger
+- [x] CASH sem sessão 422; estorno com caixa CLOSED 423
+- [x] Close com diferença sem motivo 422; sessão CLOSED imutável
+- [x] Overdue no TZ do tenant (não UTC do servidor)
+- [x] Aging classifica 1–15 / 16–30 / 31–60 / 60+
+- [x] Cash-flow CASH ≠ ACCRUAL no mesmo dataset; cents inteiros; Σ splits = payment
+- [x] Recibo PDF sem dente/diagnóstico; UI/PDF dizem que não é NFS-e
+- [x] DENTIST 403 em payments/caixa/cash-flow; produção só própria
+- [x] Recepção 403 em cash-flow; ASB 403 em finance*
+- [x] Cross-tenant payment/caixa → 404
+- [x] Título manual soma parcelas = total (helper)
 
 **Frontend — aceite de código**
 
-- [ ] Fluxo Index AR → baixa 2 formas → recibo na UI → send COPY
-- [ ] Caixa: abrir → receber CASH → fechar com divergência exige texto
-- [ ] Dono: fluxo CASH mostra o recebimento do dia (M4)
-- [ ] FINANCE vê nav financeiro; DENTIST não vê Receber/Caixa/Fluxo; ASB sem nav financeiro
-- [ ] Copy “recibo ≠ NFS-e” visível no dialog de sucesso
+- [x] Fluxo Index AR → baixa 2 formas → recibo na UI → send COPY
+- [x] Caixa: abrir → receber CASH → fechar com divergência exige texto
+- [x] Dono: fluxo CASH mostra o recebimento do dia (M4)
+- [x] FINANCE vê nav financeiro; DENTIST não vê Receber/Caixa/Fluxo; ASB sem nav financeiro
+- [x] Copy “recibo ≠ NFS-e” visível no dialog de sucesso
 
 ---
 
@@ -515,14 +516,14 @@ Testes obrigatórios extra ([módulo billing §13](../../modulos/07-financeiro.m
 
 ## Aceite de produto (código + demo local) — M4
 
-- [ ] Orçamento da Maria (S5) aprovado já tem parcelas; recepção abre caixa, dá baixa (ex.: PIX + dinheiro); recibo numerado; **não** se comunica “nota fiscal”
-- [ ] Dono abre fluxo de caixa (`basis=CASH`) no dia e vê o inflow; `ACCRUAL` no mês mostra a parcela pelo vencimento (números diferentes se pagar atrasado/antecipado)
-- [ ] Financeiro lança um aluguel (AP) e paga; saída aparece no fluxo
-- [ ] Parcela vencida (seed ou clock de teste) cai na faixa de aging correta; job não depende de WABA
-- [ ] Dra. Ana **não** acessa contas a receber; vê só a própria produção
-- [ ] Estorno depois de fechar o caixa é recusado; correção na sessão seguinte
+- [x] Orçamento da Maria (S5) aprovado já tem parcelas; recepção abre caixa, dá baixa (ex.: PIX + dinheiro); recibo numerado; **não** se comunica “nota fiscal”
+- [x] Dono abre fluxo de caixa (`basis=CASH`) no dia e vê o inflow; `ACCRUAL` no mês mostra a parcela pelo vencimento (números diferentes se pagar atrasado/antecipado)
+- [x] Financeiro lança um aluguel (AP) e paga; saída aparece no fluxo
+- [x] Parcela vencida (seed ou clock de teste) cai na faixa de aging correta; job não depende de WABA
+- [x] Dra. Ana **não** acessa contas a receber; vê só a própria produção
+- [x] Estorno depois de fechar o caixa é recusado; correção na sessão seguinte
 
-Marco **M4** fecha com o segundo item (recebimento visível no fluxo). Uso real em clínica-piloto **não** é M4 (M5 é S8).
+Marco **M4** fecha com o segundo item (recebimento visível no fluxo) — **demonstrado localmente** (Playwright + smokes). Uso real em clínica-piloto **não** é M4 (M5 é S8).
 
 ---
 
@@ -545,6 +546,7 @@ Marco **M4** fecha com o segundo item (recebimento visível no fluxo). Uso real 
 
 - Seed e2e: reaproveitar Maria + Dra. Ana + parcelas OPEN; `pnpm db:seed` idempotente deve **repor** ao menos 1 parcela OPEN se a demo a consumir.
 - Package `financeiro` **não** importa `operacional`/`clinico`: ficha lista débitos via Data próprio no package da ficha **ou** componente em `shared/` se for o mesmo widget — preferir Data em `operacional` chamando as rotas billing (padrão S5: operacional não importa clinico).
-- Carry-over pós-S6: S7 inbox + dashboard + export + E10; RF-E7-19 se escorregar; M3 S4; SCHEDULED S5.
+- Carry-over pós-S6: S7 inbox + dashboard + export + E10; RF-E7-19 bloqueio de agenda (Could); M3 S4; SCHEDULED S5.
 - Playwright: `workers: 1`; payments usam **reception** (caixa + finance.write); cash-flow usa **owner** ou **finance**.
+- Aceite HTTP reutilizável: `backend/tests/` (`Invoke-Acceptance.ps1`, `billing/Run-S6.ps1`); MinIO bucket `odonto-dev` via `minio-init` no Compose.
 - Em dúvida de produto/DDL/contrato **não** listada acima → perguntar antes de implementar (não improvisar NFS-e, boleto, comissão, débito automático de no-show ou régua de cobrança).

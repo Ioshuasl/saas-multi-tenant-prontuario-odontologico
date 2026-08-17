@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { PatientConsentsPanel } from '@/packages/operacional/components/Patient/PatientConsentsPanel';
+import { PatientFinancePanel } from '@/packages/operacional/components/Patient/PatientFinancePanel';
 import { PatientGuardiansPanel } from '@/packages/operacional/components/Patient/PatientGuardiansPanel';
 import { PatientRecordPanel } from '@/packages/operacional/components/Patient/PatientRecordPanel';
 import { PatientTimeline } from '@/packages/operacional/components/Patient/PatientTimeline';
@@ -130,6 +131,9 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
           <Can permission="quotes.read">
             <TabsTrigger value="orcamentos">Orçamentos</TabsTrigger>
           </Can>
+          <Can permission="finance.read">
+            <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+          </Can>
           <Can permission="clinical_records.read">
             <TabsTrigger value="prontuario">Prontuário</TabsTrigger>
           </Can>
@@ -222,6 +226,12 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
         <Can permission="quotes.read">
           <TabsContent value="orcamentos" className="mt-4">
             <PatientQuotesPanel patientId={patientId} />
+          </TabsContent>
+        </Can>
+
+        <Can permission="finance.read">
+          <TabsContent value="financeiro" className="mt-4">
+            <PatientFinancePanel patientId={patientId} />
           </TabsContent>
         </Can>
 

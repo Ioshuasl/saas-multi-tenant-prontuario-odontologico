@@ -1,8 +1,12 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  ActivityIcon,
   ArmchairIcon,
+  BanknoteIcon,
   Building2Icon,
   CalendarDaysIcon,
+  ChartNoAxesCombinedIcon,
+  CircleDollarSignIcon,
   ClipboardListIcon,
   ClockIcon,
   ContactIcon,
@@ -12,7 +16,9 @@ import {
   MessageCircleIcon,
   StethoscopeIcon,
   SyringeIcon,
+  TriangleAlertIcon,
   UsersIcon,
+  WalletIcon,
 } from 'lucide-react';
 
 export type AdminNavGroup = 'main' | 'settings';
@@ -35,6 +41,48 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: FileTextIcon,
     group: 'main',
     permission: 'quotes.read',
+  },
+  {
+    href: '/app/financeiro/receber',
+    label: 'Receber',
+    icon: CircleDollarSignIcon,
+    group: 'main',
+    permission: 'finance.read',
+  },
+  {
+    href: '/app/financeiro/caixa',
+    label: 'Caixa',
+    icon: WalletIcon,
+    group: 'main',
+    permission: 'finance.read',
+  },
+  {
+    href: '/app/financeiro/pagar',
+    label: 'Pagar',
+    icon: BanknoteIcon,
+    group: 'main',
+    permission: 'finance.read',
+  },
+  {
+    href: '/app/financeiro/fluxo',
+    label: 'Fluxo',
+    icon: ChartNoAxesCombinedIcon,
+    group: 'main',
+    permission: 'reports.financial',
+  },
+  {
+    href: '/app/financeiro/inadimplencia',
+    label: 'Inadimplência',
+    icon: TriangleAlertIcon,
+    group: 'main',
+    permission: 'reports.financial',
+  },
+  {
+    href: '/app/financeiro/producao',
+    label: 'Produção',
+    icon: ActivityIcon,
+    group: 'main',
+    permission: 'reports.read',
   },
   { href: '/app/onboarding', label: 'Onboarding', icon: ListChecksIcon, group: 'main' },
   {

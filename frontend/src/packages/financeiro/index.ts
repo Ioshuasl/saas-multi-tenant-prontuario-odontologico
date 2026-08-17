@@ -1,2 +1,2 @@
-/** Package financeiro: Receivable, Payment, CashSession, … */
+/** Package financeiro: Receivable, Payment, CashSession, Payable, … */
 export {};

@@ -37,6 +37,9 @@
     "test:billing-cash": "tsx scripts/smoke-billing-cash.ts",
     "test:billing-payables": "tsx scripts/smoke-billing-payables.ts",
     "test:billing-reports": "tsx scripts/smoke-billing-reports.ts",
+    "accept": "powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/Invoke-Acceptance.ps1",
+    "accept:billing": "powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/billing/Run-S6.ps1",
+    "accept:identity": "powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/Invoke-Acceptance.ps1 -Module identity",
     "db:generate": "prisma generate",
     "db:migrate": "tsx scripts/migrate-deploy.ts",
     "db:seed": "tsx prisma/seeders/index.ts"
