@@ -78,4 +78,8 @@ export const OUTBOX_ROUTES: Record<string, OutboxRouteTarget> = {
   'billing.cash_session_closed': 'emit-only',
   'billing.payable_paid': 'emit-only',
   'billing.installment_overdue': 'emit-only',
+  'platform.tenant_export_requested': { queue: QUEUE.platform, job: JOB.tenantExport },
+  'platform.patient_package_requested': { queue: QUEUE.platform, job: JOB.patientPackage },
+  'platform.patient_anonymize_requested': { queue: QUEUE.platform, job: JOB.patientAnonymize },
+  'platform.data_export_completed': 'emit-only',
 };

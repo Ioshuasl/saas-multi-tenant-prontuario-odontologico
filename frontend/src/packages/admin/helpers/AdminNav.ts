@@ -16,7 +16,9 @@ import {
   HomeIcon,
   InboxIcon,
   ListChecksIcon,
+  LockIcon,
   MessageCircleIcon,
+  ScrollTextIcon,
   StethoscopeIcon,
   SyringeIcon,
   TriangleAlertIcon,
@@ -156,6 +158,20 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: CreditCardIcon,
     group: 'settings',
     permission: 'subscription.manage',
+  },
+  {
+    href: '/app/auditoria',
+    label: 'Auditoria',
+    icon: ScrollTextIcon,
+    group: 'settings',
+    permission: 'audit.read',
+  },
+  {
+    href: '/app/privacidade',
+    label: 'Privacidade',
+    icon: LockIcon,
+    group: 'settings',
+    permission: 'data.export',
   },
 ];
 

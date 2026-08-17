@@ -55,7 +55,7 @@ export function AgendaGrid({
   return (
     <div
       className={cn(
-        'overflow-auto rounded-md border border-[#E9E9E7]',
+        'overflow-auto rounded-md border border-border',
         AGENDA_NOTION.gridBg,
       )}
     >
@@ -68,7 +68,7 @@ export function AgendaGrid({
           <div
             key={toYmd(day)}
             className={cn(
-              'sticky top-0 z-20 border-b border-l px-2 py-2 text-center text-xs font-medium capitalize text-[#37352F]',
+              'sticky top-0 z-20 border-b border-l px-2 py-2 text-center text-xs font-medium capitalize text-foreground',
               AGENDA_NOTION.dayHeader,
             )}
           >
@@ -76,14 +76,14 @@ export function AgendaGrid({
           </div>
         ))}
 
-        <div className="relative border-r border-[#E9E9E7]" style={{ height }}>
+        <div className="relative border-r border-border" style={{ height }}>
           {hours.map((hour) => {
             const top =
               (hour.getHours() - AGENDA_NOTION.dayStartHour) * 60 * AGENDA_NOTION.pxPerMinute;
             return (
               <div
                 key={hour.toISOString()}
-                className="absolute right-1 -translate-y-1/2 text-[10px] text-[#9B9A97]"
+                className="absolute right-1 -translate-y-1/2 text-[10px] text-muted-foreground"
                 style={{ top }}
               >
                 {formatHour(hour)}
@@ -99,7 +99,7 @@ export function AgendaGrid({
             <div
               key={ymd}
               className={cn(
-                'relative border-l border-[#E9E9E7]',
+                'relative border-l border-border',
                 AGENDA_NOTION.slotHover,
                 AGENDA_NOTION.transition,
               )}

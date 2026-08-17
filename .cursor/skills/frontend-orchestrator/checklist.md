@@ -17,6 +17,7 @@
 - [ ] Form vs FormDialog corretos
 - [ ] Page só compõe
 - [ ] UI composta de `@/shared/ui/*` (sem recriar primitivos; sem `@/components/ui`)
+- [ ] Cores via tokens (`bg-background`, `text-foreground`, `border-border`, `muted`, `card`); sem hex/`bg-white`/`text-black` salvo justificativa (ex.: QR); `dark:` só se o token não cobrir; sem recriar `ThemeToggle`
 
 ## Final
 

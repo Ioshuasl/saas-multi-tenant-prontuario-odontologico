@@ -1,5 +1,7 @@
 import type { RequestContext } from '../../../../shared/domain/request_context.js';
 import { AppError } from '../../../../shared/middlewares/error_handler.middleware.js';
+import { AuditAction, writeAuditLogSafe } from '../../../../shared/database/write_audit.js';
+import { maskPhone } from '../../../../shared/helpers/mask_pii.js';
 import { getMessagingProvider } from '../../../../shared/integrations/whatsapp/index.js';
 import { getObjectStorage, ObjectStorageError } from '../../../../shared/storage/index.js';
 import { findPatientIdByPhone } from '../../../patients/patients_public.js';
@@ -153,6 +155,20 @@ export class CreateAction {
           conversationId,
           messageId: message.id,
           patientId: patientId ?? conversation.patientId,
+        },
+      });
+
+      await writeAuditLogSafe({
+        tenantId: ctx.tenantId,
+        actorId: ctx.userId,
+        action: AuditAction.MESSAGE_SENT,
+        resourceType: 'message',
+        resourceId: message.id,
+        patientId: patientId ?? conversation.patientId ?? undefined,
+        metadata: {
+          channel: 'WHATSAPP',
+          type: messageType,
+          toMasked: maskPhone(conversation.contactPhone),
         },
       });
 

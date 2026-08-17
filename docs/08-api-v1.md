@@ -59,7 +59,9 @@
 | 404 | `NOT_FOUND` | Recurso inexistente **ou** de outro tenant (não revelamos existência) |
 | 409 | `SLOT_UNAVAILABLE` | Conflito de agenda |
 | 409 | `DUPLICATE_RESOURCE` | Unicidade violada (CPF, código de procedimento) |
-| 409 | `INVALID_STATE_TRANSITION` | Ex.: confirmar consulta cancelada |
+| 409 | `SELF_APPROVAL_FORBIDDEN` | Operador tenta aprovar o próprio break-glass |
+| 422 | `REASON_TOO_SHORT` | Motivo de break-glass com menos de 20 caracteres |
+| 422 | `GRANT_WINDOW_INVALID` | Janela de break-glass ≤ 0 h ou > 4 h |
 | 422 | `BUSINESS_RULE_VIOLATION` | Regra de domínio (ex.: parcelas ≠ total) |
 | 402 | `SUBSCRIPTION_REQUIRED` | Assinatura expirada/suspensa |
 | 402 | `PLAN_LIMIT_EXCEEDED` | Limite do plano (profissionais, storage, mensagens) |
@@ -67,6 +69,7 @@
 | 429 | `RATE_LIMITED` | Excesso de requisições |
 | 500 | `INTERNAL_ERROR` | Falha inesperada (sem detalhes vazados) |
 | 503 | `PROVIDER_UNAVAILABLE` | WhatsApp/storage/e-mail indisponível |
+| 503 | — | `GET /ready` com dependência down: `{ data: { db, redis, storage } }` **sem** `error.code` e **sem** connection string |
 
 ## 2. Mapa de endpoints do MVP
 
@@ -655,12 +658,20 @@ GET    /api/v1/subscription/plans
 GET    /api/v1/subscription/usage
 POST   /api/v1/subscription/checkout      501 NOT_IMPLEMENTED (ADR-0010 — cobrança manual)
 
-GET    /api/v1/audit-logs                   ?patientId=&actorId=&action=&from=&to=
+GET    /api/v1/audit-logs                   ?patientId=&actorId=&action=&from=&to=&cursor=&limit=
 POST   /api/v1/privacy/data-subject-requests
-GET    /api/v1/privacy/data-subject-requests
+GET    /api/v1/privacy/data-subject-requests          ?status=&type=&cursor=&limit=
+GET    /api/v1/privacy/data-subject-requests/:id
+PATCH  /api/v1/privacy/data-subject-requests/:id
 POST   /api/v1/privacy/exports              exportação completa do tenant
+GET    /api/v1/privacy/exports/:id          status + URL assinada (7 dias)
+POST   /api/v1/internal/support-access
+POST   /api/v1/internal/support-access/:id/approve
+GET    /api/v1/internal/support-access/:id
 GET    /api/v1/health                        liveness
+GET    /health                               espelho na raiz (processo no ar)
 GET    /api/v1/ready                         readiness (db, redis, storage)
+GET    /ready                                espelho na raiz (mesmo contrato)
 ```
 
 **GET `/subscription`** (OWNER, `subscription.manage`; DENTIST/ASB → `403`):
@@ -693,6 +704,97 @@ Status: `TRIAL` | `ACTIVE` | `PAST_DUE` | `SUSPENDED` | `EXPIRED` | `CANCELLED`.
 **POST `/subscription/checkout`:** `501 NOT_IMPLEMENTED` — “Checkout não está disponível neste momento. Fale conosco para ativar o plano.” Ativação/suspensão: script ops auditado `backend/scripts/ops-subscription-status.ts`.
 
 Estouro de limite (profissionais, usuários administrativos, unidades, storage no upload): `402 PLAN_LIMIT_EXCEEDED` com mensagem acionável (`details.href` = `/app/assinatura`). `messages_month` é observado, não bloqueia envio da inbox.
+
+**GET `/audit-logs`** (OWNER, `audit.read`; demais papéis → `403 FORBIDDEN`). Módulo HTTP `platform`. Paginação cursor (`nextCursor`); `limit` default 50, teto 100. `from`/`to` ISO-8601; omissão = últimos 366 dias. Período > 366 dias → `422 PERIOD_TOO_LONG`. `from` > `to` → `422 PERIOD_INVALID`. Relatório “quem acessou o paciente X” = o mesmo endpoint com `patientId`. Cross-tenant: RLS (lista do outro tenant não aparece; `X-Tenant-Id` sem membership → `403 TENANT_NOT_ALLOWED`).
+
+Leitura clínica passa a gravar `action=CLINICAL_READ`. Histórico `READ` permanece. Filtro `action=CLINICAL_READ` ou `action=READ` devolve os dois. Sem backfill.
+
+Payload **sem** corpo clínico, senha, token, DEK ou CPF completo (docs/17 §5.3). `audit_log` é append-only (trigger + `GRANT` SELECT/INSERT).
+
+```json
+{
+  "items": [
+    {
+      "id": "…",
+      "actorId": "…",
+      "actorType": "USER",
+      "action": "CLINICAL_READ",
+      "resourceType": "medical_record",
+      "resourceId": "…",
+      "patientId": "…",
+      "ipAddress": "127.0.0.1",
+      "metadata": { "path": "/api/v1/patients/…/record", "method": "GET" },
+      "createdAt": "2026-08-17T12:00:00.000Z"
+    }
+  ],
+  "nextCursor": null
+}
+```
+
+Ações Must nesta superfície (gravação via `writeAuditLog` em `shared/`): `CLINICAL_READ` (alias `READ`), `NOTE_CREATED`, `NOTE_AMENDED`, `MESSAGE_SENT` (template + destinatário mascarado, sem corpo), `EXPORT_REQUESTED` / `EXPORT_COMPLETED`, `DSR_CREATED` / `DSR_COMPLETED` / `DSR_REJECTED`, `SUPPORT_ACCESS_GRANTED` / `SUPPORT_ACCESS_USED`.
+
+**POST `/privacy/exports`** (OWNER, `data.export` → `202`): dispara job assíncrono de ZIP do **próprio** tenant (JSON + CSV + anexos originais). Não reusa `POST /reports/:report/export`. `Idempotency-Key` opcional; reuso no mesmo tenant → `409 IDEMPOTENCY_KEY_REUSED`. `SUSPENDED`/`EXPIRED` **permanecem** liberados. Outro papel → `403`.
+
+```json
+{ "exportId": "…", "status": "PENDING" }
+```
+
+**GET `/privacy/exports/:id`** (`data.export`): outro tenant → `404`. `PENDING`/`RUNNING`: `url` nulo. `READY`: URL assinada **7 dias** (`expiresIn`: 604800). `FAILED`: `error` preenchido. Decrypt clínico ocorre **só** no job; DEK/KEK nunca no ZIP.
+
+```json
+{
+  "exportId": "…",
+  "status": "READY",
+  "url": "https://…",
+  "expiresIn": 604800,
+  "error": null,
+  "createdAt": "2026-08-17T12:00:00.000Z"
+}
+```
+
+**POST `/privacy/data-subject-requests`** (OWNER, `data.export` → `201`): registra solicitação do titular. Tipos `ACCESS` | `CORRECTION` | `DELETION` | `PORTABILITY` | `REVOKE_CONSENT`. `dueAt` = agora + `DSR_DUE_DAYS` (default 15). `ACCESS`/`PORTABILITY` disparam job de pacote PDF+JSON (um paciente). `REVOKE_CONSENT` revoga marketing imediatamente e conclui (`COMPLETED`); transacional segue. `CORRECTION` só registra — correção cadastral na ficha; clínico via amend. `DELETION` inicia `IN_PROGRESS` e dispara job de anonimização de identificadores (prontuário permanece; `resolution` cita obrigação legal de guarda). Se o job falhar, o DSR fica `IN_PROGRESS` até o Owner concluir via PATCH. `SUSPENDED`/`EXPIRED` permanecem liberados. Paciente de outro tenant → `404`. Outro papel → `403`.
+
+```json
+{
+  "id": "…",
+  "patientId": "…",
+  "type": "ACCESS",
+  "status": "RECEIVED",
+  "requestedAt": "2026-08-17T12:00:00.000Z",
+  "dueAt": "2026-09-01T12:00:00.000Z",
+  "completedAt": null,
+  "handledBy": null,
+  "resolution": null,
+  "exportUrl": null,
+  "expiresIn": null
+}
+```
+
+**GET `/privacy/data-subject-requests`** (`?status=&type=&patientId=&cursor=&limit=`): lista do tenant; cursor; `limit` default 50, teto 100.
+
+**GET `/privacy/data-subject-requests/:id`**: outro tenant → `404`. Pacote pronto: `exportUrl` assinada **7 dias** (`expiresIn`: 604800). Decrypt clínico só no job; DEK/KEK nunca no ZIP. Nomes de arquivo no ZIP: `paciente.pdf` / `paciente.json` (sem diagnóstico).
+
+**PATCH `/privacy/data-subject-requests/:id`** `{ status?, resolution? }`: `IN_PROGRESS` | `COMPLETED` | `REJECTED`. `COMPLETED`/`REJECTED` exigem `resolution`. Terminal não transita → `422 DSR_STATUS_INVALID`. Audit `DSR_COMPLETED` / `DSR_REJECTED`.
+
+**POST `/internal/support-access`** (operador de plataforma: `user.platformRole = OPERATOR` ou e-mail em `PLATFORM_OPERATOR_EMAILS` → `201`): pede break-glass. Body `{ tenantId, reason, hours? }`. `reason` < 20 caracteres → `422 REASON_TOO_SHORT`. `hours` ≤ 0 ou > 4 → `422 GRANT_WINDOW_INVALID` (omissão = 4). Sem membership no tenant alvo. Status inicial `PENDING`. Exceção de contrato: `tenantId` no body identifica a clínica-alvo (o JWT do operador é de um tenant dummy).
+
+**POST `/internal/support-access/:id/approve`**: segundo operador. Solicitante não pode aprovar a si → `409 SELF_APPROVAL_FORBIDDEN`. `expiresAt` = agora + `hours` (teto 4 h). Audit `SUPPORT_ACCESS_GRANTED` no `audit_log` da clínica (`actorType: SUPPORT`). E-mail ao Owner. Sem 2º ator o grant permanece inutilizável.
+
+**GET `/internal/support-access/:id`**: detalhe da concessão. Inexistente → `404`.
+
+Com grant `APPROVED` vigente, o operador envia `X-Support-Grant-Id` + `X-Tenant-Id` e assume contexto somente leitura (`patients.read`, `clinical_records.read`, `agenda.read`). Cada request grava `SUPPORT_ACCESS_USED`. Grant de outro operador, pendente ou expirado → `404` (não revela existência). Operador que troca `X-Tenant-Id` sem grant → `404`. Usuário comum sem membership → `403 TENANT_NOT_ALLOWED`.
+
+Script ops: `backend/scripts/ops-support-access.ts` (`request` / `approve` / `get`). Sem UI de suporte nesta sprint.
+
+Script ops: `backend/scripts/ops-support-access.ts` (`request` / `approve` / `get`). Sem UI de suporte nesta sprint.
+
+**GET `/health`** (sem auth): liveness. `{ "data": { "status": "ok", "service": "api" } }`. Não sonda dependências. Espelho na raiz `GET /health`.
+
+**GET `/ready`** (sem auth): Postgres `SELECT 1`, Redis `PING`, storage `headObject` barato (`__ready__/probe`; objeto ausente conta como alcançável). `200` só se `db`, `redis` e `storage` são `true`. Qualquer falha → `503` com os booleanos. Corpo **nunca** inclui URL de conexão, chave ou nome de bucket. Worker permanece só com `/health`. Job `anomaly-clinical-read` (Should) conta `CLINICAL_READ`/`READ` por ator em 5 min; acima de `CLINICAL_READ_ANOMALY_N` (default 40) grava `ANOMALY_TRIGGERED` e loga — **não** bloqueia o usuário.
+
+```json
+{ "data": { "db": true, "redis": true, "storage": true } }
+```
 
 ## 3. Contratos detalhados dos fluxos críticos
 
@@ -998,6 +1100,10 @@ Payloads HTTP vivos (Bloco 5): recibo PDF/send, `POST /installments/:id/charge`,
 | `GET /clinic/professionals` | ✔ | ✔ | ✔ | ✔ | ✖ |
 | `PATCH /clinic` | ✔ | ✖ | ✖ | ✖ | ✖ |
 | `POST /privacy/exports` | ✔ | ✖ | ✖ | ✖ | ✖ |
+| `GET /privacy/exports/:id` | ✔ | ✖ | ✖ | ✖ | ✖ |
+| `GET|POST|PATCH /privacy/data-subject-requests` | ✔ | ✖ | ✖ | ✖ | ✖ |
+
+`POST|GET /internal/support-access` e `POST …/:id/approve` são de **operador de plataforma** (`user.platformRole = OPERATOR` ou `PLATFORM_OPERATOR_EMAILS`), não de papéis da clínica. Sem grant, operador não lê tenant (`404`).
 
 ## 5. Política de versionamento
 

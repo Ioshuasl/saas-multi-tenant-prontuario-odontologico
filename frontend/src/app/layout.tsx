@@ -13,7 +13,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR" className={cn('font-sans', geist.variable)}>
+    <html lang="pt-BR" suppressHydrationWarning className={cn('font-sans', geist.variable)}>
       <body className="min-h-dvh bg-background text-foreground antialiased">
         <AppProviders>{children}</AppProviders>
       </body>

@@ -15,6 +15,7 @@ alwaysApply: false
 - `form.handleSubmit(onSave, onError)`.
 - Props tipadas em `types/<Entidade>/<Entidade>FormTypes.ts`.
 - Form longo: Sidebar sticky **360px** quando o padrão exigir.
+- Cores via tokens (`bg-background`, `text-foreground`, `border-border`, `muted`, `card`); `dark:` só quando o token não cobre.
 
 ## Proibido
 
@@ -22,5 +23,6 @@ alwaysApply: false
 - Acessar Data/API.
 - Decidir POST/PUT no Form (isso é no Data).
 - `FadeIn` / `Stagger` / `motion` no Form de página.
+- Hex, `bg-white`, `text-black` sem justificativa pontual (ex.: QR). Recriar `ThemeToggle` na tela.
 
 Norma: `docs/09`, `.cursor/docs/ui/04-form-dialog.md` / `05` se precisar.

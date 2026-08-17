@@ -83,7 +83,7 @@ export class AttachmentController {
     void writeAuditLogSafe({
       tenantId: ctx.tenantId,
       actorId: ctx.userId,
-      action: AuditAction.READ,
+      action: AuditAction.CLINICAL_READ,
       resourceType: 'attachment',
       resourceId: result.attachmentId,
       patientId: result.patientId,

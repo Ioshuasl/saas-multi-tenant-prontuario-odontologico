@@ -17,7 +17,6 @@ import {
   ODONTOGRAM_FACE_PATHS,
   ODONTOGRAM_OCCLUSAL,
   ODONTOGRAM_OUTLINE,
-  ODONTOGRAM_STROKE,
   ODONTOGRAM_VIEWBOX,
 } from '@/packages/clinico/helpers/OdontogramSvgPaths';
 import type { OdontogramTooth } from '@/packages/clinico/types/Odontogram/OdontogramTypes';
@@ -56,7 +55,7 @@ export function OdontogramToothSvg({ toothCode, teeth, onSelect }: OdontogramToo
   const fdiLabel = (
     <button
       type="button"
-      className="rounded px-0.5 text-[11px] font-medium leading-none text-[#5c6d7e] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="rounded px-0.5 text-[11px] font-medium leading-none text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       onClick={selectWhole}
     >
       {toothCode}
@@ -66,7 +65,7 @@ export function OdontogramToothSvg({ toothCode, teeth, onSelect }: OdontogramToo
   const drawing = (
     <svg
       viewBox={ODONTOGRAM_VIEWBOX}
-      className="h-[7.25rem] w-full max-w-[2.85rem] overflow-visible"
+      className="h-[7.25rem] w-full max-w-[2.85rem] overflow-visible text-muted-foreground"
       role="group"
       aria-label={`Dente ${toothCode}`}
     >
@@ -75,8 +74,8 @@ export function OdontogramToothSvg({ toothCode, teeth, onSelect }: OdontogramToo
       >
         <path
           d={ODONTOGRAM_OUTLINE[glyph]}
-          fill={whole === 'HEALTHY' ? '#fff' : undefined}
-          stroke={ODONTOGRAM_STROKE}
+          fill={whole === 'HEALTHY' ? 'var(--card)' : undefined}
+          stroke="currentColor"
           strokeWidth={1.35}
           strokeLinejoin="round"
           className={cn('cursor-pointer', whole === 'HEALTHY' ? '' : TOOTH_CONDITION_FILL[whole])}
@@ -92,7 +91,7 @@ export function OdontogramToothSvg({ toothCode, teeth, onSelect }: OdontogramToo
         <path
           d={ODONTOGRAM_CEJ[glyph]}
           fill="none"
-          stroke={ODONTOGRAM_STROKE}
+          stroke="currentColor"
           strokeWidth={1.2}
           className="pointer-events-none"
         />
@@ -100,7 +99,7 @@ export function OdontogramToothSvg({ toothCode, teeth, onSelect }: OdontogramToo
           <path
             d={occlusal}
             fill="none"
-            stroke={ODONTOGRAM_STROKE}
+            stroke="currentColor"
             strokeWidth={1.2}
             className="pointer-events-none"
           />
@@ -130,7 +129,7 @@ export function OdontogramToothSvg({ toothCode, teeth, onSelect }: OdontogramToo
           <path
             d={ODONTOGRAM_ABSENT_MARK}
             fill="none"
-            stroke={ODONTOGRAM_STROKE}
+            stroke="currentColor"
             strokeWidth={1.6}
             className="pointer-events-none"
           />

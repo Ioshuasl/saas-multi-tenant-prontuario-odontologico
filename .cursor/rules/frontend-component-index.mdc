@@ -23,6 +23,7 @@ const PatientFormDialog = dynamic(
 ```
 
 - Repassa callbacks aos filhos (`onEdit`, `onDelete`, …).
+- Cores via tokens (`bg-background`, `text-foreground`, `border-border`, `muted`, `card`); `dark:` só quando o token não cobre.
 
 ## Proibido
 
@@ -31,5 +32,6 @@ const PatientFormDialog = dynamic(
 - Sempre renderizar FormDialog fechado.
 - Nomear modal como `*Form` — modal é `*FormDialog`.
 - `FadeIn` / `Stagger` / `motion` no Index (lista visível sem animação de lib).
+- Hex, `bg-white`, `text-black` sem justificativa pontual (ex.: QR). Recriar `ThemeToggle` na tela.
 
 Norma: `docs/09`, `docs/16`.

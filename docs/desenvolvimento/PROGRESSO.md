@@ -4,6 +4,188 @@ Append-only. Entradas mais recentes no topo.
 
 ---
 
+## 2026-08-17 — S8 Bloco 7: frontend privacidade (DSR + export tenant)
+
+### Feito
+
+- `/app/privacidade` no package `admin`: exportação completa da clínica (`POST/GET /privacy/exports`, poll até READY, Baixar ZIP / copiar URL) + copy de confidencialidade
+- Index DSR (`GET/POST/PATCH /privacy/data-subject-requests`) + FormDialog (paciente, tipo) + pacote ACCESS/PORTABILITY via GET até `exportUrl`; banner se `dueAt` < 3 dias; concluir/rejeitar com resolução
+- Nav Configurações “Privacidade” só com `data.export` (DENTIST/RECEPTION sem item)
+- E2E `e2e/privacy.spec.ts` (owner exporta + DSR ACCESS; recepção 403/nav oculta)
+- docs/09: rota `/app/privacidade`
+
+### Validação
+
+- `pnpm --filter @repo/frontend typecheck` (ok)
+- ESLint dos arquivos do bloco (ok)
+
+### Próximo
+
+- Aceite de produto / piloto S8 (k6, demo local, bloqueios P0/P1)
+
+---
+
+## 2026-08-17 — S8 Bloco 6: frontend auditoria
+
+### Feito
+
+- `/app/auditoria` no package `admin` (Page → Index → Hook TanStack Query → Service → Data `GET /audit-logs`)
+- Filtros paciente (busca + select), ator (membros), ação e período; empty state; 403 se sem `audit.read`
+- Nav Configurações “Auditoria” só com `audit.read` (DENTIST/RECEPTION sem item)
+- Deep-link da ficha: “Ver acessos” → `/app/auditoria?patientId=` (OWNER; package `operacional` não importa `admin`)
+- E2E `e2e/audit-logs.spec.ts` (owner vê leitura clínica; recepção 403/nav oculta)
+- docs/09: rota `/app/auditoria`
+
+### Validação
+
+- `pnpm --filter @repo/frontend typecheck` (ok)
+- ESLint dos arquivos do bloco (ok). `pnpm --filter @repo/frontend lint` ainda falha em erros pré-existentes (AnamnesisAnswer, chart, hooks de Patient/Appointment)
+
+### Próximo
+
+- S8 Bloco 7 — frontend privacidade (DSR + export tenant)
+
+---
+
+## 2026-08-17 — S8 Bloco 5: `/ready` + carga + endurecimento (backend)
+
+### Feito
+
+- `GET /api/v1/ready` e `GET /ready` (sem auth): sonda Postgres `SELECT 1`, Redis `PING`, storage `headObject`; `200` se todos ok, `503` com `{ db, redis, storage }` sem connection string; `/health` permanece liveness
+- Should: job `anomaly-clinical-read` a cada 5 min; burst de `CLINICAL_READ`/`READ` > `CLINICAL_READ_ANOMALY_N` (default 40) grava `ANOMALY_TRIGGERED` + log; não bloqueia o usuário. Sem `feature_flag`
+- Seed `seed:load` (tenant `carga@teste.local`, ≥10k pacientes / ≥5k agenda, 200 no dia) + k6 `k6/load.js` (20 VUs; **não** no CI de PR)
+- Runbooks em `docs/runbooks/` (restore, WAHA down, tenant suspenso por engano, credencial vazada, suspeita cross-tenant) + ensaio de restore local
+- docs/08 §2.10 `/ready`; docs/11 §11 aponta os runbooks; smoke `test:ready` no CI (Redis no job de integração)
+
+### Validação
+
+- `pnpm --filter @repo/backend typecheck`
+- `pnpm --filter @repo/backend arch:check`
+- `pnpm test:ready`
+- `pnpm --filter @repo/backend essay:restore` (RTO local **17 s**)
+
+### Próximo
+
+- S8 Bloco 6 — frontend auditoria
+
+---
+
+## 2026-08-17 — S8 Bloco 4: anonimização + break-glass (backend)
+
+### Feito
+
+- DSR `DELETION` → `IN_PROGRESS` + job `patient-anonymize`: identificadores viram tokens `ANON…`; marketing revogado; anexos não clínicos soft-delete; prontuário/`clinical_note` permanece; `resolution` cita guarda legal; audit `DSR_COMPLETED`; idempotente
+- `patients_public.anonymizePatient` + `clinical_records_public.softDeleteNonClinicalAttachments` (platform não importa internals)
+- Tabela `platform.support_access` (sem RLS) + `user.platform_role = OPERATOR` (ou `PLATFORM_OPERATOR_EMAILS`)
+- HTTP `POST/GET /api/v1/internal/support-access` + `POST …/:id/approve`; script `ops-support-access.ts`
+- Sem 2º ator → `409 SELF_APPROVAL_FORBIDDEN`; grant expirado/ausente → operador lê tenant com `404`; headers `X-Support-Grant-Id` + `X-Tenant-Id` assumem leitura; e-mail Owner + audit `SUPPORT_ACCESS_GRANTED` / `USED` (`actorType: SUPPORT`)
+- docs/08 §2.10 e docs/06 §9 alinhados (sem `platform_audit_log` duplicado)
+
+### Validação
+
+- `pnpm --filter @repo/backend typecheck`
+- `pnpm --filter @repo/backend arch:check`
+- `pnpm db:migrate` (`20260817210000_s8_anonymize_support_access`)
+- `pnpm test:platform-support`
+- `pnpm test:platform-dsr` (DELETION agora `IN_PROGRESS`)
+
+### Próximo
+
+- S8 Bloco 5 — `/ready` + carga + endurecimento
+
+---
+
+## 2026-08-17 — S8 Bloco 3: DSR + pacote do paciente (backend)
+
+### Feito
+
+- Tabela `data_subject_request` + RLS (`ACCESS|CORRECTION|DELETION|PORTABILITY|REVOKE_CONSENT`; `RECEIVED|IN_PROGRESS|COMPLETED|REJECTED`); `due_at` = +`DSR_DUE_DAYS` (default 15)
+- CRUD `GET|POST|PATCH /api/v1/privacy/data-subject-requests` (`data.export`, OWNER); cross-tenant `404`; recepção `403`; `SUSPENDED` ainda registra
+- ACCESS/PORTABILITY → job `patient-package` (PDF+JSON no ZIP `paciente.pdf`/`paciente.json`; `export_key`; URL 7 dias)
+- `REVOKE_CONSENT` via `patients_public.revokeMarketingConsent` (transacional permanece) e conclui na hora
+- `CORRECTION` só registra (evolução intacta); `DELETION` registra sem anonimizar (Bloco 4)
+- Job `dsr-due-reminder` D-3/D-0 e-mail ao Owner; audit `DSR_CREATED` / `DSR_COMPLETED` / `DSR_REJECTED`
+- docs/08 §2.10 preenchido para DSR
+
+### Validação
+
+- `pnpm --filter @repo/backend typecheck`
+- `pnpm --filter @repo/backend arch:check`
+- `pnpm db:migrate` (`20260817200000_s8_data_subject_request`)
+- `pnpm test:platform-dsr`
+
+### Próximo
+
+- S8 Bloco 4 — anonimização + break-glass
+
+---
+
+## 2026-08-17 — S8 Bloco 2: exportação completa do tenant (backend)
+
+### Feito
+
+- Tabela `tenant_export` + RLS (`PENDING|RUNNING|READY|FAILED`); **não** reusa `report_export`
+- `POST /api/v1/privacy/exports` → `202` (`data.export`, OWNER); job `tenant-export` na fila `platform` via outbox; ZIP JSON+CSV+anexos; `GET /privacy/exports/:id` URL assinada 7 dias
+- Decrypt de evolução/anamnese/alerta **só** no job; falha pontual marca o item e segue; cross-tenant `404`; `SUSPENDED` ainda exporta
+- Audit `EXPORT_REQUESTED` / `EXPORT_COMPLETED`; `Idempotency-Key` → `409 IDEMPOTENCY_KEY_REUSED`
+- docs/08 §2.10 preenchido para `privacy/exports`
+
+### Validação
+
+- `pnpm --filter @repo/backend typecheck`
+- `pnpm --filter @repo/backend arch:check`
+- `pnpm db:migrate` (`20260817190000_s8_tenant_export`)
+- `pnpm test:platform-export`
+
+### Próximo
+
+- S8 Bloco 3 — DSR + pacote do paciente
+
+---
+
+## 2026-08-17 — S8 Bloco 1: auditoria consultável + append-only (backend)
+
+### Feito
+
+- Módulo HTTP `platform` (`GET /api/v1/audit-logs`, `audit.read`, OWNER): filtros `patientId` / `actorId` / `action` / `from` / `to`, cursor, `limit` ≤ 100, teto 366 dias → `422 PERIOD_TOO_LONG`
+- `audit_log` append-only de verdade: trigger PG + `GRANT` SELECT/INSERT; índice `(tenant_id, patient_id, created_at DESC)` onde `patient_id IS NOT NULL`
+- `AuditAction` estendido (`CLINICAL_READ`, `NOTE_*`, `MESSAGE_SENT`, `EXPORT_*`, `DSR_*`, `SUPPORT_*`); leitura clínica grava `CLINICAL_READ` daqui pra frente; filtro aceita `READ` histórico
+- `NOTE_CREATED` / `NOTE_AMENDED` na evolução; `MESSAGE_SENT` no job WA e no envio da inbox (template + telefone mascarado, sem corpo)
+- docs/08 §2.10 e docs/16 (`platform` na superfície HTTP; `write_audit` permanece em shared)
+
+### Validação
+
+- `pnpm --filter @repo/backend typecheck`
+- `pnpm --filter @repo/backend arch:check`
+- `pnpm db:migrate` (migração `20260817180000_s8_audit_append_only`)
+- `pnpm test:platform-audit`
+
+### Próximo
+
+- S8 Bloco 2 — exportação completa do tenant (ZIP LGPD)
+
+---
+
+## 2026-08-17 — S8 planejada (checklist)
+
+### Feito
+
+- Checklist [`sprints/S8-endurecimento-piloto.md`](./sprints/S8-endurecimento-piloto.md) no mesmo padrão da S7
+- Escopo: E11 restante Must (audit consultável, export tenant ZIP, DSR + pacote do paciente, anonimização com guarda, break-glass 4 olhos, `/ready`) + k6 representativo + runbooks + prontidão de piloto (M5 kickoff)
+- 7 blocos (5 backend + 2 frontend); cortes fechados (export LGPD ≠ `report_export`; M5 nesta sprint = prontidão não o mês inteiro; HTTP `platform/` + `write_audit` em shared; carga = 1 tenant 10k pacientes, não 500 tenants)
+- README desenvolvimento aponta S8 como próxima (S7 segue em andamento)
+
+### Validação
+
+- Fontes: RF E11, módulo 10 §7, docs/06 §9, docs/08 §2.10, docs/10 §5–7/§10, docs/17 §5–6, herança S0 `audit_log` + S4 `auditRead` + S7 export de relatório/subscriptionGuard
+
+### Próximo
+
+- Fechar aceite residual S7 se ainda aberto
+- S8 Bloco 1 — backend auditoria consultável + append-only
+
+---
+
 ## 2026-08-17 — S7 Bloco 7: dashboard, relatórios e assinatura (frontend)
 
 ### Feito

@@ -141,7 +141,7 @@ WHERE n.nspname = 'public' AND c.relkind = 'r' AND NOT c.relrowsecurity;
 | `plan` | Catálogo de planos do SaaS | Leitura pública autenticada |
 | `procedure_catalog_template` | Catálogo padrão de procedimentos (semente) | Leitura pública autenticada |
 | `outbox_event` | Eventos de domínio | RLS por `tenant_id` (o dispatcher usa role próprio com bypass controlado) |
-| `platform_audit_log` | Auditoria de acesso de suporte (break-glass) | Somente role de plataforma |
+| `platform.support_access` | Grants de break-glass (requester ≠ approver, ≤ 4 h) | **Sem** RLS de tenant; só operadores da plataforma |
 
 `user.email` é único globalmente. Consequência: a mesma pessoa usa uma conta e escolhe a clínica ao entrar — melhor UX para o dentista associado e evita senha duplicada.
 
@@ -209,10 +209,11 @@ Estados do tenant: `TRIAL → ACTIVE → PAST_DUE → SUSPENDED → CANCELLED`, 
 
 Requisito de compliance: nosso time **não** navega no prontuário de clínicas por conveniência.
 
-1. Suporte não tem acesso a dado de tenant por padrão.
-2. Acesso exige solicitação com motivo + ticket, aprovada por segunda pessoa, com validade máxima de 4 horas.
-3. O acesso é feito por um role que assume `app.tenant_id` explicitamente e grava em `platform_audit_log` (quem, quando, qual tenant, quais recursos).
-4. O Owner do tenant recebe notificação de que houve acesso de suporte e pode consultar o registro.
+1. Suporte não tem membership no tenant da clínica e não lê dado por padrão. Trocar `X-Tenant-Id` sem grant → **404** (operador) / **403 TENANT_NOT_ALLOWED** (usuário comum).
+2. Acesso exige solicitação com motivo (≥ 20 caracteres) aprovada por **segunda pessoa**, validade máxima de **4 horas**, scope mínimo `clinical.read` (somente leitura).
+3. Grants vivem em `platform.support_access` (**sem** RLS de tenant). HTTP interno `POST/GET /api/v1/internal/support-access` e script `backend/scripts/ops-support-access.ts`. Ator: `user.platform_role = OPERATOR` ou allowlist `PLATFORM_OPERATOR_EMAILS`.
+4. Com grant `APPROVED` vigente, headers `X-Support-Grant-Id` + `X-Tenant-Id` assumem o contexto da clínica; cada request grava `SUPPORT_ACCESS_USED` no `audit_log` **da clínica** (`actorType: SUPPORT`). Não há tabela duplicada `platform_audit_log` no MVP — o espelho no tenant basta (Owner vê em `/app/auditoria`).
+5. O Owner recebe e-mail no `GRANTED` e consulta o rastro (`SUPPORT_ACCESS_GRANTED` / `USED`). Sem 2º aprovador o grant permanece `PENDING` e não assume tenant.
 
 ## 10. Testes obrigatórios de isolamento
 

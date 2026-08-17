@@ -17,4 +17,9 @@ export const adminQueryKeys = {
   subscription: ['subscription'] as const,
   subscriptionPlans: ['subscription-plans'] as const,
   subscriptionUsage: ['subscription-usage'] as const,
+  auditLogs: (query: object) => ['audit-logs', query] as const,
+  auditLogPatients: (search: string) => ['audit-log-patients', search] as const,
+  dataSubjectRequests: (query: object) => ['data-subject-requests', 'list', query] as const,
+  dataSubjectRequest: (id: string) => ['data-subject-requests', 'get', id] as const,
+  tenantExport: (id: string) => ['tenant-export', id] as const,
 };

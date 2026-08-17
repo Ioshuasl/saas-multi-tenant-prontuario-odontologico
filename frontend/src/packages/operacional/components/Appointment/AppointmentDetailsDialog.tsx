@@ -98,7 +98,7 @@ export function AppointmentDetailsDialog({
             <DialogTitle>{appointment.patient?.name ?? 'Agendamento'}</DialogTitle>
           </DialogHeader>
 
-          <div className="grid gap-3 text-sm text-[#37352F]">
+          <div className="grid gap-3 text-sm text-foreground">
             <p>
               {formatHour(start)}–{formatHour(end)} ·{' '}
               {APPOINTMENT_STATUS_META[
@@ -187,8 +187,8 @@ export function AppointmentDetailsDialog({
             </Button>
 
             {appointment.recurrenceId ? (
-              <div className="grid gap-2 rounded-md border border-[#E9E9E7] p-3">
-                <p className="text-xs font-medium text-[#787774]">Série recorrente</p>
+              <div className="grid gap-2 rounded-md border border-border p-3">
+                <p className="text-xs font-medium text-muted-foreground">Série recorrente</p>
                 <NativeSelect
                   value={seriesScope}
                   onChange={(e) => setSeriesScope(e.target.value as SeriesDeleteScope)}

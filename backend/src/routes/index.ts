@@ -20,6 +20,7 @@ import { buildTreatmentsRouter, buildPublicQuotesRouter } from '../modules/treat
 import { buildBillingRouter } from '../modules/billing/billing.module.js';
 import { buildReportingRouter } from '../modules/reporting/reporting.module.js';
 import { buildSubscriptionRouter } from '../modules/subscription/subscription.module.js';
+import { buildPlatformRouter } from '../modules/platform/platform.module.js';
 
 /** Monta rotas versionadas em `/api/v1`. Módulos de domínio entram aqui. */
 export function buildApiRouter(): Router {
@@ -37,6 +38,7 @@ export function buildApiRouter(): Router {
   api.use(buildBillingRouter());
   api.use(buildReportingRouter());
   api.use(buildSubscriptionRouter());
+  api.use(buildPlatformRouter());
   api.use('/public', buildPublicRouter());
   api.use('/public', buildPublicAnamnesisRouter());
   api.use('/public', buildPublicQuotesRouter());

@@ -15,11 +15,13 @@ alwaysApply: false
 - Extrair reset para `handleForm`; `useEffect` só chama essa função.
 - Index monta só quando aberto **e** via `next/dynamic` (sem import estático do dialog).
 - Motion (`MotionDialogBody`) só neste chunk lazy — nunca no Index/Form.
+- Cores via tokens (`bg-background`, `text-foreground`, `border-border`, `muted`, `card`); `dark:` só quando o token não cobre.
 
 ## Proibido
 
 - Nomear modal como `*Form`.
 - Acessar Data/API.
 - Renderizar sempre montado quando fechado.
+- Hex, `bg-white`, `text-black` sem justificativa pontual (ex.: QR). Recriar `ThemeToggle` na tela.
 
 Norma: `docs/09`, `.cursor/docs/ui/04-form-dialog.md`.

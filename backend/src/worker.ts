@@ -14,6 +14,11 @@ import { expireQuotesJob } from './modules/treatments/jobs/expire_quotes.job.js'
 import { markOverdueInstallmentsJob } from './modules/billing/jobs/mark_overdue_installments.job.js';
 import { generateReceiptPdfJob } from './modules/billing/jobs/generate_receipt_pdf.job.js';
 import { reportExportJob } from './modules/reporting/jobs/report_export.job.js';
+import { tenantExportJob } from './modules/platform/jobs/tenant_export.job.js';
+import { patientPackageJob } from './modules/platform/jobs/patient_package.job.js';
+import { patientAnonymizeJob } from './modules/platform/jobs/patient_anonymize.job.js';
+import { dsrDueReminderJob } from './modules/platform/jobs/dsr_due_reminder.job.js';
+import { anomalyClinicalReadJob } from './modules/platform/jobs/anomaly_clinical_read.job.js';
 import {
   expireTrialsJob,
   recalculateUsageCountersJob,
@@ -30,6 +35,8 @@ const DISPATCH_INTERVAL_MS = 5_000;
 const EXPIRE_QUOTES_INTERVAL_MS = 15 * 60_000;
 const MARK_OVERDUE_INTERVAL_MS = 15 * 60_000;
 const SUBSCRIPTION_INTERVAL_MS = 15 * 60_000;
+const DSR_REMINDER_INTERVAL_MS = 15 * 60_000;
+const ANOMALY_INTERVAL_MS = 5 * 60_000;
 
 async function enqueueMarkOverdue(queue: BullmqJobQueue): Promise<void> {
   if (!queue.isConnected()) return;
@@ -66,6 +73,35 @@ async function enqueueSubscriptionLifecycle(queue: BullmqJobQueue): Promise<void
   }
 }
 
+async function enqueueAnomalyClinicalRead(queue: BullmqJobQueue): Promise<void> {
+  if (!queue.isConnected()) return;
+  const tenants = await listTenantsForScheduledJobs();
+  for (const tenant of tenants) {
+    const ymd = todayInTimezone(tenant.timezone);
+    const slot = Math.floor(Date.now() / ANOMALY_INTERVAL_MS);
+    await queue.add(
+      QUEUE.platform,
+      JOB.anomalyClinicalRead,
+      { tenantId: tenant.id, requestId: `anomaly-clinical-read:${ymd}:${slot}` },
+      { jobId: `anomaly-clinical-read:${tenant.id}:${slot}` },
+    );
+  }
+}
+
+async function enqueueDsrDueReminder(queue: BullmqJobQueue): Promise<void> {
+  if (!queue.isConnected()) return;
+  const tenants = await listTenantsForScheduledJobs();
+  for (const tenant of tenants) {
+    const ymd = todayInTimezone(tenant.timezone);
+    await queue.add(
+      QUEUE.platform,
+      JOB.dsrDueReminder,
+      { tenantId: tenant.id, requestId: `dsr-due-reminder:${ymd}`, timezone: tenant.timezone },
+      { jobId: `dsr-due-reminder:${tenant.id}:${ymd}` },
+    );
+  }
+}
+
 async function enqueueExpireQuotes(queue: BullmqJobQueue): Promise<void> {
   if (!queue.isConnected()) return;
   const tenants = await listTenantsForScheduledJobs();
@@ -89,6 +125,11 @@ async function main(): Promise<void> {
   queue.register(QUEUE.platform, JOB.generateAttachmentThumbnail, generateAttachmentThumbnailJob);
   queue.register(QUEUE.platform, JOB.generateQuotePdf, generateQuotePdfJob);
   queue.register(QUEUE.reporting, JOB.generateExport, reportExportJob);
+  queue.register(QUEUE.platform, JOB.tenantExport, tenantExportJob);
+  queue.register(QUEUE.platform, JOB.patientPackage, patientPackageJob);
+  queue.register(QUEUE.platform, JOB.patientAnonymize, patientAnonymizeJob);
+  queue.register(QUEUE.platform, JOB.dsrDueReminder, dsrDueReminderJob);
+  queue.register(QUEUE.platform, JOB.anomalyClinicalRead, anomalyClinicalReadJob);
   queue.register(QUEUE.platform, JOB.expireTrials, expireTrialsJob);
   queue.register(QUEUE.platform, JOB.recalculateUsageCounters, recalculateUsageCountersJob);
   queue.register(QUEUE.platform, JOB.generateReceiptPdf, generateReceiptPdfJob);
@@ -171,6 +212,24 @@ async function main(): Promise<void> {
     logger.error({ err }, 'subscription_lifecycle_enqueue_error');
   });
 
+  const dsrReminderInterval = setInterval(() => {
+    void enqueueDsrDueReminder(queue).catch((err) => {
+      logger.error({ err }, 'dsr_due_reminder_enqueue_error');
+    });
+  }, DSR_REMINDER_INTERVAL_MS);
+  void enqueueDsrDueReminder(queue).catch((err) => {
+    logger.error({ err }, 'dsr_due_reminder_enqueue_error');
+  });
+
+  const anomalyInterval = setInterval(() => {
+    void enqueueAnomalyClinicalRead(queue).catch((err) => {
+      logger.error({ err }, 'anomaly_clinical_read_enqueue_error');
+    });
+  }, ANOMALY_INTERVAL_MS);
+  void enqueueAnomalyClinicalRead(queue).catch((err) => {
+    logger.error({ err }, 'anomaly_clinical_read_enqueue_error');
+  });
+
   const health = startWorkerHealth(() => ({
     status: 'ok',
     service: 'worker',
@@ -182,6 +241,8 @@ async function main(): Promise<void> {
     clearInterval(expireInterval);
     clearInterval(overdueInterval);
     clearInterval(subscriptionInterval);
+    clearInterval(dsrReminderInterval);
+    clearInterval(anomalyInterval);
     health.close();
     await queue.close();
     await getPrismaClient().$disconnect();

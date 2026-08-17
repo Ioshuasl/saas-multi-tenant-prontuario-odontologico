@@ -20,6 +20,7 @@ function isAllowedWrite(url: string): boolean {
   if (path.includes('/auth/')) return true;
   if (path.includes('/webhooks/')) return true;
   if (path.includes('/reports/') && path.includes('/export')) return true;
+  if (path.includes('/privacy/')) return true;
   if (path.includes('/users/invitations/accept')) return true;
   return false;
 }

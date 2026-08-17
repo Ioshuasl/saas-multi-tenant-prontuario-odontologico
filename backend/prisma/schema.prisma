@@ -76,6 +76,8 @@ model Tenant {
   cashSessions    CashSession[]
   cashMovements   CashMovement[]
   reportExports   ReportExport[]
+  tenantExports   TenantExport[]
+  dataSubjectRequests DataSubjectRequest[]
   subscription    Subscription?
   usageCounters   UsageCounter[]
 
@@ -99,7 +101,7 @@ model TenantCryptoKey {
   @@map("tenant_crypto_key")
 }
 
-/// Esqueleto de auditoria (docs/07 / doc 17).
+/// Auditoria append-only (docs/07 / doc 17 / S8). Índice parcial `idx_audit_patient` na migração.
 model AuditLog {
   id           String   @id @db.Uuid
   tenantId     String   @map("tenant_id") @db.Uuid
@@ -130,11 +132,13 @@ model User {
   lastLoginAt     DateTime?      @map("last_login_at") @db.Timestamptz
   failedAttempts  Int            @default(0) @map("failed_attempts") @db.SmallInt
   lockedUntil     DateTime?      @map("locked_until") @db.Timestamptz
+  platformRole    String?        @map("platform_role")
   createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
   memberships          Membership[]
   refreshTokens        RefreshToken[]
   invitationsSent      Invitation[]          @relation("InvitationInviter")
   passwordResetTokens  PasswordResetToken[]
+  handledDataSubjectRequests DataSubjectRequest[] @relation("DsrHandler")
 
   @@map("user")
 }
@@ -389,6 +393,7 @@ model Patient {
   receivables     Receivable[]
   productionEntries ProductionEntry[]
   creditLedger    PatientCreditLedger[]
+  dataSubjectRequests DataSubjectRequest[]
 
   @@unique([tenantId, code], map: "uq_patient_tenant_code")
   @@index([tenantId, name], map: "idx_patient_name")
@@ -1252,6 +1257,47 @@ model ReportExport {
 
   @@index([tenantId, createdAt(sort: Desc)], map: "idx_report_export_tenant_created")
   @@map("report_export")
+}
+
+/// Exportação LGPD completa do tenant (S8). URL assinada 7 dias — não reusa report_export.
+model TenantExport {
+  id              String    @id @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  status          String    @default("PENDING")
+  storageKey      String?   @map("storage_key")
+  requestedBy     String    @map("requested_by") @db.Uuid
+  idempotencyKey  String?   @map("idempotency_key")
+  error           String?
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_tenant_export_tenant_created")
+  @@map("tenant_export")
+}
+
+/// Solicitação do titular (LGPD). Pacote ACCESS/PORTABILITY em export_key (presign 7 dias).
+model DataSubjectRequest {
+  id          String    @id @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  patientId   String    @map("patient_id") @db.Uuid
+  type        String
+  status      String    @default("RECEIVED")
+  requestedAt DateTime  @default(now()) @map("requested_at") @db.Timestamptz
+  dueAt       DateTime  @map("due_at") @db.Timestamptz
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+  handledBy   String?   @map("handled_by") @db.Uuid
+  resolution  String?
+  exportKey   String?   @map("export_key")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  patient     Patient   @relation(fields: [patientId], references: [id])
+  handler     User?     @relation("DsrHandler", fields: [handledBy], references: [id])
+
+  @@index([tenantId, requestedAt(sort: Desc)], map: "idx_dsr_tenant_requested")
+  @@index([tenantId, dueAt], map: "idx_dsr_tenant_due")
+  @@map("data_subject_request")
 }
 
 /// Catálogo global de planos SaaS (sem tenant / sem RLS). docs/07 §9 · ADR-0010.

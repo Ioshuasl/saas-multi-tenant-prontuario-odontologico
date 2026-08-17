@@ -1,6 +1,8 @@
 import type { JobPayload } from '../../../shared/queue/job_payload.js';
 import { logger } from '../../../shared/config/logger.js';
 import type { RequestContext } from '../../../shared/domain/request_context.js';
+import { AuditAction, writeAuditLogSafe } from '../../../shared/database/write_audit.js';
+import { maskPhone } from '../../../shared/helpers/mask_pii.js';
 import { getMessagingProvider } from '../../../shared/integrations/whatsapp/index.js';
 import { getAppointmentById } from '../../scheduling/scheduling_public.js';
 import { getPatientById, hasMarketingConsent } from '../../patients/patients_public.js';
@@ -180,6 +182,20 @@ export async function sendWhatsappMessageJob(payload: JobPayload): Promise<void>
     if (automationRunId) {
       await markRun.execute(ctx, automationRunId, { result: 'SENT', messageId: message.id });
     }
+    await writeAuditLogSafe({
+      tenantId: ctx.tenantId,
+      actorId: ctx.userId || undefined,
+      actorType: ctx.userId ? 'USER' : 'SYSTEM',
+      action: AuditAction.MESSAGE_SENT,
+      resourceType: 'message',
+      resourceId: message.id,
+      patientId,
+      metadata: {
+        templateKey: key,
+        channel: 'WHATSAPP',
+        toMasked: maskPhone(patient.phonePrimary),
+      },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error({ err, tenantId: ctx.tenantId, templateKey: key }, 'messaging_send_failed');

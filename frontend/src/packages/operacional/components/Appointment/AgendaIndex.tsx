@@ -7,6 +7,7 @@ import { ptBR } from 'date-fns/locale';
 import { AgendaGrid } from '@/packages/operacional/components/Appointment/AgendaGrid';
 import { AgendaToolbar } from '@/packages/operacional/components/Appointment/AgendaToolbar';
 import { WaitlistPanel } from '@/packages/operacional/components/Waitlist/WaitlistPanel';
+import { APPOINTMENT_STATUS_META } from '@/packages/operacional/enum/Appointment/AppointmentStatusEnum';
 import type { SlotMinutes } from '@/packages/operacional/helpers/AgendaNotionTokens';
 import {
   dayRange,
@@ -194,7 +195,7 @@ export function AgendaIndex() {
       {!resourceReady ? (
         <p className="text-sm text-muted-foreground">{emptyResourceMessage}</p>
       ) : listQuery.isLoading ? (
-        <div className="h-64 animate-pulse rounded-md bg-[#EFEFEF]" aria-hidden />
+        <div className="h-64 animate-pulse rounded-md bg-muted" aria-hidden />
       ) : listQuery.isError ? (
         <Alert variant="destructive" role="alert">
           <AlertDescription>{operacionalErrorMessage(listQuery.error)}</AlertDescription>
@@ -224,14 +225,18 @@ export function AgendaIndex() {
         </Alert>
       ) : null}
 
-      <div className="flex flex-wrap gap-2 text-[11px] text-[#787774]">
-        <span className="rounded border border-dashed border-[#D3D1CB] bg-[#E9E9E7] px-2 py-0.5 text-[#787774]">
-          Solicitado
-        </span>
-        <span className="rounded bg-[#E7F3F8] px-2 py-0.5 text-[#0B6E99]">Agendado</span>
-        <span className="rounded bg-[#EDF3EC] px-2 py-0.5 text-[#448361]">Confirmado</span>
-        <span className="rounded bg-[#FBF3DB] px-2 py-0.5 text-[#9F6B53]">Em atendimento</span>
-        <span className="rounded bg-[#FDEBEC] px-2 py-0.5 text-[#C14C4A]">Falta</span>
+      <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+        {(['REQUESTED', 'SCHEDULED', 'CONFIRMED', 'IN_SERVICE', 'NO_SHOW'] as const).map((status) => {
+          const meta = APPOINTMENT_STATUS_META[status];
+          return (
+            <span
+              key={status}
+              className={`rounded border px-2 py-0.5 ${meta.bg} ${meta.text} ${meta.border} ${status === 'REQUESTED' ? 'border-dashed' : ''}`}
+            >
+              {meta.label}
+            </span>
+          );
+        })}
       </div>
 
       <WaitlistPanel professionalId={professionalId || undefined} />

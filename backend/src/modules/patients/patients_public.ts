@@ -13,6 +13,8 @@ import {
   ListConsentsRepository,
 } from './repositories/patient/patient.repository.js';
 import { SetOverdueRepository } from './repositories/patient/patient_set_overdue.repository.js';
+import { RevokeMarketingConsentRepository } from './repositories/patient/patient_revoke_marketing_consent.repository.js';
+import { AnonymizeRepository, type AnonymizePatientResult } from './repositories/patient/patient_anonymize.repository.js';
 import { GetService } from './services/patient/patient_get.service.js';
 import type { PatientDetail } from './types/patients.types.js';
 
@@ -24,6 +26,8 @@ const createPatient = new CreateAction();
 const getPatientRepo = new GetPatientRepository();
 const createConsent = new CreateConsentRepository();
 const setOverdue = new SetOverdueRepository();
+const revokeMarketing = new RevokeMarketingConsentRepository();
+const anonymizePatientRepo = new AnonymizeRepository();
 
 const PUBLIC_CONSENT_VERSION = 'v1';
 
@@ -183,4 +187,29 @@ export async function setPatientHasOverdue(
   await getTenantPrisma().runInTenantContext(ctx, (inner) =>
     setOverdue.executeInTx(inner, patientId, hasOverdue),
   );
+}
+
+/** Revoga marketing (WhatsApp). Comunicação transacional permanece. Idempotente. */
+export async function revokeMarketingConsent(
+  ctx: RequestContext,
+  patientId: string,
+  tx?: DbTransaction,
+): Promise<void> {
+  if (tx) {
+    await revokeMarketing.executeInTx(tx, ctx, patientId);
+    return;
+  }
+  await revokeMarketing.execute(ctx, patientId);
+}
+
+export type { AnonymizePatientResult };
+
+/** Substitui identificadores diretos; prontuário permanece. Idempotente. */
+export async function anonymizePatient(
+  ctx: RequestContext,
+  patientId: string,
+  tx?: DbTransaction,
+): Promise<AnonymizePatientResult> {
+  if (tx) return anonymizePatientRepo.executeInTx(tx, ctx, patientId);
+  return anonymizePatientRepo.execute(ctx, patientId);
 }

@@ -42,6 +42,8 @@ frontend/src/
 │   │   ├── inbox/page.tsx               # caixa de entrada (E8b)
 │   │   ├── relatorios/                  # dashboard E9 + export + reuso E7
 │   │   ├── assinatura/page.tsx          # plano/trial (OWNER)
+│   │   ├── auditoria/page.tsx           # trilha de auditoria (OWNER, audit.read)
+│   │   ├── privacidade/page.tsx         # DSR + export LGPD (OWNER, data.export)
 │   │   └── configuracoes/…
 │   ├── api/auth/[...]/route.ts
 │   ├── layout.tsx
@@ -189,6 +191,8 @@ Layout de três áreas em uma única rota (sem navegação entre telas durante o
 - Rotas E7 (`cash-flow`, `overdue`, `production`) reaparecem sob `/app/relatorios/*` reusando as telas do package `financeiro`.
 - Dentista: produção própria ok; sem receita/fluxo/inadimplência consolidados.
 - `/app/assinatura` (`subscription.manage`): plano, uso vs limite, dias de trial, CTA “fale conosco” — sem checkout de cartão.
+- `/app/auditoria` (`audit.read`): Index da trilha (filtros paciente/ator/ação/período; empty/403). Deep-link `?patientId=` a partir da ficha (“Ver acessos”). Sem edição. DENTIST/RECEPTION sem item de nav.
+- `/app/privacidade` (`data.export`): exportação completa da clínica (poll + Baixar ZIP / copiar URL; copy de confidencialidade) e solicitações do titular (FormDialog paciente/tipo; pacote ACCESS quando pronto; banner se `dueAt` < 3 dias). DENTIST/RECEPTION sem item de nav.
 - Banner global se trial ≤ 3 dias, atraso ou suspensão (OWNER). SUSPENDED/EXPIRED: UI de somente leitura; listagens e export seguem.
 
 ## 5. Padrões de implementação

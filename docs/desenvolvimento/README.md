@@ -20,13 +20,15 @@ Pasta **somente** para acompanhamento do desenvolvimento (scaffold, sprints, dec
 
 ## Status atual
 
-- **Fase:** Sprint 7 — Inbox / relatórios / billing SaaS (E8b + E9 + E10) — **planejada** (checklist)
+- **Fase:** Sprint 8 — Endurecimento / LGPD / piloto (E11 restante + M5 prontidão) — **em andamento** (Blocos 1–5 backend)
+- **Anterior imediata:** Sprint 7 — Inbox / relatórios / billing SaaS — **código Must fechado**
 - **Anterior:** Sprint 6 — Financeiro (E7) — **fechada** (código + aceite local; M4 demo local)
 - **Sprint 5:** Orçamento → tratamento (E6) — **fechada**
 - **Sprint 4:** Prontuário (E5) — **código Must fechado** (M3 uso real pendente)
 - **Código base:** Sprint 0 concluída (monorepo, CI, RLS, KeyManagementPort)
 - **Especificação:** [`../README.md`](../README.md)
-- **Checklist S7 (planejada):** [`sprints/S7-inbox-relatorios-billing-saas.md`](./sprints/S7-inbox-relatorios-billing-saas.md)
+- **Checklist S8 (em andamento):** [`sprints/S8-endurecimento-piloto.md`](./sprints/S8-endurecimento-piloto.md)
+- **Checklist S7 (código Must):** [`sprints/S7-inbox-relatorios-billing-saas.md`](./sprints/S7-inbox-relatorios-billing-saas.md)
 - **Checklist S6 (fechada):** [`sprints/S6-financeiro.md`](./sprints/S6-financeiro.md)
 - **Checklist S5 (fechada):** [`sprints/S5-orcamentos-tratamentos.md`](./sprints/S5-orcamentos-tratamentos.md)
 - **Checklist S4 (código Must):** [`sprints/S4-prontuario.md`](./sprints/S4-prontuario.md)

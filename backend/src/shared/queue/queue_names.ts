@@ -26,6 +26,11 @@ export const JOB = {
   generateQuotePdf: 'generate-quote-pdf',
   generateReceiptPdf: 'generate-receipt-pdf',
   expireQuotes: 'expire-quotes',
+  tenantExport: 'tenant-export',
+  patientPackage: 'patient-package',
+  patientAnonymize: 'patient-anonymize',
+  dsrDueReminder: 'dsr-due-reminder',
+  anomalyClinicalRead: 'anomaly-clinical-read',
 } as const;
 
 export type JobName = (typeof JOB)[keyof typeof JOB];
@@ -54,6 +59,11 @@ export const JOB_RETRY: Record<JobName, JobRetry> = {
   [JOB.generateQuotePdf]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
   [JOB.generateReceiptPdf]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
   [JOB.expireQuotes]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
+  [JOB.tenantExport]: { attempts: 2, backoff: { type: 'exponential', delay: 5_000 } },
+  [JOB.patientPackage]: { attempts: 2, backoff: { type: 'exponential', delay: 5_000 } },
+  [JOB.patientAnonymize]: { attempts: 2, backoff: { type: 'exponential', delay: 5_000 } },
+  [JOB.dsrDueReminder]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
+  [JOB.anomalyClinicalRead]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
 };
 
 export function dlqName(queue: QueueName): string {

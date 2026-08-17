@@ -42,7 +42,7 @@ export function OdontogramChart({ dentition, teeth, onSelect }: OdontogramChartP
   return (
     <div className="grid min-w-0 gap-1">
       {renderArch(rows.upper)}
-      <div className="mx-2 border-t border-dashed border-[#9aa8b4]" aria-hidden />
+      <div className="mx-2 border-t border-dashed border-border" aria-hidden />
       {renderArch(rows.lower)}
       <p className="mt-2 text-xs text-muted-foreground">
         Clique na coroa (faces {TOOTH_FACE_LABELS.M} · {TOOTH_FACE_LABELS.D} · {TOOTH_FACE_LABELS.V} ·{' '}

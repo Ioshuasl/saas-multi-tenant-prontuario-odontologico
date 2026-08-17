@@ -5,7 +5,6 @@ import type { OdontogramGlyph } from '@/packages/clinico/helpers/OdontogramFdi';
 export const ODONTOGRAM_VIEWBOX = '0 0 44 100';
 export const ODONTOGRAM_CX = 22;
 export const ODONTOGRAM_CY = 52;
-export const ODONTOGRAM_STROKE = '#5c6d7e';
 
 export const ODONTOGRAM_OUTLINE: Record<OdontogramGlyph, string> = {
   incisor_central:

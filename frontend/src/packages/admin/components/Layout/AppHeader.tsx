@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Fragment } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { BellIcon, LogOutIcon, SettingsIcon } from 'lucide-react';
+import { ThemeToggle } from '@/shared/ui/theme-toggle';
 import { buildAdminBreadcrumbs } from '@/packages/admin/helpers/AdminNav';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar';
@@ -77,7 +78,8 @@ export function AppHeader() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
         <Button
           variant="ghost"
           size="icon"

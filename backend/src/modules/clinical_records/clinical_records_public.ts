@@ -5,6 +5,7 @@ import { EnsureRepository } from './repositories/medical_record/medical_record_e
 import { SeedRepository } from './repositories/anamnesis_form/anamnesis_form_seed.repository.js';
 import { PersistAction } from './actions/clinical_note/clinical_note_persist.action.js';
 import { ApplyExecutionAction } from './actions/tooth_state/tooth_state_apply_execution.action.js';
+import { SoftDeleteNonClinicalRepository } from './repositories/attachment/attachment_soft_delete_non_clinical.repository.js';
 import type { ClinicalAlertSummary } from './types/medical_record/medical_record_get.types.js';
 import type { EnsureRecordResult } from './repositories/medical_record/medical_record_ensure.repository.js';
 import type {
@@ -18,6 +19,7 @@ const listCritical = new ListCriticalRepository();
 const seedForm = new SeedRepository();
 const persistNote = new PersistAction();
 const applyTooth = new ApplyExecutionAction();
+const softDeleteNonClinical = new SoftDeleteNonClinicalRepository();
 
 /** Cria prontuário 1:1 se ainda não existir (idempotente). */
 export async function ensureRecord(
@@ -64,6 +66,16 @@ export async function applyExecutionToothState(
   tx: DbTransaction,
 ): Promise<void> {
   await applyTooth.executeInTx(tx, ctx, toothSchema);
+}
+
+/** Remove anexos não clínicos (DOCUMENT/CONSENT_FORM/OTHER). Mantém RX/foto/exame. */
+export async function softDeleteNonClinicalAttachments(
+  ctx: RequestContext,
+  patientId: string,
+  tx?: DbTransaction,
+): Promise<number> {
+  if (tx) return softDeleteNonClinical.executeInTx(tx, ctx, patientId);
+  return softDeleteNonClinical.execute(ctx, patientId);
 }
 
 export type { ClinicalAlertSummary, EnsureRecordResult };

@@ -1,5 +1,6 @@
 import type { RequestContext } from '../../../../shared/domain/request_context.js';
 import { UnitOfWork } from '../../../../shared/database/unit_of_work.js';
+import { AuditAction, writeAuditLogSafe } from '../../../../shared/database/write_audit.js';
 import { idGenerator } from '../../../../shared/helpers/id_generator.js';
 import { hashToken } from '../../../../shared/helpers/token_hash.js';
 import { getProfessionalByMembershipId } from '../../../clinic/clinic_public.js';
@@ -86,6 +87,17 @@ export class AmendAction {
           },
         },
       ]);
+    });
+
+    await writeAuditLogSafe({
+      tenantId: ctx.tenantId,
+      actorId: ctx.userId,
+      action: AuditAction.NOTE_AMENDED,
+      resourceType: 'clinical_note',
+      resourceId: next.id,
+      patientId,
+      ipAddress: extra?.ip,
+      metadata: { version: next.version, supersedesId: existing.id },
     });
 
     return {

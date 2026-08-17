@@ -82,6 +82,15 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_MIGRATION_URL: postgresql://postgres:postgres@localhost:5432/odonto_dev?schema=public
       DATABASE_URL: postgresql://app_user:app@localhost:5432/odonto_dev?schema=public
@@ -512,6 +521,111 @@ jobs:
           KEK_LOCAL_BASE64: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
           NODE_ENV: test
         run: pnpm test:subscription
+
+      - name: Platform audit smoke
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://app_user:app@localhost:5432/odonto_dev?schema=public
+          DATABASE_MIGRATION_URL: postgresql://postgres:postgres@localhost:5432/odonto_dev?schema=public
+          REDIS_URL: redis://localhost:6379
+          APP_PUBLIC_URL: http://localhost:3000
+          CORS_ORIGINS: http://localhost:3000
+          STORAGE_ENDPOINT: http://localhost:9000
+          STORAGE_BUCKET: odonto-dev
+          STORAGE_REGION: sa-east-1
+          STORAGE_ACCESS_KEY: minioadmin
+          STORAGE_SECRET_KEY: minioadmin
+          MAIL_DSN: smtp://localhost:1025
+          MAIL_FROM: noreply@localhost
+          WHATSAPP_APP_SECRET: ci-whatsapp-secret
+          WHATSAPP_VERIFY_TOKEN: ci-verify-token
+          KEK_LOCAL_BASE64: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+          NODE_ENV: test
+        run: pnpm test:platform-audit
+
+      - name: Platform export smoke
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://app_user:app@localhost:5432/odonto_dev?schema=public
+          DATABASE_MIGRATION_URL: postgresql://postgres:postgres@localhost:5432/odonto_dev?schema=public
+          REDIS_URL: redis://localhost:6379
+          APP_PUBLIC_URL: http://localhost:3000
+          CORS_ORIGINS: http://localhost:3000
+          STORAGE_ENDPOINT: http://localhost:9000
+          STORAGE_BUCKET: odonto-dev
+          STORAGE_REGION: sa-east-1
+          STORAGE_ACCESS_KEY: minioadmin
+          STORAGE_SECRET_KEY: minioadmin
+          MAIL_DSN: smtp://localhost:1025
+          MAIL_FROM: noreply@localhost
+          WHATSAPP_APP_SECRET: ci-whatsapp-secret
+          WHATSAPP_VERIFY_TOKEN: ci-verify-token
+          KEK_LOCAL_BASE64: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+          NODE_ENV: test
+        run: pnpm test:platform-export
+
+      - name: Platform DSR smoke
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://app_user:app@localhost:5432/odonto_dev?schema=public
+          DATABASE_MIGRATION_URL: postgresql://postgres:postgres@localhost:5432/odonto_dev?schema=public
+          REDIS_URL: redis://localhost:6379
+          APP_PUBLIC_URL: http://localhost:3000
+          CORS_ORIGINS: http://localhost:3000
+          STORAGE_ENDPOINT: http://localhost:9000
+          STORAGE_BUCKET: odonto-dev
+          STORAGE_REGION: sa-east-1
+          STORAGE_ACCESS_KEY: minioadmin
+          STORAGE_SECRET_KEY: minioadmin
+          MAIL_DSN: smtp://localhost:1025
+          MAIL_FROM: noreply@localhost
+          WHATSAPP_APP_SECRET: ci-whatsapp-secret
+          WHATSAPP_VERIFY_TOKEN: ci-verify-token
+          KEK_LOCAL_BASE64: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+          NODE_ENV: test
+        run: pnpm test:platform-dsr
+
+      - name: Platform support smoke
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://app_user:app@localhost:5432/odonto_dev?schema=public
+          DATABASE_MIGRATION_URL: postgresql://postgres:postgres@localhost:5432/odonto_dev?schema=public
+          REDIS_URL: redis://localhost:6379
+          APP_PUBLIC_URL: http://localhost:3000
+          CORS_ORIGINS: http://localhost:3000
+          STORAGE_ENDPOINT: http://localhost:9000
+          STORAGE_BUCKET: odonto-dev
+          STORAGE_REGION: sa-east-1
+          STORAGE_ACCESS_KEY: minioadmin
+          STORAGE_SECRET_KEY: minioadmin
+          MAIL_DSN: smtp://localhost:1025
+          MAIL_FROM: noreply@localhost
+          WHATSAPP_APP_SECRET: ci-whatsapp-secret
+          WHATSAPP_VERIFY_TOKEN: ci-verify-token
+          KEK_LOCAL_BASE64: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+          NODE_ENV: test
+        run: pnpm test:platform-support
+
+      - name: Platform ready smoke
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://app_user:app@localhost:5432/odonto_dev?schema=public
+          DATABASE_MIGRATION_URL: postgresql://postgres:postgres@localhost:5432/odonto_dev?schema=public
+          REDIS_URL: redis://localhost:6379
+          APP_PUBLIC_URL: http://localhost:3000
+          CORS_ORIGINS: http://localhost:3000
+          STORAGE_ENDPOINT: http://localhost:9000
+          STORAGE_BUCKET: odonto-dev
+          STORAGE_REGION: sa-east-1
+          STORAGE_ACCESS_KEY: minioadmin
+          STORAGE_SECRET_KEY: minioadmin
+          MAIL_DSN: smtp://localhost:1025
+          MAIL_FROM: noreply@localhost
+          WHATSAPP_APP_SECRET: ci-whatsapp-secret
+          WHATSAPP_VERIFY_TOKEN: ci-verify-token
+          KEK_LOCAL_BASE64: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+          NODE_ENV: test
+        run: pnpm test:ready
 
       - name: Anamnesis smoke
         working-directory: backend

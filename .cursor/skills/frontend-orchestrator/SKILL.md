@@ -53,6 +53,7 @@ import { cn } from '@/shared/helpers/utils'
 | **Compor, não recriar** | Usar primitivos já instalados em `shared/ui` antes de escrever UI custom |
 | **Sem `@/components/ui`** | Não usar path default do shadcn; o projeto fixou `shared/ui` em `components.json` |
 | **Componentes de domínio** | Ficam em `packages/<package>/components/`; importam de `@/shared/ui/*` |
+| **Tema claro/escuro** | Cores só com tokens (`bg-background`, `text-foreground`, `border-border`, `muted`, `card`, `accent`). Hex / `bg-white` / `text-black` só com justificativa (ex.: QR). `dark:` só se o token não cobrir. `ThemeToggle` e `next-themes` ficam no layout — não recriar na tela CRUD |
 | **Dúvida de primitivo** | Shard [07-ui-components-map.md](../../docs/ui/07-ui-components-map.md) (máx. 1 por turno) |
 | **Adicionar/ajustar primitivo shadcn** | Skill `shadcn` (CLI/registry) — não no meio de um CRUD de tela |
 | **Decisão visual/UX ampla** | Skill `ui-ux-pro-max` (paleta, tipografia, a11y) — opcional no início de telas novas |
@@ -71,6 +72,7 @@ Ver `rules/frontend.mdc` e `frontend-*.mdc`.
 - Package não importa outro package.
 - UI não duplica invariantes de domínio do backend.
 - Primitivos visuais só de `@/shared/ui/*`; compor variantes existentes (`variant`, `size`) antes de CSS ad hoc.
+- Cores via tokens CSS (claro/escuro); sem hex/`bg-white` salvo justificativa; sem recriar `ThemeToggle` na tela.
 
 ## Saída
 

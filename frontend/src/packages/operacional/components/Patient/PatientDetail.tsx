@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { PatientConsentsPanel } from '@/packages/operacional/components/Patient/PatientConsentsPanel';
 import { PatientFinancePanel } from '@/packages/operacional/components/Patient/PatientFinancePanel';
 import { PatientGuardiansPanel } from '@/packages/operacional/components/Patient/PatientGuardiansPanel';
@@ -90,18 +91,31 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
           <p className="text-sm text-muted-foreground">Ficha #{patient.code}</p>
           <h1 className="text-xl font-semibold">{patient.socialName || patient.name}</h1>
         </div>
-        {patient.active ? (
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={deactivate.isPending}
-            onClick={() => {
-              void onDeactivate();
-            }}
-          >
-            {confirmFuture ? 'Confirmar inativação' : 'Inativar'}
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <Can permission="audit.read">
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={
+                <Link href={`/app/auditoria?patientId=${patientId}`} prefetch={false} />
+              }
+            >
+              Ver acessos
+            </Button>
+          </Can>
+          {patient.active ? (
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deactivate.isPending}
+              onClick={() => {
+                void onDeactivate();
+              }}
+            >
+              {confirmFuture ? 'Confirmar inativação' : 'Inativar'}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {confirmFuture ? (
