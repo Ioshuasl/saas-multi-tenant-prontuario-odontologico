@@ -303,7 +303,7 @@ Incluir na S0 (sem mudar pontos dos épicos de produto):
 4. Port `KeyManagementPort` + implementação stub/local; desenho de `tenant_crypto_key`
 5. Esqueleto de `audit_log` + helper `platform.audit.record`
 6. CI: lint, typecheck, arch, gitleaks, audit
-7. Documentação de runbook mínimo: vazamento de credencial, suspeita de cross-tenant
+7. Documentação de runbook mínimo: vazamento de credencial, suspeita de cross-tenant — ver [`docs/runbooks/`](./runbooks/README.md)
 
 Detalhe de implementação de código fica para quando a implementação começar — este doc é a política.
 

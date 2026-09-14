@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack --port 3001",
+    "dev": "next dev --turbopack --port 3002",
     "build": "next build",
     "start": "next start --port 3001",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -27,6 +27,7 @@
     "lucide-react": "^1.31.0",
     "motion": "^13.1.0",
     "next": "^15.2.2",
+    "next-themes": "^0.4.6",
     "postcss": ">=8.5.18",
     "react": "^19.0.0",
     "react-day-picker": "^10.0.1",

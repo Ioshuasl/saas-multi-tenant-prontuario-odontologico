@@ -2,7 +2,7 @@ import { devices, test as base, type BrowserContext } from '@playwright/test';
 import { loginAs } from './auth';
 import { OWNER } from './credentials';
 
-const WEB_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3001';
+const WEB_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3002';
 
 /**
  * Contexto autenticado do owner (1 login por worker).

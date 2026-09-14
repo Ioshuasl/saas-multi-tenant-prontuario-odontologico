@@ -3,6 +3,7 @@ import cors from 'cors';
 import express, { type Application, type Request, type Router } from 'express';
 import helmet from 'helmet';
 import { env } from './shared/config/env.js';
+import { ReadyController } from './modules/platform/controllers/ready.controller.js';
 import { errorHandler } from './shared/middlewares/error_handler.middleware.js';
 import { requestIdMiddleware } from './shared/middlewares/request_id.middleware.js';
 import { buildApiRouter } from './routes/index.js';
@@ -33,6 +34,11 @@ export function createApp(options?: { registerApi?: (api: Router) => void }): Ap
 
   app.get('/health', (_req, res) => {
     res.status(200).json({ data: { status: 'ok', service: 'api' } });
+  });
+
+  const ready = new ReadyController();
+  app.get('/ready', (req, res, next) => {
+    void ready.get(req, res).catch(next);
   });
 
   const api = buildApiRouter();

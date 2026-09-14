@@ -9,6 +9,7 @@ export type UserRow = {
   lastLoginAt: Date | null;
   failedAttempts: number;
   lockedUntil: Date | null;
+  platformRole: string | null;
 };
 
 const userSelect = {
@@ -19,6 +20,7 @@ const userSelect = {
   lastLoginAt: true,
   failedAttempts: true,
   lockedUntil: true,
+  platformRole: true,
 } as const;
 
 export class GetByEmailRepository {

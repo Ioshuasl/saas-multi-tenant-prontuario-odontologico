@@ -45,6 +45,9 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().min(1),
   SENTRY_DSN: z.string().optional(),
   KEK_LOCAL_BASE64: z.string().optional(),
+  DSR_DUE_DAYS: z.coerce.number().int().min(1).max(90).default(15),
+  CLINICAL_READ_ANOMALY_N: z.coerce.number().int().min(1).max(10_000).default(40),
+  PLATFORM_OPERATOR_EMAILS: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -67,4 +70,11 @@ export function wahaHmacKey(): string {
 export function wahaWebhookUrl(): string {
   if (env.WAHA_WEBHOOK_URL) return env.WAHA_WEBHOOK_URL;
   return 'http://localhost:3333/api/v1/webhooks/whatsapp';
+}
+
+export function platformOperatorEmails(): string[] {
+  return (env.PLATFORM_OPERATOR_EMAILS ?? '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => item.length > 0);
 }

@@ -202,7 +202,7 @@ Implicação: a infraestrutura não é o gargalo de margem; o custo variável re
 
 ## 11. Padrões operacionais
 
-- **Runbooks** em `docs/runbooks/` (fase 2): fila travada, migração falhando, token de WhatsApp expirado, tenant suspenso por engano, restore de backup.
+- **Runbooks** em [`docs/runbooks/`](./runbooks/README.md): restore, WAHA down, tenant suspenso por engano, credencial vazada, suspeita cross-tenant (S8). Fila travada / migração falhando / token WhatsApp expirado permanecem backlog operacional.
 - **On-call** informal no MVP (fundadores), com alertas em canal único.
 - **Post-mortem** para todo incidente S1/S2, publicado internamente em 5 dias úteis.
 - **Blueprint do ambiente de desenvolvimento** versionado (Docker Compose + scripts) para que qualquer nova máquina/sessão suba o projeto com um comando.

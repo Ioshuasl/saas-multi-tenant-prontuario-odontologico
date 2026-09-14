@@ -12,7 +12,9 @@ alwaysApply: false
 
 Bounded contexts (MVP): `identity` · `clinic` · `patients` · `scheduling` · `clinical-records` · `treatments` · `billing` · `messaging` · `reporting` · `subscription`.
 
-Capacidades transversais de plataforma (auditoria, outbox infra, health, feature flags, LGPD/export) → **`shared/`** (não inventar módulo `platform` sem alinhar a `docs/16`).
+Superfície HTTP transversal: `modules/platform/` (auditoria consultável, LGPD/export, DSR, break-glass, `/ready`) — alinhado a `docs/16`. **Não** é BC clínico.
+
+Gravação de auditoria, outbox infra, health liveness e RLS → **`shared/`**. `writeAuditLog` permanece em `shared/database/write_audit.ts`. `platform` não importa internals dos outros módulos.
 
 Norma: `docs/16`, ADR-0001, `docs/05`.
 

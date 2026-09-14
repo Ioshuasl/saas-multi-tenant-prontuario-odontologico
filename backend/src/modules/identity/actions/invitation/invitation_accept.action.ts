@@ -79,6 +79,7 @@ export class AcceptAction {
           lastLoginAt: null,
           failedAttempts: 0,
           lockedUntil: null,
+          platformRole: null,
         };
       }
 

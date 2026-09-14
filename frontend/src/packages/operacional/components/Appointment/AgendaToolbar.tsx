@@ -54,10 +54,10 @@ export function AgendaToolbar({
   onBlock,
 }: AgendaToolbarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-[#E9E9E7] pb-3">
-      <h1 className="mr-auto text-xl font-semibold tracking-tight text-[#37352F]">Agenda</h1>
+    <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
+      <h1 className="mr-auto text-xl font-semibold tracking-tight text-foreground">Agenda</h1>
 
-      <div className="flex items-center gap-1 rounded-md border border-[#E9E9E7] bg-white p-0.5">
+      <div className="flex items-center gap-1 rounded-md border border-border bg-background p-0.5">
         <Button
           type="button"
           size="sm"
@@ -86,10 +86,10 @@ export function AgendaToolbar({
         <Button type="button" size="icon-sm" variant="ghost" aria-label="Próximo" onClick={onNext}>
           <ChevronRightIcon />
         </Button>
-        <span className="min-w-36 px-2 text-sm capitalize text-[#37352F]">{anchorLabel}</span>
+        <span className="min-w-36 px-2 text-sm capitalize text-foreground">{anchorLabel}</span>
       </div>
 
-      <div className="flex items-center gap-1 rounded-md border border-[#E9E9E7] bg-white p-0.5">
+      <div className="flex items-center gap-1 rounded-md border border-border bg-background p-0.5">
         <Button
           type="button"
           size="sm"

@@ -1,6 +1,8 @@
 import { GetByUserAndTenantRepository } from './repositories/membership/membership.repository.js';
+import { GetByIdRepository } from './repositories/user/user.repository.js';
 import { resolvePermissions, type PermissionOverrides } from './enum/role/permission.enum.js';
 import type { Role } from './enum/role/role.enum.js';
+import { platformOperatorEmails } from '../../shared/config/env.js';
 
 export {
   PERMISSIONS,
@@ -20,6 +22,7 @@ export type PublicMembership = {
 };
 
 const getByUserAndTenant = new GetByUserAndTenantRepository();
+const getUserById = new GetByIdRepository();
 
 export async function findActiveMembership(
   userId: string,
@@ -34,4 +37,12 @@ export async function findActiveMembership(
     role: row.role,
     permissions: resolvePermissions(row.role as Role, row.permissions as PermissionOverrides),
   };
+}
+
+/** Operador de plataforma (coluna ou allowlist de e-mail). Sem membership no tenant alvo. */
+export async function isPlatformOperator(userId: string): Promise<boolean> {
+  const user = await getUserById.execute(userId);
+  if (!user) return false;
+  if (user.platformRole === 'OPERATOR') return true;
+  return platformOperatorEmails().includes(user.email.toLowerCase());
 }

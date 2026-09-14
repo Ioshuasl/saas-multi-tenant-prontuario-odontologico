@@ -22,7 +22,7 @@ export function auditRead(options: AuditReadOptions) {
       void writeAuditLogSafe({
         tenantId: req.auth.tenantId,
         actorId: req.auth.userId,
-        action: AuditAction.READ,
+        action: AuditAction.CLINICAL_READ,
         resourceType: options.resourceType,
         resourceId: patientId,
         patientId,

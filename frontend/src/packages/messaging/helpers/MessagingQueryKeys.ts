@@ -1,3 +1,5 @@
+import type { ConversationListQuery } from '@/packages/messaging/types/Conversation/ConversationTypes';
+
 export const messagingQueryKeys = {
   account: ['messaging-account'] as const,
   qr: ['messaging-account-qr'] as const,

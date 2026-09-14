@@ -20,10 +20,12 @@ export const AuditAction = {
 
 export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction];
 
+export const CLINICAL_READ_ACTIONS = [AuditAction.CLINICAL_READ, AuditAction.READ] as const;
+
 export type WriteAuditInput = {
   tenantId: string;
   actorId?: string;
-  actorType?: 'USER' | 'SYSTEM';
+  actorType?: 'USER' | 'PATIENT' | 'SYSTEM' | 'SUPPORT';
   action: AuditActionName;
   resourceType: string;
   resourceId?: string;

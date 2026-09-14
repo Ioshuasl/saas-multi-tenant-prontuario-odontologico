@@ -13,6 +13,7 @@ import {
 } from '../modules/scheduling/scheduling.module.js';
 import {
   buildMessagingRouter,
+  buildStreamRouter,
   buildWhatsappWebhookRouter,
 } from '../modules/messaging/messaging.module.js';
 import { buildTreatmentsRouter, buildPublicQuotesRouter } from '../modules/treatments/treatments.module.js';
@@ -30,6 +31,7 @@ export function buildApiRouter(): Router {
   api.use(buildClinicalRecordsRouter());
   api.use(buildSchedulingRouter());
   api.use(buildMessagingRouter());
+  api.use(buildStreamRouter());
   api.use('/webhooks/whatsapp', buildWhatsappWebhookRouter());
   api.use(buildTreatmentsRouter());
   api.use(buildBillingRouter());

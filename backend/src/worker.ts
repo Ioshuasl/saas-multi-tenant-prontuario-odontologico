@@ -45,6 +45,55 @@ async function enqueueMarkOverdue(queue: BullmqJobQueue): Promise<void> {
   }
 }
 
+async function enqueueSubscriptionLifecycle(queue: BullmqJobQueue): Promise<void> {
+  if (!queue.isConnected()) return;
+  const tenants = await listTenantsForScheduledJobs();
+  for (const tenant of tenants) {
+    const ymd = todayInTimezone(tenant.timezone);
+    await queue.add(
+      QUEUE.platform,
+      JOB.expireTrials,
+      { tenantId: tenant.id, requestId: `expire-trials:${ymd}` },
+      { jobId: `expire-trials:${tenant.id}:${ymd}` },
+    );
+    await queue.add(
+      QUEUE.platform,
+      JOB.recalculateUsageCounters,
+      { tenantId: tenant.id, requestId: `usage-recalc:${ymd}` },
+      { jobId: `usage-recalc:${tenant.id}:${ymd}` },
+    );
+  }
+}
+
+async function enqueueAnomalyClinicalRead(queue: BullmqJobQueue): Promise<void> {
+  if (!queue.isConnected()) return;
+  const tenants = await listTenantsForScheduledJobs();
+  for (const tenant of tenants) {
+    const ymd = todayInTimezone(tenant.timezone);
+    const slot = Math.floor(Date.now() / ANOMALY_INTERVAL_MS);
+    await queue.add(
+      QUEUE.platform,
+      JOB.anomalyClinicalRead,
+      { tenantId: tenant.id, requestId: `anomaly-clinical-read:${ymd}:${slot}` },
+      { jobId: `anomaly-clinical-read:${tenant.id}:${slot}` },
+    );
+  }
+}
+
+async function enqueueDsrDueReminder(queue: BullmqJobQueue): Promise<void> {
+  if (!queue.isConnected()) return;
+  const tenants = await listTenantsForScheduledJobs();
+  for (const tenant of tenants) {
+    const ymd = todayInTimezone(tenant.timezone);
+    await queue.add(
+      QUEUE.platform,
+      JOB.dsrDueReminder,
+      { tenantId: tenant.id, requestId: `dsr-due-reminder:${ymd}`, timezone: tenant.timezone },
+      { jobId: `dsr-due-reminder:${tenant.id}:${ymd}` },
+    );
+  }
+}
+
 async function enqueueExpireQuotes(queue: BullmqJobQueue): Promise<void> {
   if (!queue.isConnected()) return;
   const tenants = await listTenantsForScheduledJobs();
@@ -92,6 +141,14 @@ async function main(): Promise<void> {
   queue.register(QUEUE.platform, JOB.ensureMedicalRecord, ensureMedicalRecordJob);
   queue.register(QUEUE.platform, JOB.generateAttachmentThumbnail, generateAttachmentThumbnailJob);
   queue.register(QUEUE.platform, JOB.generateQuotePdf, generateQuotePdfJob);
+  queue.register(QUEUE.reporting, JOB.generateExport, reportExportJob);
+  queue.register(QUEUE.platform, JOB.tenantExport, tenantExportJob);
+  queue.register(QUEUE.platform, JOB.patientPackage, patientPackageJob);
+  queue.register(QUEUE.platform, JOB.patientAnonymize, patientAnonymizeJob);
+  queue.register(QUEUE.platform, JOB.dsrDueReminder, dsrDueReminderJob);
+  queue.register(QUEUE.platform, JOB.anomalyClinicalRead, anomalyClinicalReadJob);
+  queue.register(QUEUE.platform, JOB.expireTrials, expireTrialsJob);
+  queue.register(QUEUE.platform, JOB.recalculateUsageCounters, recalculateUsageCountersJob);
   queue.register(QUEUE.platform, JOB.generateReceiptPdf, generateReceiptPdfJob);
   queue.register(QUEUE.reporting, JOB.generateExport, generateExportJob);
   queue.register(QUEUE.platform, JOB.expireQuotes, expireQuotesJob);

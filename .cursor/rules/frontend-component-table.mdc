@@ -11,8 +11,10 @@ alwaysApply: false
 - Apresentacional — dados e callbacks por props.
 - Usa DataTable + `Columns` dedicado.
 - Props em `types/<Entidade>/<Entidade>TableTypes.ts`.
+- Cores via tokens (`bg-background`, `text-foreground`, `border-border`, `muted`, `card`); `dark:` só quando o token não cobre.
 
 ## Proibido
 
 - Hook remoto, service, data ou API.
 - Mutar coleção sem callback do Index.
+- Hex, `bg-white`, `text-black` sem justificativa pontual (ex.: QR).

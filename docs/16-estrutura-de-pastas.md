@@ -49,7 +49,9 @@ backend/src/
     └── <dominio>/               # ver 1.2
 ```
 
-Módulos (bounded contexts): `identity`, `clinic`, `patients`, `scheduling`, `clinical-records`, `treatments`, `billing`, `messaging`, `reporting`, `subscription`. Capacidades transversais (`platform`) vivem em `shared/`.
+Módulos (bounded contexts): `identity`, `clinic`, `patients`, `scheduling`, `clinical-records`, `treatments`, `billing`, `messaging`, `reporting`, `subscription`.
+
+Superfície HTTP transversal: `modules/platform/` (`platform.module.ts` + `platform_public.ts`) — consulta de `audit_log`, export LGPD, DSR, break-glass e `/ready`. **Não** é bounded context clínico. Gravação de auditoria permanece em `shared/database/write_audit.ts` (vários consumidores). Outbox, RLS helpers, health liveness e middlewares continuam em `shared/`. `platform` **não** importa internals de `patients` / `clinical_records` / `billing` / `messaging` — só `*_public.ts` ou SQL read-only no próprio repositório de export.
 
 ### 1.2 Estrutura de um módulo — exemplo `patients` / `Patient`
 

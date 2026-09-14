@@ -37,6 +37,7 @@ async function main() {
 
   try {
     const { tenant, owner, ownerMembership } = await seedIdentity(prisma, passwordHash);
+    await seedSubscription(prisma, tenant);
     const unit = await seedClinic(prisma, tenant.id);
     await prisma.membership.update({
       where: { id: ownerMembership.id },

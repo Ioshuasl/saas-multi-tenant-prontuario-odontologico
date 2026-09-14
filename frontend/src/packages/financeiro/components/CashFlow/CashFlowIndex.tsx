@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   CASH_FLOW_BASES,
   CASH_FLOW_BASIS_LABELS,
@@ -22,17 +23,38 @@ import {
   TableRow,
 } from '@/shared/ui/table';
 
+function ymd(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function monthRange(): { from: string; to: string } {
   const now = new Date();
-  const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
-  return { from, to };
+  return {
+    from: ymd(new Date(now.getFullYear(), now.getMonth(), 1)),
+    to: ymd(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  };
+}
+
+function isoDateOr(value: string | null, fallback: string): string {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : fallback;
 }
 
 export function CashFlowIndex() {
+  return (
+    <Suspense fallback={<p className="text-sm text-muted-foreground">Carregando fluxo…</p>}>
+      <CashFlowIndexBody />
+    </Suspense>
+  );
+}
+
+function CashFlowIndexBody() {
+  const searchParams = useSearchParams();
   const initial = monthRange();
-  const [from, setFrom] = useState(initial.from);
-  const [to, setTo] = useState(initial.to);
+  const [from, setFrom] = useState(isoDateOr(searchParams.get('from'), initial.from));
+  const [to, setTo] = useState(isoDateOr(searchParams.get('to'), initial.to));
   const [basis, setBasis] = useState<CashFlowBasis>('CASH');
   const report = useCashFlowGetHook({ from, to, basis });
 

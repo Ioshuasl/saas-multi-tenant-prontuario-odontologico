@@ -64,7 +64,7 @@ Usar; **não** reimplementar.
 | Outbox + BullMQ | S3+ | Job export; trial-ending e-mail; opcional fan-out SSE |
 | `DashboardHome` = greeting + onboarding | frontend | Substituir por widgets E9 |
 | Aceite HTTP `backend/tests/` | S6 | Novos scripts `messaging/` / `reporting/` / `subscription/` |
-| Módulos `reporting/` e `subscription/` | — | **Ainda não existem** (criar) |
+| Módulos `reporting/` e `subscription/` | `backend/src/modules/` | Criados nos Blocos 3–5 |
 
 **Entregar nesta sprint:** HTTP inbox; SSE ou polling; `reporting` (dashboard + GETs faltantes + export); `subscription` + guards; UI inbox + dashboard + relatórios + assinatura.
 
