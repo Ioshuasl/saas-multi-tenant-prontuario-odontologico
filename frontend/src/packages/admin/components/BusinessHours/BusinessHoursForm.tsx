@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useFieldArray } from 'react-hook-form';
+import { PlusIcon } from 'lucide-react';
 import { adminErrorMessage } from '@/packages/admin/helpers/AdminErrorMessage';
 import { useBusinessHoursFormHook } from '@/packages/admin/hooks/BusinessHours/useBusinessHoursFormHook';
 import { useBusinessHoursListHook } from '@/packages/admin/hooks/BusinessHours/useBusinessHoursListHook';
@@ -9,9 +10,10 @@ import { useBusinessHoursReplaceHook } from '@/packages/admin/hooks/BusinessHour
 import { useClinicGetHook } from '@/packages/admin/hooks/Clinic/useClinicGetHook';
 import { useProfessionalListHook } from '@/packages/admin/hooks/Professional/useProfessionalListHook';
 import type { BusinessHoursFormValues } from '@/packages/admin/schemas/BusinessHours/BusinessHoursSchema';
+import { ClivraSurface } from '@/shared/layout/ClivraPage';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/field';
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/field';
 import { Input } from '@/shared/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/shared/ui/native-select';
 
@@ -60,7 +62,11 @@ export function BusinessHoursForm() {
   };
 
   if (clinicQuery.isLoading || professionalsQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Carregando…</p>;
+    return (
+      <ClivraSurface contentClassName="px-4 py-6">
+        <p className="text-sm text-muted-foreground">Carregando…</p>
+      </ClivraSurface>
+    );
   }
 
   if (!unitId) {
@@ -74,28 +80,42 @@ export function BusinessHoursForm() {
   const activeProfessionals = (professionalsQuery.data ?? []).filter((p) => p.active);
 
   return (
-      <form
-        className="mx-auto grid max-w-2xl gap-4"
-        onSubmit={(e) => {
-          void form.handleSubmit(onSave)(e);
-        }}
-      >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="grid gap-1">
-            <h1 className="text-xl font-semibold">Horários semanais</h1>
-            <p className="text-sm text-muted-foreground">
-              Grade da unidade ou de um profissional (ISO: segunda=1 … domingo=7).
-            </p>
+    <form
+      onSubmit={(e) => {
+        void form.handleSubmit(onSave)(e);
+      }}
+    >
+      <ClivraSurface
+        toolbar={
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Horários semanais</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Grade da unidade ou de um profissional.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="cursor-pointer"
+                onClick={() => append({ weekday: 1, startsAt: '08:00', endsAt: '12:00' })}
+              >
+                <PlusIcon className="size-4" strokeWidth={1.7} />
+                Adicionar slot
+              </Button>
+              <Button
+                type="submit"
+                className="cursor-pointer"
+                disabled={replace.isPending || hoursQuery.isLoading}
+              >
+                {replace.isPending ? 'Salvando…' : 'Salvar horários'}
+              </Button>
+            </div>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => append({ weekday: 1, startsAt: '08:00', endsAt: '12:00' })}
-          >
-            Adicionar slot
-          </Button>
-        </div>
-
+        }
+        contentClassName="grid gap-4 px-4 py-4"
+      >
         <Field>
           <FieldLabel>Escopo</FieldLabel>
           <NativeSelect
@@ -110,9 +130,9 @@ export function BusinessHoursForm() {
             ))}
           </NativeSelect>
           {scopeId ? (
-            <p className="text-xs text-muted-foreground">
+            <FieldDescription>
               Sem slots próprios, o profissional herda o horário da unidade na disponibilidade.
-            </p>
+            </FieldDescription>
           ) : null}
         </Field>
 
@@ -128,7 +148,7 @@ export function BusinessHoursForm() {
             {fields.map((field, index) => (
               <div
                 key={field.id}
-                className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
+                className="grid gap-2 rounded-xl border border-border bg-background/60 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
               >
                 <Field>
                   <FieldLabel>Dia</FieldLabel>
@@ -151,7 +171,12 @@ export function BusinessHoursForm() {
                   <Input type="time" {...form.register(`slots.${index}.endsAt`)} />
                 </Field>
                 <div className="flex items-end">
-                  <Button type="button" variant="ghost" onClick={() => remove(index)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="cursor-pointer"
+                    onClick={() => remove(index)}
+                  >
                     Remover
                   </Button>
                 </div>
@@ -171,10 +196,7 @@ export function BusinessHoursForm() {
             <AlertDescription>Horários atualizados.</AlertDescription>
           </Alert>
         ) : null}
-
-        <Button type="submit" disabled={replace.isPending || hoursQuery.isLoading}>
-          {replace.isPending ? 'Salvando…' : 'Salvar horários'}
-        </Button>
-      </form>
+      </ClivraSurface>
+    </form>
   );
 }

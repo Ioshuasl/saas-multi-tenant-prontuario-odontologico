@@ -90,14 +90,14 @@ export function DashboardUpcomingAppointments({
   return (
     <section className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-[#EBE4DE] bg-white shadow-[0_1px_2px_rgb(74_15_22/0.04)]">
       <header className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5">
-        <h2 className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#1A1A1A]">
+        <h2 className="inline-flex items-center gap-1.5 font-sans text-[15px] font-semibold text-[#1A1A1A]">
           <CalendarDaysIcon className="size-3.5 text-[#4A0F16]" strokeWidth={1.7} />
           Próximos atendimentos
         </h2>
         <Link
           href={agendaHref}
           prefetch={false}
-          className="text-[11px] font-medium text-[#4A0F16] transition-opacity hover:opacity-80"
+          className="font-sans text-[12px] font-medium text-[#4A0F16] transition-opacity hover:opacity-80"
         >
           Ver todos os atendimentos →
         </Link>
@@ -113,7 +113,7 @@ export function DashboardUpcomingAppointments({
             <col className="w-9" />
           </colgroup>
           <thead>
-            <tr className="text-[9px] font-semibold tracking-[0.1em] text-[#A39A94] uppercase">
+            <tr className="font-sans text-[10px] font-semibold tracking-[0.1em] text-[#A39A94] uppercase">
               <th className="px-3 py-2 font-semibold">Horário</th>
               <th className="px-2 py-2 font-semibold">Paciente</th>
               <th className="px-2 py-2 font-semibold">Procedimento</th>
@@ -144,7 +144,7 @@ export function DashboardUpcomingAppointments({
                 };
                 return (
                   <tr key={row.id} className="border-t border-[#F0EAE5]">
-                    <td className="px-3 py-2.5 text-[12px] font-semibold tabular-nums text-[#1A1A1A]">
+                    <td className="px-3 py-2.5 font-sans text-[13px] font-semibold tabular-nums text-[#1A1A1A]">
                       {format(new Date(row.startsAt), 'HH:mm')}
                     </td>
                     <td className="px-2 py-2.5">
@@ -153,18 +153,18 @@ export function DashboardUpcomingAppointments({
                           {initials(name)}
                         </span>
                         <div className="min-w-0">
-                          <p className="truncate text-[12px] font-semibold text-[#1A1A1A]">{name}</p>
-                          <p className="truncate text-[10px] text-[#9A908A]">
+                          <p className="truncate font-sans text-[13px] font-semibold text-[#1A1A1A]">{name}</p>
+                          <p className="truncate font-sans text-[11px] text-[#9A908A]">
                             {formatPhone(row.patient?.phonePrimary)}
                           </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-2 py-2.5">
-                      <p className="truncate text-[12px] font-semibold text-[#1A1A1A]">
+                      <p className="truncate font-sans text-[13px] font-semibold text-[#1A1A1A]">
                         {row.procedure?.name ?? 'Consulta'}
                       </p>
-                      <p className="truncate text-[10px] text-[#9A908A]">
+                      <p className="truncate font-sans text-[11px] text-[#9A908A]">
                         {professionalLabel(row.professional?.name)}
                       </p>
                     </td>

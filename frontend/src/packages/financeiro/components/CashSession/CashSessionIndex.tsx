@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import { CASH_SESSION_LIFECYCLE_ENABLED } from '@/packages/financeiro/helpers/CashSessionLifecycle';
 import { PAYMENT_METHOD_LABELS } from '@/packages/financeiro/enum/Payment/PaymentMethodEnum';
 import { financeiroErrorMessage } from '@/packages/financeiro/helpers/FinanceiroErrorMessage';
 import { formatCents } from '@/packages/financeiro/helpers/FormatCents';
@@ -45,6 +46,22 @@ const CashSessionMovementFormDialog = dynamic(
 );
 
 export function CashSessionIndex() {
+  if (!CASH_SESSION_LIFECYCLE_ENABLED) {
+    return (
+      <Alert>
+        <AlertTitle>Caixa desativado</AlertTitle>
+        <AlertDescription>
+          Abertura e fechamento de caixa estão desativados. Use o painel financeiro para
+          registrar entradas e saídas. O código permanece disponível para reativação futura.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return <CashSessionIndexActive />;
+}
+
+function CashSessionIndexActive() {
   const unitQuery = useClinicDefaultUnitGetHook();
   const unitId = unitQuery.data?.id;
   const currentQuery = useCashSessionCurrentGetHook(unitId);

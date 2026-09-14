@@ -41,8 +41,22 @@ export async function assertPlanLimit(
   await planLimitGuard.assertCanAdd(ctx, metric, amount);
 }
 
+/** Alias público — alguns consumidores usam o nome do método do PlanLimitGuard. */
+export async function assertCanAdd(
+  ctx: RequestContext,
+  metric: UsageMetric,
+  amount = 1,
+): Promise<void> {
+  await assertPlanLimit(ctx, metric, amount);
+}
+
 export async function assertSubscriptionWritable(ctx: RequestContext): Promise<void> {
   await assertWritable.execute(ctx);
+}
+
+/** Automação (WhatsApp/jobs) só com assinatura gravável (não read-only / trial vencido). */
+export async function canAutomate(ctx: RequestContext): Promise<boolean> {
+  return !(await assertWritable.isReadOnly(ctx));
 }
 
 export { asyncSubscriptionGuard, UsageMetric, PlanLimitGuard };

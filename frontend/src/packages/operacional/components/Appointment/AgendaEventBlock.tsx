@@ -5,7 +5,7 @@ import {
   APPOINTMENT_STATUS_META,
   type AppointmentStatus,
 } from '@/packages/operacional/enum/Appointment/AppointmentStatusEnum';
-import { AGENDA_NOTION } from '@/packages/operacional/helpers/AgendaNotionTokens';
+import { AGENDA_TOKENS } from '@/packages/operacional/helpers/AgendaNotionTokens';
 import {
   formatHour,
   minutesFromGridStart,
@@ -40,10 +40,10 @@ export function AgendaEventBlock({
   const meta = APPOINTMENT_STATUS_META[status];
   const start = parseInstant(appointment.startsAt);
   const end = parseInstant(appointment.endsAt);
-  const top = minutesFromGridStart(start) * AGENDA_NOTION.pxPerMinute;
+  const top = minutesFromGridStart(start) * AGENDA_TOKENS.pxPerMinute;
   const height = Math.max(
-    slotMinutes * AGENDA_NOTION.pxPerMinute,
-    (end.getTime() - start.getTime()) / 60000 * AGENDA_NOTION.pxPerMinute,
+    slotMinutes * AGENDA_TOKENS.pxPerMinute,
+    (end.getTime() - start.getTime()) / 60000 * AGENDA_TOKENS.pxPerMinute,
   );
 
   const dragRef = useRef<{
@@ -80,7 +80,7 @@ export function AgendaEventBlock({
     if (!drag) return;
     dragRef.current = null;
     const deltaPx = e.clientY - drag.startY;
-    const deltaMin = snapMinutes(deltaPx / AGENDA_NOTION.pxPerMinute, slotMinutes);
+    const deltaMin = snapMinutes(deltaPx / AGENDA_TOKENS.pxPerMinute, slotMinutes);
     if (deltaMin === 0) {
       onOpen(appointment);
       return;
@@ -114,8 +114,8 @@ export function AgendaEventBlock({
         meta.bg,
         meta.text,
         meta.border,
-        status === 'REQUESTED' && 'border-dashed',
-        AGENDA_NOTION.transition,
+        status === 'REQUESTED' && 'border-dashed border-border',
+        AGENDA_TOKENS.transition,
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
       )}
       style={{ top, height }}
@@ -129,10 +129,10 @@ export function AgendaEventBlock({
         }
       }}
     >
-      <p className="truncate text-[11px] font-medium leading-tight">
+      <p className="truncate text-[11px] font-semibold leading-tight">
         {appointment.patient?.name ?? 'Paciente'}
       </p>
-      <p className="truncate text-[10px] opacity-80">
+      <p className="truncate text-[10px] opacity-90">
         {formatHour(start)}–{formatHour(end)} · {meta.label}
         {showProfessional && appointment.professional?.name
           ? ` · ${appointment.professional.name}`

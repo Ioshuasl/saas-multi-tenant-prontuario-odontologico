@@ -55,7 +55,7 @@ export function ConversationIndex() {
         <Button
           variant="outline"
           nativeButton={false}
-          render={<Link href="/app/whatsapp" prefetch={false} />}
+          render={<Link href="/app/configuracoes/whatsapp" prefetch={false} />}
         >
           Configurar WhatsApp
         </Button>

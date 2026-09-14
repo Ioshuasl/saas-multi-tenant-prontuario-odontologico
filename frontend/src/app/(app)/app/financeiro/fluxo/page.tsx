@@ -1,5 +1,5 @@
-import { CashFlowIndex } from '@/packages/financeiro/components/CashFlow/CashFlowIndex';
+import { redirect } from 'next/navigation';
 
-export default function FluxoPage() {
-  return <CashFlowIndex />;
+export default function FluxoRedirectPage() {
+  redirect('/app/financeiro/relatorios');
 }

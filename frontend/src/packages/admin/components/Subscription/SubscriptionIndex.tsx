@@ -17,14 +17,8 @@ import { useSubscriptionPlanListHook } from '@/packages/admin/hooks/Subscription
 import { useSubscriptionUsageGetHook } from '@/packages/admin/hooks/Subscription/useSubscriptionUsageGetHook';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { hasPermission } from '@/shared/auth/permissions';
+import { ClivraPageHeader, ClivraSurface } from '@/shared/layout/ClivraPage';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/shared/ui/card';
 
 function trialDaysLeft(trialEndsAt: string | null): number | null {
   if (!trialEndsAt) return null;
@@ -51,8 +45,11 @@ export function SubscriptionIndex() {
 
   if (!canManage) {
     return (
-      <div className="grid gap-4">
-        <h1 className="text-xl font-semibold">Assinatura</h1>
+      <div className="grid min-w-0 gap-4" data-testid="subscription-page">
+        <ClivraPageHeader
+          title="Assinatura"
+          description="Plano, uso e status do período de teste."
+        />
         <Alert variant="destructive">
           <AlertDescription>Apenas o dono da clínica gerencia a assinatura.</AlertDescription>
         </Alert>
@@ -66,17 +63,16 @@ export function SubscriptionIndex() {
     READ_ONLY_SUBSCRIPTION_STATUSES.has(subscription.data.status);
 
   return (
-    <div className="grid gap-6" data-testid="subscription-page">
-      <div className="grid gap-1">
-        <h1 className="text-xl font-semibold">Assinatura</h1>
-        <p className="text-sm text-muted-foreground">
-          Plano, uso e status do período de teste. Ativação comercial é manual — sem checkout
-          online.
-        </p>
-      </div>
+    <div className="grid min-w-0 gap-4" data-testid="subscription-page">
+      <ClivraPageHeader
+        title="Assinatura"
+        description="Plano, uso e status do período de teste. Ativação comercial é manual — sem checkout online."
+      />
 
       {subscription.isLoading ? (
-        <p className="text-sm text-muted-foreground">Carregando assinatura…</p>
+        <ClivraSurface contentClassName="px-4 py-6">
+          <p className="text-sm text-muted-foreground">Carregando assinatura…</p>
+        </ClivraSurface>
       ) : subscription.isError ? (
         <Alert variant="destructive">
           <AlertDescription>{adminErrorMessage(subscription.error)}</AlertDescription>
@@ -107,36 +103,44 @@ export function SubscriptionIndex() {
             </Alert>
           ) : null}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{subscription.data.plan.name}</CardTitle>
-              <CardDescription>
-                Status: {statusLabel(subscription.data.status)}
-                {subscription.data.trialEndsAt
-                  ? ` · Teste até ${new Date(subscription.data.trialEndsAt).toLocaleDateString('pt-BR')}`
-                  : ''}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3">
-              <p className="text-sm">
-                Preço:{' '}
-                <span className="font-medium">
-                  {formatCents(subscription.data.plan.priceCents)}/{subscription.data.plan.interval}
-                </span>
-              </p>
-              <a
-                href="mailto:contato@orius.local?subject=Ativar%20assinatura"
-                className="inline-flex h-8 w-fit cursor-pointer items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/80"
-              >
-                Falar para ativar
-              </a>
-            </CardContent>
-          </Card>
+          <ClivraSurface
+            toolbar={
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">
+                  {subscription.data.plan.name}
+                </h2>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Status: {statusLabel(subscription.data.status)}
+                  {subscription.data.trialEndsAt
+                    ? ` · Teste até ${new Date(subscription.data.trialEndsAt).toLocaleDateString('pt-BR')}`
+                    : ''}
+                </p>
+              </div>
+            }
+            contentClassName="grid gap-3 px-4 py-4"
+          >
+            <p className="text-sm text-foreground">
+              Preço:{' '}
+              <span className="font-semibold">
+                {formatCents(subscription.data.plan.priceCents)}/{subscription.data.plan.interval}
+              </span>
+            </p>
+            <a
+              href="mailto:contato@orius.local?subject=Ativar%20assinatura"
+              className="inline-flex h-10 w-fit cursor-pointer items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Falar para ativar
+            </a>
+          </ClivraSurface>
         </>
       ) : null}
 
-      <div className="grid gap-3">
-        <h2 className="text-base font-medium">Uso atual</h2>
+      <ClivraSurface
+        toolbar={
+          <h2 className="text-sm font-semibold text-foreground">Uso atual</h2>
+        }
+        contentClassName="px-4 py-4"
+      >
         {usage.isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando uso…</p>
         ) : usage.isError ? (
@@ -151,8 +155,11 @@ export function SubscriptionIndex() {
               const limitLabel =
                 item.limit == null ? 'ilimitado' : formatUsageValue(item.metric, item.limit);
               return (
-                <li key={item.metric} className="rounded-lg border px-3 py-2 text-sm">
-                  <span className="font-medium">{label}</span>
+                <li
+                  key={item.metric}
+                  className="rounded-xl border border-border bg-background/60 px-3 py-2 text-sm"
+                >
+                  <span className="font-semibold text-foreground">{label}</span>
                   <span className="text-muted-foreground">
                     {' '}
                     · {formatUsageValue(item.metric, item.current)} / {limitLabel}
@@ -162,10 +169,14 @@ export function SubscriptionIndex() {
             })}
           </ul>
         )}
-      </div>
+      </ClivraSurface>
 
-      <div className="grid gap-3">
-        <h2 className="text-base font-medium">Planos disponíveis</h2>
+      <ClivraSurface
+        toolbar={
+          <h2 className="text-sm font-semibold text-foreground">Planos disponíveis</h2>
+        }
+        contentClassName="px-4 py-4"
+      >
         {plans.isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando planos…</p>
         ) : plans.isError ? (
@@ -175,26 +186,27 @@ export function SubscriptionIndex() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {(plans.data ?? []).map((plan) => (
-              <Card key={plan.id}>
-                <CardHeader>
-                  <CardTitle>{plan.name}</CardTitle>
-                  <CardDescription>
-                    {formatCents(plan.priceCents)}/{plan.interval}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
+              <div
+                key={plan.id}
+                className="rounded-xl border border-border bg-background/60 px-3 py-3"
+              >
+                <p className="font-semibold text-foreground">{plan.name}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {formatCents(plan.priceCents)}/{plan.interval}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
                   Até {plan.limits.professionals ?? '∞'} profissionais ·{' '}
                   {plan.limits.adminUsers ?? '∞'} usuários · {plan.limits.units ?? '∞'} unidade(s)
-                </CardContent>
-              </Card>
+                </p>
+              </div>
             ))}
           </div>
         )}
-      </div>
+      </ClivraSurface>
 
       <p className="text-sm text-muted-foreground">
         Dúvidas?{' '}
-        <Link href="/app" className="underline">
+        <Link href="/app" className="underline underline-offset-4 hover:text-foreground">
           Voltar ao início
         </Link>
         .

@@ -8,7 +8,6 @@ import {
 } from '../../repositories/professional/professional.repository.js';
 import type { ProfessionalCreateSchema } from '../../schemas/clinic.schema.js';
 import type { ProfessionalSummary } from '../../types/clinic.types.js';
-import { assertCanAdd, UsageMetric } from '../../../subscription/subscription_public.js';
 
 export class CreateService {
   constructor(

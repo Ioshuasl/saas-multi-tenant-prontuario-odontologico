@@ -12,10 +12,10 @@ import { usePatientListHook } from '@/packages/operacional/hooks/Patient/usePati
 import type { PatientActiveFilter } from '@/packages/operacional/types/Patient/PatientTypes';
 import { cn } from '@/shared/helpers/utils';
 
-const PatientFormDialog = dynamic(
+const PatientFormDrawer = dynamic(
   () =>
-    import('@/packages/operacional/components/Patient/PatientFormDialog').then(
-      (m) => m.PatientFormDialog,
+    import('@/packages/operacional/components/Patient/PatientFormDrawer').then(
+      (m) => m.PatientFormDrawer,
     ),
   { ssr: false },
 );
@@ -42,6 +42,27 @@ export function PatientIndex() {
 
   const listQuery = usePatientListHook(deferredSearch, { page, active });
 
+  // Busca do header (e outros deep links) atualizam a URL sem remontar a página.
+  useEffect(() => {
+    const urlSearch = searchParams.get('search') ?? '';
+    const urlActive = parseActive(searchParams.get('active'));
+    const rawPage = Number(searchParams.get('page') ?? '1');
+    const urlPage = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+
+    const writingSearch =
+      urlSearch === deferredSearch.trim() || urlSearch === search.trim();
+    if (!writingSearch) {
+      setSearch(urlSearch);
+      setPage(1);
+    } else if (urlPage !== page) {
+      setPage(urlPage);
+    }
+
+    if (urlActive !== active) {
+      setActive(urlActive);
+    }
+  }, [searchParams, deferredSearch, search, page, active]);
+
   useEffect(() => {
     if (skipFilterReset.current) {
       skipFilterReset.current = false;
@@ -56,7 +77,10 @@ export function PatientIndex() {
     if (page > 1) params.set('page', String(page));
     if (active !== 'all') params.set('active', active);
     const qs = params.toString();
-    router.replace(qs ? `/app/pacientes?${qs}` : '/app/pacientes', { scroll: false });
+    const next = qs ? `/app/pacientes?${qs}` : '/app/pacientes';
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (current === next) return;
+    router.replace(next, { scroll: false });
   }, [deferredSearch, page, active, router]);
 
   const totalPages = listQuery.data?.totalPages ?? 1;
@@ -128,7 +152,7 @@ export function PatientIndex() {
       </section>
 
       {createOpen ? (
-        <PatientFormDialog
+        <PatientFormDrawer
           open={createOpen}
           onClose={() => setCreateOpen(false)}
           onCreated={(patientId) => {

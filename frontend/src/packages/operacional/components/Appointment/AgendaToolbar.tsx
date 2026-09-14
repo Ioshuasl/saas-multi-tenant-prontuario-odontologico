@@ -54,14 +54,13 @@ export function AgendaToolbar({
   onBlock,
 }: AgendaToolbarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
-      <h1 className="mr-auto text-xl font-semibold tracking-tight text-foreground">Agenda</h1>
-
-      <div className="flex items-center gap-1 rounded-md border border-border bg-background p-0.5">
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-0.5">
         <Button
           type="button"
           size="sm"
           variant={viewMode === 'day' ? 'secondary' : 'ghost'}
+          className="cursor-pointer"
           onClick={() => onViewMode('day')}
         >
           Dia
@@ -70,6 +69,7 @@ export function AgendaToolbar({
           type="button"
           size="sm"
           variant={viewMode === 'week' ? 'secondary' : 'ghost'}
+          className="cursor-pointer"
           onClick={() => onViewMode('week')}
         >
           Semana
@@ -77,23 +77,46 @@ export function AgendaToolbar({
       </div>
 
       <div className="flex items-center gap-1">
-        <Button type="button" size="icon-sm" variant="ghost" aria-label="Anterior" onClick={onPrev}>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="outline"
+          className="cursor-pointer"
+          aria-label="Anterior"
+          onClick={onPrev}
+        >
           <ChevronLeftIcon />
         </Button>
-        <Button type="button" size="sm" variant="outline" onClick={onToday}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="cursor-pointer"
+          onClick={onToday}
+        >
           Hoje
         </Button>
-        <Button type="button" size="icon-sm" variant="ghost" aria-label="Próximo" onClick={onNext}>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="outline"
+          className="cursor-pointer"
+          aria-label="Próximo"
+          onClick={onNext}
+        >
           <ChevronRightIcon />
         </Button>
-        <span className="min-w-36 px-2 text-sm capitalize text-foreground">{anchorLabel}</span>
+        <span className="min-w-36 px-2 text-sm font-medium capitalize text-foreground">
+          {anchorLabel}
+        </span>
       </div>
 
-      <div className="flex items-center gap-1 rounded-md border border-border bg-background p-0.5">
+      <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-0.5">
         <Button
           type="button"
           size="sm"
           variant={resourceMode === 'professional' ? 'secondary' : 'ghost'}
+          className="cursor-pointer"
           onClick={() => onResourceMode('professional')}
         >
           Profissional
@@ -102,6 +125,7 @@ export function AgendaToolbar({
           type="button"
           size="sm"
           variant={resourceMode === 'chair' ? 'secondary' : 'ghost'}
+          className="cursor-pointer"
           onClick={() => onResourceMode('chair')}
         >
           Cadeira
@@ -151,7 +175,13 @@ export function AgendaToolbar({
         ))}
       </NativeSelect>
 
-      <Button type="button" size="sm" variant="outline" onClick={onBlock}>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="cursor-pointer"
+        onClick={onBlock}
+      >
         Bloquear
       </Button>
     </div>

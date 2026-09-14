@@ -27,9 +27,9 @@ Configura agents para `backend/` e `frontend/`.
 | `ui-ux-pro-max` | Decisões visuais/UX amplas (paleta, tipografia, layout, a11y, motion) — telas novas ou review |
 | `ui-ux-systems` | Cheat sheet UI do projeto (sem codar um tipo) |
 | `ui-refactor` | Refator visual com 1 shard |
-| `designer-ui` | Pencil: **1 frame** + `01-tokens-kit` (galeria Orius — futura) |
+| `designer-ui` | Pencil: **1 frame** + `01-tokens-kit` (Design System Clivra) |
 | `designer-ux` | Fluxo/tipo de tela (+ `02` ou `05` se preciso) |
-| `pencil-tsx-recreate` | Recriar `.tsx` → `.pen` |
+| `pencil-tsx-recreate` | Recriar `.tsx` → `.pen` (tokens Clivra) |
 | `git` | Branch e commit no **repo único** deste projeto |
 | `tester` | Suíte local: Docker/stack, smokes, aceite curl, Playwright, localtunnel |
 | `sprint-orchestrator` | Sprint Must completa: Tasks sequenciais BE/FE + tester + docs + commit/push |
@@ -38,10 +38,11 @@ Configura agents para `backend/` e `frontend/`.
 
 | Arquivo | Uso |
 |---------|-----|
+| [`01-clivra-design-system.md`](../01-clivra-design-system.md) | Fonte oficial visual (raiz) |
 | [`docs/ui/INDEX.md`](docs/ui/INDEX.md) | Matriz tarefa → shard |
 | `docs/ui/0N-*.md` | Detalhe pontual (máx. 1–2 por turno) |
 
-UI Pencil/Orius visual será refinada futuramente; skills de design permanecem disponíveis.
+Identidade: **Clivra · Sora · Burgundy `#4A0F16` · viewport 1366×768**. Proibido Notion-like / Orius visual.
 
 ## Arquitetura
 

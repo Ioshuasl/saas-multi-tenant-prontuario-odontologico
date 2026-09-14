@@ -31,7 +31,7 @@ Em dúvida entre “elegante/genérico” e “simples/explícito” → escolhe
 **Frontend (`frontend/`):** `Page → Component → Hook → Service → Data → API`
 
 - Hook usa **TanStack Query** (`useQuery` / `useMutation`).
-- CollectionHook Orius **não** é obrigatório.
+- CollectionHook legado **não** é obrigatório (usar TanStack Query).
 
 ## Fontes normativas (prioridade)
 
@@ -39,13 +39,14 @@ Em dúvida entre “elegante/genérico” e “simples/explícito” → escolhe
 2. `docs/` do produto — sobretudo `docs/16-estrutura-de-pastas.md`, `docs/05-arquitetura.md`, `docs/09-frontend.md`
 3. Rules em `.cursor/rules/` (por camada)
 4. Skills em `.cursor/skills/` (orchestrators; checklist só no gate final)
-5. UI detalhada: `.cursor/docs/ui/INDEX.md` → **um** shard (nunca monólito)
+5. UI detalhada: `01-clivra-design-system.md` (norma visual) + `.cursor/docs/ui/INDEX.md` → **um** shard (nunca monólito; sem Notion/Orius visual)
 
 Em dúvida de pasta/nomenclatura, seguir `docs/16`.
 
 ## Política de referência de código
 
-- Desenvolver a partir das **rules** + `docs/` — **não** usar código legado Orius/Python/Firebird como modelo.
+- Desenvolver a partir das **rules** + `docs/` — **não** usar código legado Orius/Python/Firebird como modelo de arquitetura.
+- Visual/UI: seguir **Clivra** (`01-clivra-design-system.md`); **não** Notion-like nem Orius provisional.
 - Consultar código existente **somente** quando o usuário pedir, citar entidade de referência, ou para editar o arquivo-alvo.
 - Se rule e `docs/` divergirem, perguntar ao usuário.
 - **Perguntar** em qualquer decisão de produto/DDL/contrato ambíguo.
@@ -97,7 +98,7 @@ Frontend: `frontend-types`, `frontend-enum`, `frontend-schema`, `frontend-data`,
 | Frontend | `.cursor/skills/frontend-orchestrator/` |
 | UI/UX sistemas | `.cursor/skills/ui-ux-systems/` |
 | Refatoração UI | `.cursor/skills/ui-refactor/` |
-| Design Pencil UI/UX | `.cursor/skills/designer-ui/` · `designer-ux/` |
+| Design Pencil UI/UX | `.cursor/skills/designer-ui/` · `designer-ux/` (Clivra) |
 | TSX → Pencil | `.cursor/skills/pencil-tsx-recreate/` |
 | Git | `.cursor/skills/git/` |
 | Tester (suíte local) | `.cursor/skills/tester/` |

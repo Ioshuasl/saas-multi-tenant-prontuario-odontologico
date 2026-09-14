@@ -17,6 +17,7 @@ import { useAccountQrGetHook } from '@/packages/messaging/hooks/Account/useAccou
 import { useAccountTestHook } from '@/packages/messaging/hooks/Account/useAccountTestHook';
 import { useAccountUpdateHook } from '@/packages/messaging/hooks/Account/useAccountUpdateHook';
 import type { AccountConnectFormValues } from '@/packages/messaging/schemas/Account/AccountSchema';
+import { ClivraPageHeader, ClivraSurface } from '@/shared/layout/ClivraPage';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
@@ -75,9 +76,15 @@ export function AccountForm() {
 
   if (accountQuery.isLoading) {
     return (
-      <div className="mx-auto grid max-w-2xl gap-4">
-        <Skeleton className="h-8 w-40" />
-        <Skeleton className="h-40 w-full" />
+      <div className="grid min-w-0 gap-4">
+        <ClivraPageHeader
+          title="WhatsApp"
+          description="Conecte o número da clínica pelo QR, teste o envio e acompanhe volume e logs."
+        />
+        <ClivraSurface contentClassName="grid gap-3 px-4 py-6">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-40 w-full" />
+        </ClivraSurface>
       </div>
     );
   }
@@ -86,13 +93,11 @@ export function AccountForm() {
   const qrSrc = qr ? qrImageSrc(qr) : null;
 
   return (
-    <div className="mx-auto grid max-w-2xl gap-4">
-      <header>
-        <h1 className="text-xl font-semibold">WhatsApp</h1>
-        <p className="text-sm text-muted-foreground">
-          Conecte o número da clínica pelo QR, teste o envio e acompanhe volume e logs.
-        </p>
-      </header>
+    <div className="grid min-w-0 gap-4">
+      <ClivraPageHeader
+        title="WhatsApp"
+        description="Conecte o número da clínica pelo QR, teste o envio e acompanhe volume e logs."
+      />
 
       {error ? (
         <Alert variant="destructive">
@@ -105,18 +110,24 @@ export function AccountForm() {
         <Alert>
           <AlertTitle>Teste enviado</AlertTitle>
           <AlertDescription>
-            Mensagem enviada para {testSentTo}. Ela aparece no WhatsApp desse destinatário, não no número da
-            sessão Ioshua.
+            Mensagem enviada para {testSentTo}. Ela aparece no WhatsApp desse destinatário, não no
+            número da sessão Ioshua.
           </AlertDescription>
         </Alert>
       ) : null}
 
       {!hasAccount ? (
-        <section className="rounded-lg border p-4">
-          <h2 className="text-sm font-semibold">Conectar conta</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            O QR aparece nesta tela. A clínica não usa o painel do WAHA.
-          </p>
+        <ClivraSurface
+          toolbar={
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Conectar conta</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                O QR aparece nesta tela. A clínica não usa o painel do WAHA.
+              </p>
+            </div>
+          }
+          contentClassName="px-4 py-4"
+        >
           <form
             className="grid gap-4"
             onSubmit={(event) => {
@@ -146,28 +157,37 @@ export function AccountForm() {
                 <FieldError>{form.formState.errors.riskAccepted?.message}</FieldError>
               </Field>
             </FieldGroup>
-            <Button type="submit" disabled={connect.isPending}>
+            <Button type="submit" className="w-fit cursor-pointer" disabled={connect.isPending}>
               {connect.isPending ? 'Conectando…' : 'Conectar'}
             </Button>
           </form>
-        </section>
+        </ClivraSurface>
       ) : (
-        <section className="grid gap-4 rounded-lg border p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="text-sm font-semibold">Conta</h2>
-              <p className="text-sm text-muted-foreground">{account?.displayPhone ?? 'Número ainda não sincronizado'}</p>
+        <ClivraSurface
+          toolbar={
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Conta</h2>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {account?.displayPhone ?? 'Número ainda não sincronizado'}
+                </p>
+              </div>
+              <Badge variant={account?.status === 'CONNECTED' ? 'default' : 'secondary'}>
+                {statusLabel(account?.status ?? '')}
+              </Badge>
             </div>
-            <Badge variant={account?.status === 'CONNECTED' ? 'default' : 'secondary'}>
-              {statusLabel(account?.status ?? '')}
-            </Badge>
-          </div>
-
+          }
+          contentClassName="grid gap-4 px-4 py-4"
+        >
           {waitingQr ? (
             <div className="grid gap-2">
               <p className="text-sm font-medium">Escaneie o QR no WhatsApp do número dedicado</p>
               {qrSrc ? (
-                <img alt="QR Code WhatsApp" className="h-48 w-48 rounded-md border bg-white p-2" src={qrSrc} />
+                <img
+                  alt="QR Code WhatsApp"
+                  className="h-48 w-48 rounded-md border bg-white p-2"
+                  src={qrSrc}
+                />
               ) : qr ? (
                 <p className="break-all font-mono text-xs text-muted-foreground">{qr}</p>
               ) : (
@@ -199,14 +219,17 @@ export function AccountForm() {
               }}
             />
             <p className="text-xs text-muted-foreground">
-              Use um celular com DDI (55). Não use o mesmo número da sessão conectada — o WhatsApp não mostra
-              conversa consigo mesmo.
+              Use um celular com DDI (55). Não use o mesmo número da sessão conectada — o WhatsApp
+              não mostra conversa consigo mesmo.
             </p>
           </Field>
 
-          {account?.status === 'PENDING' || account?.status === 'ERROR' || account?.status === 'CONNECTED' ? (
+          {account?.status === 'PENDING' ||
+          account?.status === 'ERROR' ||
+          account?.status === 'CONNECTED' ? (
             <Button
               type="button"
+              className="w-fit cursor-pointer"
               variant={account.status === 'CONNECTED' ? 'outline' : 'default'}
               disabled={test.isPending || testTo.replace(/\D/g, '').length < 10}
               onClick={() => {
@@ -218,7 +241,7 @@ export function AccountForm() {
           ) : null}
 
           {account?.status === 'CONNECTED' ? (
-            <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/60 px-3 py-2">
               <div>
                 <p className="text-sm font-medium">Pausar envios (kill switch)</p>
                 <p className="text-xs text-muted-foreground">
@@ -240,6 +263,7 @@ export function AccountForm() {
             <Button
               type="button"
               variant="ghost"
+              className="cursor-pointer"
               disabled={disconnect.isPending}
               onClick={() => {
                 void disconnect.mutateAsync();
@@ -248,7 +272,7 @@ export function AccountForm() {
               {disconnect.isPending ? 'Desconectando…' : 'Desconectar'}
             </Button>
           </div>
-        </section>
+        </ClivraSurface>
       )}
 
       <AccountUsageSection enabled={hasAccount} />

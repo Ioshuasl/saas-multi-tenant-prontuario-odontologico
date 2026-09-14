@@ -1,46 +1,54 @@
-# Mapa de componentes `shared/ui`
+# Mapa de componentes `shared/ui` — Clivra
 
 Ler **só** quando houver dúvida de qual primitivo usar.  
-Path alvo: `frontend/src/shared/ui/` (Radix + Tailwind; ver `docs/09`).
+Path alvo: `frontend/src/shared/ui/` (shadcn + Tailwind; ver `docs/09`).  
+Tokens: [01-tokens-kit.md](01-tokens-kit.md) · norma: [`01-clivra-design-system.md`](../../../01-clivra-design-system.md) §57–§59.
 
-Enquanto o DS não existir no código, trate esta lista como **contrato alvo** alinhado ao kit provisório ([01](01-tokens-kit.md)).
+Reutilizar e estilizar componentes existentes — **não** criar um segundo sistema paralelo.
 
 ## 1. Princípios
 
-- Foco visível (`focus-visible`)
-- Erro com `aria-invalid` + borda destructive
+- Tokens semânticos (`bg-primary`, `text-foreground`, …) — sem hex hardcoded se houver token
+- Fonte Sora; ícones Lucide
+- Foco visível (`focus-visible`); erro com `aria-invalid` + destructive
 - Componentes de `shared/ui` são **burros** (props; sem domínio)
 - Domínio (Patient, Agenda) fica em `packages/.../components`
 
-## 2. Primitivos previstos no MVP
+## 2. Primitivos previstos / preferenciais
 
 | Componente | Uso |
 |---|---|
-| `Button` | primary / outline / destructive / ghost |
-| `Input` / `Textarea` | formulários |
+| `Button` | primary / secondary / outline / destructive / ghost |
+| `Input` / `Textarea` / `Label` | formulários |
 | `Select` / `Combobox` | seleção (Combobox para busca de paciente) |
-| `DatePicker` / `TimePicker` | agenda |
-| `Modal` / `Dialog` / `Drawer` | FormDialog, confirmações |
+| `DatePicker` / `TimePicker` | agenda — consistente entre módulos |
+| `Dialog` / `Drawer` / `DropdownMenu` / `Popover` | FormDialog, confirmações, filtros |
 | `Tabs` | seções de formulário / prontuário |
 | `Table` / DataTable | Index CRUD |
-| `Badge` / `StatusPill` | status de agenda / financeiro |
-| `Toast` | feedback de mutação |
-| `EmptyState` / `Skeleton` | estados |
+| `Badge` / StatusBadge | status (fundo suave + texto semântico) |
+| `Toast` / Sonner | feedback de mutação |
+| `EmptyState` / `Skeleton` / `Separator` / `Tooltip` | estados e auxiliares |
 | `MoneyInput` / `CpfInput` / `PhoneInput` | máscaras BR |
-| `Odontogram` / `AgendaGrid` / `Timeline` | domínio clínico/operacional (podem viver em package ou shared se 2+ usos) |
+| `PageHeader` / `Breadcrumbs` / `TableToolbar` | composição de página |
+| `Odontogram` / `AgendaGrid` / `Timeline` | domínio clínico/operacional (package ou shared se 2+ usos) |
 
 ## 3. Hierarquia de botões
 
-1. **Primary** — uma por viewport/header  
-2. **Outline** — secundárias  
+1. **Primary** (burgundy) — uma por contexto/header  
+2. **Secondary / Outline** — secundárias  
 3. **Destructive** — só com confirmação  
-4. **Ghost / icon** — ações de linha
+4. **Ghost / icon** — ações de linha / menus
 
-## 4. Divergência Pencil × código
+## 4. Altura e radius
 
-Pencil (galeria provisória) pode mostrar controles ~40px; implementação real prevalece no componente. Documente “faixa 36–40px” na UI; no código, siga o DS versionado.
+- Button / Input: h ~40–44px, radius 8
+- Card: radius 12–14; Dialog: 14–16
+- Badge / Avatar: pill (`9999`)
+
+Implementação real do DS no código prevalece; documente a faixa no shard, não invente segundo kit.
 
 ## 5. O que não vai em `shared/ui`
 
 - `PatientForm`, `AppointmentCard`, regras de status clínico
 - Chamadas API / hooks de domínio
+- Cores Orius / Notion / Geist / Inter como identidade

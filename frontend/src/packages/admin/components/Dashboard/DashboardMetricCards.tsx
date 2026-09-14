@@ -42,7 +42,7 @@ export function DashboardMetricCards({ metrics }: DashboardMetricCardsProps) {
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#F3EEE9] text-[#4A0F16]">
                   <Icon className="size-4" strokeWidth={1.55} />
                 </span>
-                <p className="truncate text-[12px] font-medium text-[#6F6762]">{metric.title}</p>
+                <p className="truncate font-sans text-[13px] font-medium text-[#6F6762]">{metric.title}</p>
               </div>
               <ChevronRightIcon
                 className="size-3.5 shrink-0 text-[#C9C0B9] transition-colors group-hover:text-[#4A0F16]"
@@ -51,11 +51,11 @@ export function DashboardMetricCards({ metrics }: DashboardMetricCardsProps) {
             </div>
 
             <div className="grid min-w-0 gap-1.5">
-              <p className="truncate text-[1.25rem] leading-none font-semibold tracking-tight text-[#1A1A1A] tabular-nums">
+              <p className="truncate font-sans text-[22px] leading-none font-semibold tracking-tight text-[#1A1A1A] tabular-nums">
                 {metric.valueHint ? (
                   <>
                     {metric.value}
-                    <span className="ml-1 text-xs font-medium text-[#8A7F79]">
+                    <span className="ml-1 text-[13px] font-medium text-[#8A7F79]">
                       {metric.valueHint}
                     </span>
                   </>
@@ -63,7 +63,7 @@ export function DashboardMetricCards({ metrics }: DashboardMetricCardsProps) {
                   metric.value
                 )}
               </p>
-              <div className="text-[11px] text-[#7A716C]">{metric.footer}</div>
+              <div className="font-sans text-[12px] text-[#7A716C]">{metric.footer}</div>
             </div>
           </Link>
         );

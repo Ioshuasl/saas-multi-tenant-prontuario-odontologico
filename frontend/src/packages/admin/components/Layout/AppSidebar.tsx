@@ -1,14 +1,19 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PanelLeftIcon, XIcon } from 'lucide-react';
+import { ChevronDownIcon, PanelLeftIcon, XIcon, type LucideIcon } from 'lucide-react';
 import {
   ADMIN_NAV_ITEMS,
   isAdminNavActive,
+  isAdminNavChildActive,
+  type AdminNavChild,
   type AdminNavGroup,
+  type AdminNavItem,
 } from '@/packages/admin/helpers/AdminNav';
+import { isSettingsPath } from '@/packages/admin/helpers/SettingsTabs';
 import { useClivraShell } from '@/packages/admin/components/Layout/ClivraShellContext';
 import { CLIVRA } from '@/shared/brand/ClivraBrand';
 import { useAuth } from '@/shared/auth/AuthProvider';
@@ -35,13 +40,15 @@ function NavLink({
   active,
   badge,
   onNavigate,
+  nested,
 }: {
   href: string;
   label: string;
-  icon: (typeof ADMIN_NAV_ITEMS)[number]['icon'];
+  icon: LucideIcon;
   active: boolean;
   badge?: number;
   onNavigate?: () => void;
+  nested?: boolean;
 }) {
   return (
     <Link
@@ -49,23 +56,110 @@ function NavLink({
       prefetch={false}
       onClick={onNavigate}
       className={cn(
-        'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+        'group relative flex items-center gap-3 rounded-md text-sm font-medium transition-colors',
+        nested ? 'px-3 py-2' : 'px-3 py-2.5',
         active
-          ? 'bg-white/[0.12] text-white'
-          : 'text-white/70 hover:bg-white/[0.06] hover:text-white',
+          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
       )}
     >
+      {active ? (
+        <span
+          className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-sidebar-primary"
+          aria-hidden
+        />
+      ) : null}
       <Icon
-        className={cn('size-[1.15rem] shrink-0 stroke-[1.5]', active ? 'text-white' : 'text-white/75')}
+        className={cn(
+          'shrink-0 stroke-[1.5]',
+          nested ? 'size-4' : 'size-[1.15rem]',
+          active ? 'text-sidebar-accent-foreground' : 'text-sidebar-foreground/75',
+        )}
         aria-hidden
       />
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {badge && badge > 0 ? (
-        <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white">
+        <span className="rounded-full bg-sidebar-primary/20 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-sidebar-foreground">
           {badge > 99 ? '99+' : badge}
         </span>
       ) : null}
     </Link>
+  );
+}
+
+function SettingsNavBranch({
+  item,
+  pathname,
+  items,
+  onNavigate,
+}: {
+  item: AdminNavItem;
+  pathname: string;
+  items: AdminNavChild[];
+  onNavigate?: () => void;
+}) {
+  const onSettings = isSettingsPath(pathname);
+  const [open, setOpen] = useState(onSettings);
+  const Icon = item.icon;
+  const parentActive = isAdminNavActive(pathname, item.href);
+
+  useEffect(() => {
+    if (onSettings) setOpen(true);
+  }, [onSettings]);
+
+  return (
+    <li>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className={cn(
+          'group relative flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
+          parentActive
+            ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
+            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
+        )}
+      >
+        {parentActive ? (
+          <span
+            className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-sidebar-primary"
+            aria-hidden
+          />
+        ) : null}
+        <Icon
+          className={cn(
+            'size-[1.15rem] shrink-0 stroke-[1.5]',
+            parentActive ? 'text-sidebar-accent-foreground' : 'text-sidebar-foreground/75',
+          )}
+          aria-hidden
+        />
+        <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
+        <ChevronDownIcon
+          className={cn(
+            'size-4 shrink-0 text-sidebar-foreground/55 transition-transform duration-200',
+            open && 'rotate-180',
+          )}
+          aria-hidden
+        />
+      </button>
+
+      {open ? (
+        <ul className="mt-1 ml-3 flex flex-col gap-0.5 border-l border-sidebar-border pl-2">
+          {items.map((child) => (
+            <li key={child.href}>
+              <NavLink
+                href={child.href}
+                label={child.label}
+                icon={child.icon}
+                active={isAdminNavChildActive(pathname, child.href)}
+                onNavigate={onNavigate}
+                nested
+              />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </li>
   );
 }
 
@@ -75,17 +169,17 @@ function SidebarBrand({ clinicName }: { clinicName?: string }) {
       href="/app"
       prefetch={false}
       title={clinicName ? `${CLIVRA.name} · ${clinicName}` : CLIVRA.name}
-      className="flex items-center gap-2.5 rounded-xl px-1 transition-opacity hover:opacity-90"
+      className="flex items-center gap-2.5 rounded-md px-1 transition-opacity hover:opacity-90"
     >
       <Image
         src={CLIVRA.logoIcon}
         alt=""
         width={32}
         height={32}
-        className="size-8 shrink-0 rounded-[22%] shadow-sm ring-1 ring-white/15"
+        className="size-8 shrink-0"
         priority
       />
-      <span className="truncate text-[1.15rem] font-semibold tracking-tight text-white">
+      <span className="truncate text-[1.15rem] font-semibold tracking-tight text-sidebar-foreground">
         {CLIVRA.name}
       </span>
     </Link>
@@ -94,18 +188,18 @@ function SidebarBrand({ clinicName }: { clinicName?: string }) {
 
 function SidebarFooter() {
   return (
-    <div className="border-t border-white/10 px-4 py-4">
+    <div className="border-t border-sidebar-border px-4 py-4">
       <div className="flex items-start gap-2.5">
         <Image
           src={CLIVRA.logoIcon}
           alt=""
           width={36}
           height={36}
-          className="mt-0.5 size-9 shrink-0 rounded-[22%] opacity-90"
+          className="mt-0.5 size-9 shrink-0 opacity-90"
         />
         <div className="min-w-0">
-          <p className="text-sm font-semibold tracking-tight text-white">{CLIVRA.name}</p>
-          <p className="mt-0.5 text-[11px] leading-snug text-white/55">{SIDEBAR_TAGLINE}</p>
+          <p className="text-sm font-semibold tracking-tight text-sidebar-foreground">{CLIVRA.name}</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-sidebar-foreground/55">{SIDEBAR_TAGLINE}</p>
         </div>
       </div>
     </div>
@@ -136,7 +230,7 @@ function SidebarBody({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="text-white/80 hover:bg-white/10 hover:text-white"
+            className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             aria-label="Fechar menu"
             onClick={() => setMobileOpen(false)}
           >
@@ -162,10 +256,26 @@ function SidebarBody({
           return (
             <div key={group.id} className={cn(groupIndex > 0 && 'mt-2')}>
               {groupIndex > 0 ? (
-                <div className="mx-3 mb-2 border-t border-white/10" aria-hidden />
+                <div className="mx-3 mb-2 border-t border-sidebar-border" aria-hidden />
               ) : null}
               <ul className="flex flex-col gap-1">
                 {items.map((item) => {
+                  const visibleChildren = (item.children ?? []).filter(
+                    (child) => !child.permission || hasPermission(me, child.permission),
+                  );
+
+                  if (visibleChildren.length > 0) {
+                    return (
+                      <SettingsNavBranch
+                        key={item.href}
+                        item={item}
+                        pathname={pathname}
+                        items={visibleChildren}
+                        onNavigate={onNavigate}
+                      />
+                    );
+                  }
+
                   const showInboxBadge = item.href === '/app/inbox' && inboxBadgeCount > 0;
                   return (
                     <li key={item.href}>
@@ -208,7 +318,7 @@ export function AppSidebar({ clinicName, inboxBadgeCount = 0 }: AppSidebarProps)
         ) : null}
         <aside
           className={cn(
-            'fixed inset-y-0 left-0 z-50 flex w-[16.5rem] flex-col bg-[#2D0B12] shadow-2xl transition-transform duration-200 md:hidden',
+            'fixed inset-y-0 left-0 z-50 flex w-[16.5rem] flex-col bg-sidebar text-sidebar-foreground shadow-[var(--shadow-clivra-lg)] transition-transform duration-200 md:hidden',
             mobileOpen ? 'translate-x-0' : '-translate-x-full',
           )}
           aria-hidden={!mobileOpen}
@@ -225,7 +335,7 @@ export function AppSidebar({ clinicName, inboxBadgeCount = 0 }: AppSidebarProps)
   }
 
   return (
-    <aside className="sticky top-0 z-20 hidden h-svh w-[15.5rem] shrink-0 flex-col bg-[#2D0B12] md:flex">
+    <aside className="sticky top-0 z-20 hidden h-svh w-[15.5rem] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
       <SidebarBody clinicName={clinicName} inboxBadgeCount={inboxBadgeCount} />
     </aside>
   );

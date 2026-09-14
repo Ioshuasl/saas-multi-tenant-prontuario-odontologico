@@ -1,11 +1,7 @@
-import { BusinessHoursExceptionForm } from '@/packages/admin/components/BusinessHours/BusinessHoursExceptionForm';
-import { BusinessHoursForm } from '@/packages/admin/components/BusinessHours/BusinessHoursForm';
+import { BusinessHoursIndex } from '@/packages/admin/components/BusinessHours/BusinessHoursIndex';
+
+export const metadata = { title: 'Horários' };
 
 export default function BusinessHoursPage() {
-  return (
-    <div className="grid gap-2">
-      <BusinessHoursForm />
-      <BusinessHoursExceptionForm />
-    </div>
-  );
+  return <BusinessHoursIndex />;
 }

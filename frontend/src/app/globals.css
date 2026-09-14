@@ -5,9 +5,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: var(--font-sans);
-    --font-display: var(--font-display);
-    --font-sans: var(--font-sans);
+    /* next/font: --font-sora / --font-playfair no <html> (layout.tsx) */
+    --font-sans: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+    --font-heading: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+    --font-display: var(--font-playfair), ui-serif, Georgia, "Times New Roman", serif;
     /* Desktop real: acima de 1920×1080 @125% Windows (≈1536 CSS). Notebook usa o default. */
     --breakpoint-desk: 105rem;
     --color-sidebar-ring: var(--sidebar-ring);
@@ -27,6 +28,10 @@
     --color-input: var(--input);
     --color-border: var(--border);
     --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-warning: var(--warning);
+    --color-info: var(--info);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
     --color-muted-foreground: var(--muted-foreground);
@@ -41,22 +46,27 @@
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
+    /* Base lg = 10px → sm 6 · md 8 · xl 14 · 2xl 16 (aprox. DS Clivra) */
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
     --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-2xl: calc(var(--radius) * 1.6);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
+    --shadow-clivra-sm: 0 1px 2px rgb(26 26 26 / 0.04);
+    --shadow-clivra-md: 0 4px 12px rgb(26 26 26 / 0.06);
+    --shadow-clivra-lg: 0 12px 32px rgb(26 26 26 / 0.10);
 }
 
 /*
-  Clivra — tokens oficiais
-  Bordô Principal #4A0F16 · Secundário #7A2B36 · Neutro #EAE6E1 · Texto #1A1A1A
+  Clivra — Design System oficial (01-clivra-design-system.md)
+  Burgundy #4A0F16 · Secondary #7A2B36 · Accent #A85B67
+  Background #F7F5F2 · Surface #FFFFFF · Border #DDD8D3
   Tipografia: Sora (layout.tsx)
 */
 :root {
-    --background: #eae6e1;
+    --background: #f7f5f2;
     --foreground: #1a1a1a;
     --card: #ffffff;
     --card-foreground: #1a1a1a;
@@ -66,63 +76,71 @@
     --primary-foreground: #ffffff;
     --secondary: #7a2b36;
     --secondary-foreground: #ffffff;
-    --muted: #e0dbd5;
-    --muted-foreground: #5c5652;
-    --accent: #f3f0ec;
-    --accent-foreground: #4a0f16;
-    --destructive: #b42318;
-    --border: #d8d2cb;
-    --input: #d8d2cb;
+    --muted: #eae6e1;
+    --muted-foreground: #6b6663;
+    --accent: #a85b67;
+    --accent-foreground: #ffffff;
+    --destructive: #b94a55;
+    --destructive-foreground: #ffffff;
+    --success: #2f8f63;
+    --warning: #c98a32;
+    --info: #587a9b;
+    --border: #ddd8d3;
+    --input: #ddd8d3;
     --ring: #7a2b36;
     --chart-1: #4a0f16;
     --chart-2: #7a2b36;
-    --chart-3: #a85a64;
+    --chart-3: #a85b67;
     --chart-4: #c4b8ae;
-    --chart-5: #e0dbd5;
-    --radius: 0.75rem;
+    --chart-5: #eae6e1;
+    --radius: 0.625rem;
     --sidebar: #4a0f16;
-    --sidebar-foreground: #f5f2ee;
-    --sidebar-primary: #7a2b36;
-    --sidebar-primary-foreground: #ffffff;
+    --sidebar-foreground: #ffffff;
+    --sidebar-primary: #ffffff;
+    --sidebar-primary-foreground: #4a0f16;
     --sidebar-accent: #7a2b36;
     --sidebar-accent-foreground: #ffffff;
     --sidebar-border: rgb(255 255 255 / 12%);
-    --sidebar-ring: #a85a64;
+    --sidebar-ring: #a85b67;
 }
 
-/* Tema escuro A: carvão + texto neutro; sidebar bordô; CTA #7A2B36 */
+/* Dark mode coerente com Clivra (preservar funcionalidade existente) */
 .dark {
     --background: #141210;
-    --foreground: #eae6e1;
+    --foreground: #f7f5f2;
     --card: #1f1c1a;
-    --card-foreground: #eae6e1;
+    --card-foreground: #f7f5f2;
     --popover: #1f1c1a;
-    --popover-foreground: #eae6e1;
+    --popover-foreground: #f7f5f2;
     --primary: #7a2b36;
     --primary-foreground: #ffffff;
-    --secondary: #4a0f16;
-    --secondary-foreground: #eae6e1;
+    --secondary: #a85b67;
+    --secondary-foreground: #ffffff;
     --muted: #2a2623;
     --muted-foreground: #b0a9a2;
-    --accent: #2a2623;
-    --accent-foreground: #eae6e1;
-    --destructive: #f04438;
-    --border: rgb(234 230 225 / 12%);
-    --input: rgb(234 230 225 / 15%);
-    --ring: #7a2b36;
+    --accent: #7a2b36;
+    --accent-foreground: #ffffff;
+    --destructive: #b94a55;
+    --destructive-foreground: #ffffff;
+    --success: #2f8f63;
+    --warning: #c98a32;
+    --info: #587a9b;
+    --border: rgb(247 245 242 / 12%);
+    --input: rgb(247 245 242 / 15%);
+    --ring: #a85b67;
     --chart-1: #7a2b36;
-    --chart-2: #a85a64;
+    --chart-2: #a85b67;
     --chart-3: #c4b8ae;
-    --chart-4: #5c5652;
+    --chart-4: #6b6663;
     --chart-5: #2a2623;
     --sidebar: #4a0f16;
-    --sidebar-foreground: #f5f2ee;
-    --sidebar-primary: #7a2b36;
-    --sidebar-primary-foreground: #ffffff;
+    --sidebar-foreground: #ffffff;
+    --sidebar-primary: #ffffff;
+    --sidebar-primary-foreground: #4a0f16;
     --sidebar-accent: #7a2b36;
     --sidebar-accent-foreground: #ffffff;
     --sidebar-border: rgb(255 255 255 / 12%);
-    --sidebar-ring: #a85a64;
+    --sidebar-ring: #a85b67;
 }
 
 @layer base {
@@ -130,11 +148,19 @@
     @apply border-border outline-ring/50;
   }
   /*
-    Notebook Windows (escala 125%/150%): rem um pouco menor → densidade de SaaS,
-    sem brigar com o DPI. Desktop (≥1680 CSS) volta a 16px.
+    Espelha tokens de fonte no <html> — @theme inline do Tailwind v4 nem sempre
+    expõe --font-sans/--font-display em :root (fica vazio no DevTools).
+    next/font continua injetando --font-sora / --font-playfair via className.
   */
   html {
-    @apply font-sans;
+    --font-sans: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+    --font-heading: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+    --font-display: var(--font-playfair), ui-serif, Georgia, "Times New Roman", serif;
+    font-family: var(--font-sans);
+    /*
+      Notebook Windows (escala 125%/150%): rem um pouco menor → densidade operacional.
+      Desktop (≥1680 CSS) volta a 16px. Viewport prioritário Clivra: 1366×768.
+    */
     font-size: 15px;
   }
   @media (min-width: 105rem) {
@@ -143,6 +169,25 @@
     }
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+}
+
+/*
+  Login Clivra — tipografia à prova de sobrescrita do tema.
+  Usa as vars injetadas pelo next/font (--font-sora / --font-playfair).
+*/
+@layer components {
+  .login-page {
+    font-family: var(--font-sans);
+    font-size: 16px;
+  }
+  .login-page .login-display {
+    font-family: var(--font-display);
+    font-synthesis: none;
+  }
+  .login-page .login-sans {
+    font-family: var(--font-sans);
   }
 }

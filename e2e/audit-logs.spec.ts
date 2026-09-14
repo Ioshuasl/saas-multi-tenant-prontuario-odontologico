@@ -15,7 +15,7 @@ ownerTest.describe('Auditoria (owner)', () => {
     await ownerExpect(page.getByRole('heading', { name: 'Prontuário' })).toBeVisible();
 
     await page.getByRole('link', { name: 'Ver acessos' }).click();
-    await ownerExpect(page).toHaveURL(/\/app\/auditoria\?patientId=/);
+    await ownerExpect(page).toHaveURL(/\/app\/configuracoes\/auditoria\?patientId=/);
     await ownerExpect(page.getByRole('heading', { name: 'Auditoria' })).toBeVisible();
     await ownerExpect(page.getByRole('link', { name: 'Auditoria' })).toBeVisible();
     await ownerExpect(page.getByText('Leitura clínica').first()).toBeVisible();

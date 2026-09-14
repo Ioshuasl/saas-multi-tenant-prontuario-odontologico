@@ -10,6 +10,7 @@ import { useAuditLogPatientListHook } from '@/packages/admin/hooks/AuditLog/useA
 import { useMemberListHook } from '@/packages/admin/hooks/Member/useMemberListHook';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { hasPermission } from '@/shared/auth/permissions';
+import { ClivraPageHeader, ClivraSurface } from '@/shared/layout/ClivraPage';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 
@@ -25,7 +26,19 @@ function toIsoEnd(date: string): string | undefined {
 
 export function AuditLogIndex() {
   return (
-    <Suspense fallback={<p className="text-sm text-muted-foreground">Carregando auditoria…</p>}>
+    <Suspense
+      fallback={
+        <div className="grid min-w-0 gap-4">
+          <ClivraPageHeader
+            title="Auditoria"
+            description="Quem acessou ou alterou dados da clínica. A trilha é somente leitura."
+          />
+          <ClivraSurface contentClassName="px-4 py-6">
+            <p className="text-sm text-muted-foreground">Carregando auditoria…</p>
+          </ClivraSurface>
+        </div>
+      }
+    >
       <AuditLogIndexBody />
     </Suspense>
   );
@@ -105,69 +118,100 @@ function AuditLogIndexBody() {
   const logs = listQuery.data?.pages.flatMap((page) => page.items) ?? [];
 
   if (!me) {
-    return <p className="text-sm text-muted-foreground">Carregando auditoria…</p>;
+    return (
+      <div className="grid min-w-0 gap-4">
+        <ClivraPageHeader
+          title="Auditoria"
+          description="Quem acessou ou alterou dados da clínica. A trilha é somente leitura."
+        />
+        <ClivraSurface contentClassName="px-4 py-6">
+          <p className="text-sm text-muted-foreground">Carregando auditoria…</p>
+        </ClivraSurface>
+      </div>
+    );
   }
 
   if (!allowed) {
     return (
-      <Alert variant="destructive">
-        <AlertDescription>
-          Você não tem permissão para consultar a trilha de auditoria.
-        </AlertDescription>
-      </Alert>
+      <div className="grid min-w-0 gap-4">
+        <ClivraPageHeader
+          title="Auditoria"
+          description="Quem acessou ou alterou dados da clínica. A trilha é somente leitura."
+        />
+        <Alert variant="destructive">
+          <AlertDescription>
+            Você não tem permissão para consultar a trilha de auditoria.
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   return (
-    <div className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Auditoria</h1>
-        <p className="text-sm text-muted-foreground">
-          Quem acessou ou alterou dados da clínica. A trilha é somente leitura.
-        </p>
-      </div>
-
-      <AuditLogFilter
-        patientSearch={patientSearch}
-        onPatientSearchChange={setPatientSearch}
-        patients={patients}
-        patientId={patientId}
-        onPatientIdChange={onPatientIdChange}
-        members={members}
-        actorId={actorId}
-        onActorIdChange={setActorId}
-        action={action}
-        onActionChange={setAction}
-        from={from}
-        onFromChange={setFrom}
-        to={to}
-        onToChange={setTo}
+    <div className="grid min-w-0 gap-4">
+      <ClivraPageHeader
+        title="Auditoria"
+        description="Quem acessou ou alterou dados da clínica. A trilha é somente leitura."
       />
 
-      {listQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Carregando eventos…</p>
-      ) : listQuery.isError ? (
-        <Alert variant="destructive">
-          <AlertDescription>{adminErrorMessage(listQuery.error)}</AlertDescription>
-        </Alert>
-      ) : (
-        <>
-          <AuditLogTable logs={logs} actorNames={actorNames} patientNames={patientNames} />
-          {listQuery.hasNextPage ? (
+      <ClivraSurface
+        toolbar={
+          <AuditLogFilter
+            patientSearch={patientSearch}
+            onPatientSearchChange={setPatientSearch}
+            patients={patients}
+            patientId={patientId}
+            onPatientIdChange={onPatientIdChange}
+            members={members}
+            actorId={actorId}
+            onActorIdChange={setActorId}
+            action={action}
+            onActionChange={setAction}
+            from={from}
+            onFromChange={setFrom}
+            to={to}
+            onToChange={setTo}
+          />
+        }
+        contentClassName="px-4 py-2"
+      >
+        {listQuery.isLoading ? (
+          <p className="py-4 text-sm text-muted-foreground">Carregando eventos…</p>
+        ) : listQuery.isError ? (
+          <div className="py-4">
+            <p className="text-sm text-destructive" role="alert">
+              {adminErrorMessage(listQuery.error)}
+            </p>
             <Button
               type="button"
-              variant="outline"
-              className="w-fit"
-              disabled={listQuery.isFetchingNextPage}
-              onClick={() => {
-                void listQuery.fetchNextPage();
-              }}
+              variant="link"
+              className="mt-2 h-auto cursor-pointer px-0"
+              onClick={() => void listQuery.refetch()}
             >
-              {listQuery.isFetchingNextPage ? 'Carregando…' : 'Carregar mais'}
+              Tentar novamente
             </Button>
-          ) : null}
-        </>
-      )}
+          </div>
+        ) : (
+          <>
+            <AuditLogTable logs={logs} actorNames={actorNames} patientNames={patientNames} />
+            {listQuery.hasNextPage ? (
+              <div className="border-t border-border px-0 py-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-fit cursor-pointer"
+                  disabled={listQuery.isFetchingNextPage}
+                  onClick={() => {
+                    void listQuery.fetchNextPage();
+                  }}
+                >
+                  {listQuery.isFetchingNextPage ? 'Carregando…' : 'Carregar mais'}
+                </Button>
+              </div>
+            ) : null}
+          </>
+        )}
+      </ClivraSurface>
     </div>
   );
 }

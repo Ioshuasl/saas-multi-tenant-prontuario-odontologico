@@ -1,33 +1,30 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  ActivityIcon,
-  ArmchairIcon,
-  BanknoteIcon,
-  BarChart3Icon,
-  Building2Icon,
   CalendarDaysIcon,
-  ChartNoAxesCombinedIcon,
   CircleDollarSignIcon,
-  ClipboardListIcon,
-  ClockIcon,
   ContactIcon,
-  CreditCardIcon,
   FileBarChartIcon,
   FileTextIcon,
   HomeIcon,
   InboxIcon,
   ListChecksIcon,
-  LockIcon,
-  MessageCircleIcon,
-  ScrollTextIcon,
-  StethoscopeIcon,
-  SyringeIcon,
-  TriangleAlertIcon,
-  UsersIcon,
-  WalletIcon,
+  SettingsIcon,
 } from 'lucide-react';
+import {
+  SETTINGS_NAV_ITEMS,
+  SETTINGS_PATH,
+  settingsHref,
+  type SettingsNavItem,
+} from '@/packages/admin/helpers/SettingsTabs';
 
 export type AdminNavGroup = 'main' | 'settings';
+
+export type AdminNavChild = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  permission?: string;
+};
 
 export type AdminNavItem = {
   href: string;
@@ -35,7 +32,17 @@ export type AdminNavItem = {
   icon: LucideIcon;
   group: AdminNavGroup;
   permission?: string;
+  children?: AdminNavChild[];
 };
+
+function toNavChild(item: SettingsNavItem): AdminNavChild {
+  return {
+    href: settingsHref(item.id),
+    label: item.label,
+    icon: item.icon,
+    permission: item.permission,
+  };
+}
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: '/app', label: 'Início', icon: HomeIcon, group: 'main' },
@@ -56,46 +63,11 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     permission: 'quotes.read',
   },
   {
-    href: '/app/financeiro/receber',
-    label: 'Receber',
+    href: '/app/financeiro',
+    label: 'Financeiro',
     icon: CircleDollarSignIcon,
     group: 'main',
     permission: 'finance.read',
-  },
-  {
-    href: '/app/financeiro/caixa',
-    label: 'Caixa',
-    icon: WalletIcon,
-    group: 'main',
-    permission: 'finance.read',
-  },
-  {
-    href: '/app/financeiro/pagar',
-    label: 'Pagar',
-    icon: BanknoteIcon,
-    group: 'main',
-    permission: 'finance.read',
-  },
-  {
-    href: '/app/financeiro/fluxo',
-    label: 'Fluxo',
-    icon: ChartNoAxesCombinedIcon,
-    group: 'main',
-    permission: 'reports.financial',
-  },
-  {
-    href: '/app/financeiro/inadimplencia',
-    label: 'Inadimplência',
-    icon: TriangleAlertIcon,
-    group: 'main',
-    permission: 'reports.financial',
-  },
-  {
-    href: '/app/financeiro/producao',
-    label: 'Produção',
-    icon: ActivityIcon,
-    group: 'main',
-    permission: 'reports.read',
   },
   {
     href: '/app/relatorios',
@@ -104,82 +76,13 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     group: 'main',
     permission: 'reports.read',
   },
-  {
-    href: '/app/assinatura',
-    label: 'Assinatura',
-    icon: CreditCardIcon,
-    group: 'main',
-    permission: 'subscription.manage',
-  },
   { href: '/app/onboarding', label: 'Onboarding', icon: ListChecksIcon, group: 'main' },
   {
-    href: '/app/configuracoes/clinica',
-    label: 'Clínica',
-    icon: Building2Icon,
+    href: SETTINGS_PATH,
+    label: 'Configurações',
+    icon: SettingsIcon,
     group: 'settings',
-  },
-  {
-    href: '/app/configuracoes/horarios',
-    label: 'Horários',
-    icon: ClockIcon,
-    group: 'settings',
-  },
-  {
-    href: '/app/configuracoes/cadeiras',
-    label: 'Cadeiras',
-    icon: ArmchairIcon,
-    group: 'settings',
-  },
-  {
-    href: '/app/configuracoes/profissionais',
-    label: 'Profissionais',
-    icon: StethoscopeIcon,
-    group: 'settings',
-  },
-  {
-    href: '/app/configuracoes/procedimentos',
-    label: 'Procedimentos',
-    icon: SyringeIcon,
-    group: 'settings',
-  },
-  {
-    href: '/app/configuracoes/anamnese',
-    label: 'Anamnese',
-    icon: ClipboardListIcon,
-    group: 'settings',
-  },
-  {
-    href: '/app/configuracoes/membros',
-    label: 'Membros',
-    icon: UsersIcon,
-    group: 'settings',
-  },
-  {
-    href: '/app/whatsapp',
-    label: 'WhatsApp',
-    icon: MessageCircleIcon,
-    group: 'settings',
-  },
-  {
-    href: '/app/assinatura',
-    label: 'Assinatura',
-    icon: CreditCardIcon,
-    group: 'settings',
-    permission: 'subscription.manage',
-  },
-  {
-    href: '/app/auditoria',
-    label: 'Auditoria',
-    icon: ScrollTextIcon,
-    group: 'settings',
-    permission: 'audit.read',
-  },
-  {
-    href: '/app/privacidade',
-    label: 'Privacidade',
-    icon: LockIcon,
-    group: 'settings',
-    permission: 'data.export',
+    children: SETTINGS_NAV_ITEMS.map(toNavChild),
   },
 ];
 
@@ -188,31 +91,59 @@ export type AdminBreadcrumb = {
   label: string;
 };
 
-/** Only includes routes that exist in ADMIN_NAV_ITEMS (no orphan segments). */
 export function buildAdminBreadcrumbs(pathname: string): AdminBreadcrumb[] {
-  const matches = ADMIN_NAV_ITEMS.filter((item) => {
-    if (item.href === '/app') {
-      return pathname === '/app' || pathname.startsWith('/app/');
-    }
-    return pathname === item.href || pathname.startsWith(`${item.href}/`);
-  }).sort((a, b) => a.href.length - b.href.length);
-
-  if (matches.length === 0) {
-    return [{ label: 'Início', href: '/app' }];
+  if (pathname === '/app' || pathname === '/app/') {
+    return [{ label: 'Início' }];
   }
 
-  return matches.map((item, index) => {
-    const isLast = index === matches.length - 1;
-    return {
-      label: item.label,
-      href: isLast ? undefined : item.href,
-    };
-  });
+  if (
+    pathname === '/app/financeiro/relatorios' ||
+    pathname.startsWith('/app/financeiro/relatorios/')
+  ) {
+    return [
+      { label: 'Início', href: '/app' },
+      { label: 'Financeiro', href: '/app/financeiro' },
+      { label: 'Relatórios' },
+    ];
+  }
+
+  for (const item of ADMIN_NAV_ITEMS) {
+    if (item.children?.length) {
+      const child = item.children.find(
+        (entry) => pathname === entry.href || pathname.startsWith(`${entry.href}/`),
+      );
+      if (child) {
+        return [
+          { label: 'Início', href: '/app' },
+          { label: item.label, href: item.href },
+          { label: child.label },
+        ];
+      }
+      if (pathname === item.href) {
+        return [{ label: 'Início', href: '/app' }, { label: item.label }];
+      }
+      continue;
+    }
+
+    if (item.href === '/app') continue;
+    if (pathname === item.href || pathname.startsWith(`${item.href}/`)) {
+      return [{ label: 'Início', href: '/app' }, { label: item.label }];
+    }
+  }
+
+  return [{ label: 'Início', href: '/app' }];
 }
 
 export function isAdminNavActive(pathname: string, href: string): boolean {
   if (href === '/app') {
     return pathname === '/app';
   }
+  if (href === SETTINGS_PATH) {
+    return pathname === SETTINGS_PATH || pathname.startsWith(`${SETTINGS_PATH}/`);
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function isAdminNavChildActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }

@@ -156,7 +156,7 @@ export function DashboardHome() {
           id: 'receber',
           title: 'A receber hoje',
           value: formatCents(data?.receivableTodayCents ?? 0),
-          href: data?.drillDown.receivableToday ?? '/app/financeiro/receber',
+          href: data?.drillDown.receivableToday ?? '/app/financeiro',
           icon: CircleDollarSignIcon,
           footer: (
             <span className="inline-flex items-center gap-1.5">
@@ -170,7 +170,7 @@ export function DashboardHome() {
           id: 'recebido',
           title: 'Recebido hoje',
           value: formatCents(receivedCents),
-          href: '/app/financeiro/receber',
+          href: '/app/financeiro',
           icon: ClipboardCheckIcon,
           footer: (
             <MetricDotFooter color="green">
@@ -203,7 +203,7 @@ export function DashboardHome() {
         id: 'producao',
         title: 'Produção do mês',
         value: formatCents(production),
-        href: data?.drillDown.production ?? '/app/financeiro/producao',
+        href: data?.drillDown.production ?? '/app/financeiro/relatorios',
         icon: BarChart3Icon,
         footer:
           productionDelta === null ? (

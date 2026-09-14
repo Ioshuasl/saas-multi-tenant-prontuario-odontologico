@@ -68,6 +68,17 @@ class ApiClient {
       }
     }
 
+    const contentType = res.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+      throw new ApiClientError(
+        'INVALID_RESPONSE',
+        res.status === 404
+          ? `Endpoint não encontrado (${path}). Confirme se a API está atualizada e reiniciada.`
+          : `A API retornou uma resposta inválida (HTTP ${res.status}).`,
+        res.status,
+      );
+    }
+
     const body = (await res.json()) as ApiResponse<T> & { meta?: Record<string, unknown> };
 
     if (!res.ok || isApiError(body)) {

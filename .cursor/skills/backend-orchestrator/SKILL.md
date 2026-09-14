@@ -23,7 +23,7 @@ Implementar/corrigir `backend/` no fluxo:
 
 | Tarefa | Ler | Não ler |
 |--------|-----|---------|
-| CRUD camada(s) N | `.cursor/rules/backend-<camada>.mdc` + checklist no fim | monólito UI, código Orius Python |
+| CRUD camada(s) N | `.cursor/rules/backend-<camada>.mdc` + checklist no fim | monólito UI, código legado Orius/Python |
 | Multi-tenant / RLS | `docs/06` sob demanda | — |
 
 ## Gate de pergunta (obrigatório)

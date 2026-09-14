@@ -1,5 +1,5 @@
-import { PayableIndex } from '@/packages/financeiro/components/Payable/PayableIndex';
+import { redirect } from 'next/navigation';
 
-export default function PagarPage() {
-  return <PayableIndex />;
+export default function PagarRedirectPage() {
+  redirect('/app/financeiro');
 }

@@ -1,14 +1,15 @@
-# Sidebar 360 e Details
+# Sidebar 360 e Details — Clivra
 
-Norma: `docs/09` (atendimento, inbox) · `docs/16`.
+Norma: `docs/09` (atendimento, inbox) · `docs/16`.  
+Visual: DS Clivra §42–§45 · [01-tokens-kit](01-tokens-kit.md).
 
-A **Sidebar de página** é a coluna sticky à **direita** (360px). Não confundir com a sidebar global do app (`shared/layout`).
+A **Sidebar de página** é a coluna sticky à **direita** (~360px). Não confundir com a **sidebar global** do app (burgundy `#4A0F16` em `shared/layout`).
 
 ## 1. Anatomia
 
 ```
-[ main flex-1 min-w-0 ]   [ aside 360px ]
-  conteúdo                 Card sticky
+[ main flex-1 min-w-0 ]   [ aside ~360px ]
+  conteúdo                 Card sticky (surface + border)
                            → navegação OU ações
 ```
 
@@ -23,7 +24,8 @@ A **Sidebar de página** é a coluna sticky à **direita** (360px). Não confund
 </div>
 ```
 
-Regras: `aside` a partir de `lg`; sticky; um Card; main com `min-w-0`.
+Regras: `aside` a partir de `lg`; sticky; um Card; main com `min-w-0`.  
+Em telas menores: bloco inferior, Drawer ou seção recolhível — **nunca** esmagar o conteúdo principal.
 
 ## 2. Dois conteúdos (não misturar no mesmo Card)
 
@@ -32,15 +34,18 @@ Regras: `aside` a partir de `lg`; sticky; um Card; main com `min-w-0`.
 | **Navegação** | Form longo (seções) | Orçamento: itens → descontos → pagamento |
 | **Ações** | Details / pós-registro | Paciente: agendar, enviar WhatsApp, novo orçamento |
 
-## 3. Details
+Form = criar/editar. Details = visualizar + ações. Não misturar.
 
+## 3. Details / perfil do paciente
+
+- Breadcrumb discreto quando a hierarquia importar
 - Coluna principal: dados + timeline / histórico
 - Sidebar: ações contextuais + destrutivas com ConfirmDialog
 - Sem edição “silenciosa” de dado clínico — evolução usa amend
 
-## 4. Atendimento clínico (referência `docs/09`)
+## 4. Atendimento clínico (referência `docs/09` + DS §45)
 
-Layout de três áreas na rota de atendimento (não é Sidebar 360 clássica, mas o mesmo princípio de foco):
+Layout de foco clínico (preservar funcionalidades existentes):
 
 ```
 Alertas clínicos (topo, sempre visíveis)
@@ -48,7 +53,7 @@ Odontograma | Plano de tratamento + evolução
 Histórico / anexos
 ```
 
-Alertas `CRITICAL` não são dispensáveis.
+Alertas `CRITICAL` não são dispensáveis. Odontograma: alto contraste, legenda clara, cores só com significado clínico (DS §46).
 
 ## 5. Inbox WhatsApp
 

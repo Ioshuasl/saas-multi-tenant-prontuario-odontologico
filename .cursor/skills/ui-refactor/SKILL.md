@@ -1,15 +1,16 @@
 ---
 name: ui-refactor
 description: >-
-  Refatora UI React/Next.js em frontend/ alinhando a shards docs/ui, preservando
-  contratos/hooks/services. Use para layout/copy/a11y sem mudar arquitetura.
-  Tokens Orius provisórios até o DS definitivo.
+  Refatora UI React/Next.js em frontend/ alinhando ao Design System Clivra e
+  shards docs/ui, preservando contratos/hooks/services. Use para layout/copy/a11y
+  sem mudar arquitetura.
 ---
 
-# UI/UX Refactor (Frontend)
+# UI/UX Refactor (Frontend) — Clivra
 
 Paths: `frontend/src/packages/**` e `frontend/src/shared/**`.
 Arquitetura: `.cursor/rules/frontend-*.mdc` + `docs/09` / `docs/16`.
+Visual: [`01-clivra-design-system.md`](../../../01-clivra-design-system.md).
 
 ## Política de tokens
 
@@ -26,11 +27,13 @@ Arquitetura: `.cursor/rules/frontend-*.mdc` das camadas tocadas.
 
 ## Missão
 
-Melhorar visual/UX/copy/a11y alinhado ao padrão — **sem** mudar payloads, hooks, services ou o fluxo de camadas.
+Melhorar visual/UX/copy/a11y alinhado ao **Clivra** — **sem** mudar payloads, hooks, services ou o fluxo de camadas.
+
+Eliminar resíduos Notion-like / Orius (laranja `#FF781F`, ink `#37352F`, Geist, Inter como identidade).
 
 ## Precedência
 
-1. Segurança/dados → 2. Pedido do usuário → 3. Contratos → 4. Escopo → 5. Shard UI + rules → 6. Código (só com autorização)
+1. Segurança/dados → 2. Pedido do usuário → 3. Contratos → 4. Escopo → 5. DS Clivra + shard UI + rules → 6. Código (só com autorização)
 
 ## Tipos
 
@@ -40,13 +43,13 @@ Melhorar visual/UX/copy/a11y alinhado ao padrão — **sem** mudar payloads, hoo
 
 `ENQUADRAR → PROTEGER → INVESTIGAR → PLANEJAR → EXECUTAR → VALIDAR → REPORTAR`
 
-- Investigar: componente + **1 shard** + rules.
-- Executar: diff mínimo; preservar Collection/FormHook/`handleForm`/modais condicionais.
-- Validar: lint + checklist do shard/`INDEX` (não monólito).
+- Investigar: componente + **1 shard** + rules (+ DS Clivra se tokens/shell).
+- Executar: diff mínimo; preservar FormHook/`handleForm`/modais condicionais/TanStack Query.
+- Validar: lint + checklist do shard/`INDEX` + viewport **1366×768**.
 
 ## Não faça
 
-Alterar hooks/services sem autorização; inventar APIs; ampliar escopo; commit sem pedido.
+Alterar hooks/services sem autorização; inventar APIs; ampliar escopo; commit sem pedido; reescrever página do zero só por visual.
 
 ## Saída
 
@@ -55,5 +58,5 @@ Escopo: [A|B|C]
 Shard UI: [arquivo]
 Arquivos: [lista]
 Preservado: [contratos]
-Validação: [lint]
+Validação: [lint / 1366×768]
 ```

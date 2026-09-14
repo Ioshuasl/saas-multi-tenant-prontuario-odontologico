@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { QuoteTable } from '@/packages/operacional/components/Quote/QuoteTable';
 import { operacionalErrorMessage } from '@/packages/operacional/helpers/OperacionalErrorMessage';
@@ -12,6 +12,13 @@ import type { PatientQuotesPanelProps } from '@/packages/operacional/types/Quote
 import { Can } from '@/shared/auth/Can';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/shared/ui/card';
 
 const QuoteFormDialog = dynamic(
   () =>
@@ -37,15 +44,29 @@ const QuoteDecisionFormDialog = dynamic(
   { ssr: false },
 );
 
-export function PatientQuotesPanel({ patientId }: PatientQuotesPanelProps) {
+export function PatientQuotesPanel({
+  patientId,
+  createOpen,
+  onCreateOpenChange,
+  hideHeaderCreate = false,
+}: PatientQuotesPanelProps) {
   const patientQuery = usePatientGetHook(patientId);
   const listQuery = useQuoteListHook({ patientId });
   const duplicate = useQuoteDuplicateHook();
   const pdf = useQuotePdfHook();
-  const [formOpen, setFormOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [formQuoteId, setFormQuoteId] = useState<string | undefined>();
   const [sendQuoteId, setSendQuoteId] = useState<string | null>(null);
   const [decideQuoteId, setDecideQuoteId] = useState<string | null>(null);
+
+  const formOpen = createOpen ?? internalOpen;
+  const setFormOpen = onCreateOpenChange ?? setInternalOpen;
+
+  useEffect(() => {
+    if (createOpen) {
+      setFormQuoteId(undefined);
+    }
+  }, [createOpen]);
 
   const patientName = patientQuery.data
     ? patientQuery.data.socialName || patientQuery.data.name
@@ -64,48 +85,57 @@ export function PatientQuotesPanel({ patientId }: PatientQuotesPanelProps) {
   }
 
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-medium">Orçamentos</h2>
-        <Can permission="quotes.write">
-          <Button
-            type="button"
-            onClick={() => {
-              setFormQuoteId(undefined);
-              setFormOpen(true);
-            }}
-          >
-            Novo orçamento
-          </Button>
-        </Can>
-      </div>
+    <Card>
+      <CardHeader className="border-b border-border">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <CardTitle>Orçamentos do paciente</CardTitle>
+            <CardDescription>Propostas, envio e decisão na mesma ficha.</CardDescription>
+          </div>
+          {!hideHeaderCreate ? (
+            <Can permission="quotes.write">
+              <Button
+                type="button"
+                className="cursor-pointer"
+                onClick={() => {
+                  setFormQuoteId(undefined);
+                  setFormOpen(true);
+                }}
+              >
+                Novo orçamento
+              </Button>
+            </Can>
+          ) : null}
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        {duplicate.isError || pdf.isError ? (
+          <Alert variant="destructive">
+            <AlertDescription>
+              {operacionalErrorMessage(duplicate.error ?? pdf.error)}
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
-      {duplicate.isError || pdf.isError ? (
-        <Alert variant="destructive">
-          <AlertDescription>
-            {operacionalErrorMessage(duplicate.error ?? pdf.error)}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <QuoteTable
-        quotes={listQuery.data?.items ?? []}
-        patientNames={{ [patientId]: patientName }}
-        onEdit={(quote) => {
-          setFormQuoteId(quote.id);
-          setFormOpen(true);
-        }}
-        onSend={(quote) => setSendQuoteId(quote.id)}
-        onDecide={(quote) => setDecideQuoteId(quote.id)}
-        onDuplicate={(quote) => {
-          void duplicate.mutateAsync(quote.id);
-        }}
-        onPdf={(quote) => {
-          void pdf.mutateAsync(quote.id).then((result) => {
-            window.open(result.url, '_blank', 'noopener,noreferrer');
-          });
-        }}
-      />
+        <QuoteTable
+          quotes={listQuery.data?.items ?? []}
+          patientNames={{ [patientId]: patientName }}
+          onEdit={(quote) => {
+            setFormQuoteId(quote.id);
+            setFormOpen(true);
+          }}
+          onSend={(quote) => setSendQuoteId(quote.id)}
+          onDecide={(quote) => setDecideQuoteId(quote.id)}
+          onDuplicate={(quote) => {
+            void duplicate.mutateAsync(quote.id);
+          }}
+          onPdf={(quote) => {
+            void pdf.mutateAsync(quote.id).then((result) => {
+              window.open(result.url, '_blank', 'noopener,noreferrer');
+            });
+          }}
+        />
+      </CardContent>
 
       {formOpen ? (
         <QuoteFormDialog
@@ -121,6 +151,6 @@ export function PatientQuotesPanel({ patientId }: PatientQuotesPanelProps) {
       {decideQuoteId ? (
         <QuoteDecisionFormDialog quoteId={decideQuoteId} onClose={() => setDecideQuoteId(null)} />
       ) : null}
-    </div>
+    </Card>
   );
 }

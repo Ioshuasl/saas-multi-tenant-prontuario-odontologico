@@ -1,9 +1,17 @@
 'use client';
 
+import { timelineSourceLabel } from '@/packages/operacional/enum/Patient/TimelineSourceEnum';
 import { operacionalErrorMessage } from '@/packages/operacional/helpers/OperacionalErrorMessage';
 import { usePatientTimelineGetHook } from '@/packages/operacional/hooks/Patient/usePatientTimelineGetHook';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Badge } from '@/shared/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/shared/ui/card';
 
 type PatientTimelineProps = {
   patientId: string;
@@ -37,29 +45,37 @@ export function PatientTimeline({ patientId }: PatientTimelineProps) {
 
   const data = timelineQuery.data;
   const items = data?.items ?? [];
+  const includedSources = (data?.includedSources ?? []).map(timelineSourceLabel);
 
   return (
-    <div className="grid max-w-2xl gap-4">
-      <p className="text-sm text-muted-foreground">
-        Fontes: {(data?.includedSources ?? []).join(', ') || 'nenhuma'}
-      </p>
-
-      {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhum evento na timeline.</p>
-      ) : (
-        <ul className="grid gap-2">
-          {items.map((item) => (
-            <li key={item.id} className="rounded-md border px-3 py-2 text-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-medium">{item.title}</p>
-                <Badge variant="outline">{item.source}</Badge>
-              </div>
-              <p className="text-muted-foreground">{formatWhen(item.occurredAt)}</p>
-              {item.summary ? <p>{item.summary}</p> : null}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <Card>
+      <CardHeader className="border-b border-border">
+        <CardTitle>Linha do tempo</CardTitle>
+        <CardDescription>
+          Fontes: {includedSources.length > 0 ? includedSources.join(', ') : 'nenhuma'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum evento na timeline.</p>
+        ) : (
+          <ul className="grid gap-2">
+            {items.map((item) => (
+              <li
+                key={item.id}
+                className="rounded-lg border border-border px-3 py-3 text-sm"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold text-foreground">{item.title}</p>
+                  <Badge variant="secondary">{timelineSourceLabel(item.source)}</Badge>
+                </div>
+                <p className="mt-1 text-muted-foreground">{formatWhen(item.occurredAt)}</p>
+                {item.summary ? <p className="mt-1 text-foreground">{item.summary}</p> : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }

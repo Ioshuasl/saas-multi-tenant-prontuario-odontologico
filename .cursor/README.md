@@ -20,7 +20,7 @@ Módulo: patients.
 Entidade: Patient.
 Crie o CRUD completo (list, get, create, update, delete) seguindo docs/16 e as rules do .cursor.
 Action só se houver efeito além do repositório.
-Não use código Orius/Python como modelo.
+Não use código legado Orius/Python como modelo.
 ```
 
 **P2 — Só schema + repository**
@@ -97,7 +97,9 @@ Mutations invalidam queryKey ['patients'].
 
 ---
 
-### Design UX / UI (galeria Orius provisória)
+### Design UX / UI (Clivra)
+
+Fonte oficial: `01-clivra-design-system.md` (raiz). Shards: `.cursor/docs/ui/`.
 
 **P9 — Escolher tipo de tela**
 
@@ -105,7 +107,7 @@ Mutations invalidam queryKey ['patients'].
 Use a skill designer-ux.
 Cenário: recepção lista e cadastra pacientes.
 Não altere código.
-Qual padrão usar (Index, FormDialog, Form, Details)?
+Qual padrão Clivra usar (Index, FormDialog, Form, Details)?
 ```
 
 **P10 — Frame Pencil**
@@ -113,14 +115,14 @@ Qual padrão usar (Index, FormDialog, Form, Details)?
 ```
 Use a skill designer-ui.
 1 frame apenas: Index CRUD para Patient.
-Galeria Orius provisória. Não implemente React nesta tarefa.
+Design System Clivra (Sora, Burgundy). Não implemente React nesta tarefa.
 ```
 
 **P11 — Consultar padrão visual**
 
 ```
 Use a skill ui-ux-systems.
-Explique Header de página e Sidebar 360.
+Explique Page Header e Sidebar 360 no padrão Clivra.
 Não altere arquivos.
 ```
 
@@ -130,7 +132,7 @@ Não altere arquivos.
 Use a skill ui-refactor.
 Arquivo:
 frontend/src/packages/operacional/components/Patient/PatientIndex.tsx
-Alinhe Header/empty state ao padrão.
+Alinhe Header/empty state ao Design System Clivra.
 NÃO altere hooks, services, data nem payloads.
 ```
 
@@ -207,9 +209,9 @@ Se falhar: correção (máx. 2 ciclos). No sucesso: atualizar checklist em docs 
 | CRUD API | `backend-orchestrator` | P1–P4, P13 |
 | Tela React | `frontend-orchestrator` | P5–P8, P14 |
 | Tipo de tela | `designer-ux` | P9 |
-| Pencil | `designer-ui` | P10 |
-| Ler padrão visual | `ui-ux-systems` | P11 |
-| Polir visual | `ui-refactor` | P12 |
+| Pencil (Clivra) | `designer-ui` | P10 |
+| Ler padrão visual Clivra | `ui-ux-systems` | P11 |
+| Polir visual (Clivra) | `ui-refactor` | P12 |
 | Branch / commit | `git` | P15–P17 |
 | Sprint inteira | `sprint-orchestrator` | P18 |
 | Suíte de testes | `tester` | (skill tester / `pnpm tester`) |
@@ -241,7 +243,7 @@ Page → Component → Hook (TanStack Query) → Service → Data → API
   AGENTS.md     ← mapa para o agente
   rules/        ← regras por camada
   skills/       ← manuais das skills
-  docs/ui/      ← shards visuais (Orius provisório)
+  docs/ui/      ← shards visuais (Clivra; norma: 01-clivra-design-system.md)
 docs/           ← norma do produto (16, 05, 09, …)
 backend/
 frontend/

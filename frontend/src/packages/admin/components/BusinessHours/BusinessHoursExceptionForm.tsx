@@ -8,6 +8,7 @@ import { useClinicGetHook } from '@/packages/admin/hooks/Clinic/useClinicGetHook
 import { useProfessionalListHook } from '@/packages/admin/hooks/Professional/useProfessionalListHook';
 import type { BusinessHoursExceptionFormValues } from '@/packages/admin/schemas/BusinessHours/BusinessHoursSchema';
 import type { ScheduleConflictSummary } from '@/packages/admin/types/BusinessHours/BusinessHoursTypes';
+import { ClivraSurface } from '@/shared/layout/ClivraPage';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 import { Checkbox } from '@/shared/ui/checkbox';
@@ -49,7 +50,7 @@ export function BusinessHoursExceptionForm() {
   };
 
   if (clinicQuery.isLoading || professionalsQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Carregando…</p>;
+    return null;
   }
 
   if (!unitId) {
@@ -59,38 +60,47 @@ export function BusinessHoursExceptionForm() {
   const activeProfessionals = (professionalsQuery.data ?? []).filter((p) => p.active);
 
   return (
-      <form
-        className="mx-auto grid max-w-2xl gap-4 border-t pt-8"
-        onSubmit={(e) => {
-          void form.handleSubmit(onSave)(e);
-        }}
+    <form
+      onSubmit={(e) => {
+        void form.handleSubmit(onSave)(e);
+      }}
+    >
+      <ClivraSurface
+        toolbar={
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Exceções</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Feriado, férias ou dia especial. Agendamentos existentes não são cancelados.
+              </p>
+            </div>
+            <Button type="submit" className="cursor-pointer" disabled={create.isPending}>
+              {create.isPending ? 'Salvando…' : 'Salvar exceção'}
+            </Button>
+          </div>
+        }
+        contentClassName="grid gap-4 px-4 py-4"
       >
-        <div className="grid gap-1">
-          <h2 className="text-lg font-semibold">Exceções (feriado / férias)</h2>
-          <p className="text-sm text-muted-foreground">
-            Registra um dia especial. Agendamentos existentes não são cancelados; conflitos
-            são listados após salvar.
-          </p>
-        </div>
-
         <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="exception-date">Data</FieldLabel>
-            <Input id="exception-date" type="date" {...form.register('date')} />
-            <FieldError>{form.formState.errors.date?.message}</FieldError>
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="exception-date">Data</FieldLabel>
+              <Input id="exception-date" type="date" {...form.register('date')} />
+              <FieldError>{form.formState.errors.date?.message}</FieldError>
+            </Field>
 
-          <Field>
-            <FieldLabel>Escopo</FieldLabel>
-            <NativeSelect {...form.register('professionalId')}>
-              <NativeSelectOption value="">Unidade inteira</NativeSelectOption>
-              {activeProfessionals.map((pro) => (
-                <NativeSelectOption key={pro.id} value={pro.id}>
-                  {pro.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </Field>
+            <Field>
+              <FieldLabel>Escopo</FieldLabel>
+              <NativeSelect {...form.register('professionalId')}>
+                <NativeSelectOption value="">Unidade inteira</NativeSelectOption>
+                {activeProfessionals.map((pro) => (
+                  <NativeSelectOption key={pro.id} value={pro.id}>
+                    {pro.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </Field>
+          </div>
 
           <Field>
             <div className="flex items-center gap-2">
@@ -164,10 +174,7 @@ export function BusinessHoursExceptionForm() {
             </Alert>
           )
         ) : null}
-
-        <Button type="submit" disabled={create.isPending}>
-          {create.isPending ? 'Salvando…' : 'Salvar exceção'}
-        </Button>
-      </form>
+      </ClivraSurface>
+    </form>
   );
 }

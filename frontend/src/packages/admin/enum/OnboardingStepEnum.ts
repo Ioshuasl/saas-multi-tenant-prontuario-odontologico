@@ -34,6 +34,6 @@ export const ONBOARDING_STEP_HREFS: Record<OnboardingStep, string> = {
   professionals: '/app/configuracoes/profissionais',
   procedures: '/app/configuracoes/procedimentos',
   team: '/app/configuracoes/membros',
-  whatsapp: '/app/whatsapp',
+  whatsapp: '/app/configuracoes/whatsapp',
   firstAppointment: '/app/agenda',
 };

@@ -32,19 +32,19 @@ const REPORT_LINKS = [
     permission: 'reports.read' as const,
   },
   {
-    href: '/app/financeiro/fluxo',
+    href: '/app/financeiro/relatorios',
     title: 'Fluxo de caixa',
     description: 'Entradas e saídas (financeiro)',
     permission: 'reports.financial' as const,
   },
   {
-    href: '/app/financeiro/inadimplencia',
+    href: '/app/financeiro',
     title: 'Inadimplência',
     description: 'Parcelas vencidas por faixa',
     permission: 'reports.financial' as const,
   },
   {
-    href: '/app/financeiro/producao',
+    href: '/app/financeiro/relatorios',
     title: 'Produção por profissional',
     description: 'Executado × recebido (financeiro)',
     permission: 'reports.read' as const,

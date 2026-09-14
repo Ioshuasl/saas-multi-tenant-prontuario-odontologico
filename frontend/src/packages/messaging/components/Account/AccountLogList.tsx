@@ -1,6 +1,7 @@
 'use client';
 
 import { useLogListHook } from '@/packages/messaging/hooks/Log/useLogListHook';
+import { ClivraSurface } from '@/shared/layout/ClivraPage';
 import { Skeleton } from '@/shared/ui/skeleton';
 import {
   Table,
@@ -20,17 +21,25 @@ export function AccountLogList({ enabled }: AccountLogListProps) {
   const items = logsQuery.data?.items ?? [];
 
   return (
-    <section className="rounded-lg border p-4">
-      <h2 className="text-sm font-semibold">Logs de envio</h2>
-      <p className="text-xs text-muted-foreground">Resultado, template e horário — sem conteúdo clínico.</p>
+    <ClivraSurface
+      toolbar={
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Logs de envio</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Resultado, template e horário — sem conteúdo clínico.
+          </p>
+        </div>
+      }
+      contentClassName="px-4 py-4"
+    >
       {!enabled ? (
-        <p className="mt-2 text-sm text-muted-foreground">Conecte a conta para ver os logs.</p>
+        <p className="text-sm text-muted-foreground">Conecte a conta para ver os logs.</p>
       ) : logsQuery.isLoading ? (
-        <Skeleton className="mt-3 h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
       ) : items.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">Nenhum envio registrado.</p>
+        <p className="text-sm text-muted-foreground">Nenhum envio registrado.</p>
       ) : (
-        <Table className="mt-3">
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Quando</TableHead>
@@ -56,6 +65,6 @@ export function AccountLogList({ enabled }: AccountLogListProps) {
           </TableBody>
         </Table>
       )}
-    </section>
+    </ClivraSurface>
   );
 }

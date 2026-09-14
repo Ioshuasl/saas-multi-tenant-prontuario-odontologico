@@ -14,6 +14,13 @@ import { Can } from '@/shared/auth/Can';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/shared/ui/card';
 
 const AnamnesisSendLinkFormDialog = dynamic(
   () =>
@@ -23,8 +30,16 @@ const AnamnesisSendLinkFormDialog = dynamic(
   { ssr: false },
 );
 
-export function PatientRecordPanel({ patientId }: PatientRecordPanelProps) {
-  const [isSendOpen, setIsSendOpen] = useState(false);
+export function PatientRecordPanel({
+  patientId,
+  sendOpen,
+  onSendOpenChange,
+  hideHeaderSend = false,
+}: PatientRecordPanelProps) {
+  const [internalSendOpen, setInternalSendOpen] = useState(false);
+  const isSendOpen = sendOpen ?? internalSendOpen;
+  const setIsSendOpen = onSendOpenChange ?? setInternalSendOpen;
+
   const recordQuery = useMedicalRecordGetHook(patientId);
   const anamnesisQuery = useAnamnesisListHook(patientId);
 
@@ -53,77 +68,101 @@ export function PatientRecordPanel({ patientId }: PatientRecordPanelProps) {
   const warning = record.alerts.filter((alert) => alert.active && alert.severity === 'WARNING');
 
   return (
-    <div className="grid max-w-3xl gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-medium">Prontuário</h2>
-          <p className="text-sm text-muted-foreground">
-            Aberto em {formatDateTimePt(record.openedAt)}
-            {record.lastAnamnesisAt
-              ? ` · última anamnese ${formatDateTimePt(record.lastAnamnesisAt)}`
-              : ' · sem anamnese'}
+    <Card>
+      <CardHeader className="border-b border-border">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle>Prontuário clínico</CardTitle>
+            <CardDescription>
+              Aberto em {formatDateTimePt(record.openedAt)}
+              {record.lastAnamnesisAt
+                ? ` · última anamnese ${formatDateTimePt(record.lastAnamnesisAt)}`
+                : ' · sem anamnese'}
+            </CardDescription>
+          </div>
+          {!hideHeaderSend ? (
+            <Can permission="clinical_records.write">
+              <Button
+                type="button"
+                className="cursor-pointer"
+                onClick={() => setIsSendOpen(true)}
+              >
+                Enviar anamnese
+              </Button>
+            </Can>
+          ) : null}
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        {record.anamnesisStale ? (
+          <Alert>
+            <AlertTitle>Anamnese desatualizada</AlertTitle>
+            <AlertDescription>
+              Não há resposta nos últimos 12 meses. Envie o link para o paciente atualizar.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {critical.map((alert) => (
+          <Alert key={alert.id} variant="destructive">
+            <AlertTitle>
+              {ALERT_SEVERITY_LABELS[alert.severity as keyof typeof ALERT_SEVERITY_LABELS] ??
+                alert.severity}{' '}
+              ·{' '}
+              {ALERT_CATEGORY_LABELS[alert.category as keyof typeof ALERT_CATEGORY_LABELS] ??
+                alert.category}
+            </AlertTitle>
+            <AlertDescription>{alert.description}</AlertDescription>
+          </Alert>
+        ))}
+
+        {warning.length > 0 ? (
+          <div className="grid gap-2">
+            {warning.map((alert) => (
+              <Alert key={alert.id}>
+                <AlertTitle>
+                  {ALERT_SEVERITY_LABELS[alert.severity as keyof typeof ALERT_SEVERITY_LABELS] ??
+                    alert.severity}
+                </AlertTitle>
+                <AlertDescription>{alert.description}</AlertDescription>
+              </Alert>
+            ))}
+          </div>
+        ) : null}
+
+        {record.alerts
+          .filter((alert) => alert.active && alert.severity === 'INFO')
+          .map((alert) => (
+            <Badge key={alert.id} variant="outline">
+              {alert.description}
+            </Badge>
+          ))}
+
+        <div className="grid gap-2">
+          <h3 className="text-sm font-semibold text-foreground">Histórico de anamnese</h3>
+          {anamnesisQuery.isError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{operacionalErrorMessage(anamnesisQuery.error)}</AlertDescription>
+            </Alert>
+          ) : (
+            <AnamnesisHistoryList items={anamnesisQuery.data ?? []} />
+          )}
+        </div>
+
+        <div className="rounded-lg bg-muted/50 px-4 py-4">
+          <p className="text-sm font-semibold text-foreground">Odontograma</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Visualização clínica completa no modo Atendimento. Aqui: alertas e histórico.
           </p>
         </div>
-        <Can permission="clinical_records.write">
-          <Button type="button" onClick={() => setIsSendOpen(true)}>
-            Enviar anamnese
-          </Button>
-        </Can>
-      </div>
-
-      {record.anamnesisStale ? (
-        <Alert>
-          <AlertTitle>Anamnese desatualizada</AlertTitle>
-          <AlertDescription>
-            Não há resposta nos últimos 12 meses. Envie o link para o paciente atualizar.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {critical.map((alert) => (
-        <Alert key={alert.id} variant="destructive">
-          <AlertTitle>
-            {ALERT_SEVERITY_LABELS[alert.severity as keyof typeof ALERT_SEVERITY_LABELS] ?? alert.severity}{' '}
-            · {ALERT_CATEGORY_LABELS[alert.category as keyof typeof ALERT_CATEGORY_LABELS] ?? alert.category}
-          </AlertTitle>
-          <AlertDescription>{alert.description}</AlertDescription>
-        </Alert>
-      ))}
-
-      {warning.length > 0 ? (
-        <div className="grid gap-2">
-          {warning.map((alert) => (
-            <Alert key={alert.id}>
-              <AlertTitle>
-                {ALERT_SEVERITY_LABELS[alert.severity as keyof typeof ALERT_SEVERITY_LABELS] ??
-                  alert.severity}
-              </AlertTitle>
-              <AlertDescription>{alert.description}</AlertDescription>
-            </Alert>
-          ))}
-        </div>
-      ) : null}
-
-      {record.alerts.filter((alert) => alert.active && alert.severity === 'INFO').map((alert) => (
-        <Badge key={alert.id} variant="outline">
-          {alert.description}
-        </Badge>
-      ))}
-
-      <div className="grid gap-2">
-        <h3 className="text-sm font-medium">Histórico de anamnese</h3>
-        {anamnesisQuery.isError ? (
-          <Alert variant="destructive">
-            <AlertDescription>{operacionalErrorMessage(anamnesisQuery.error)}</AlertDescription>
-          </Alert>
-        ) : (
-          <AnamnesisHistoryList items={anamnesisQuery.data ?? []} />
-        )}
-      </div>
+      </CardContent>
 
       {isSendOpen ? (
-        <AnamnesisSendLinkFormDialog patientId={patientId} onClose={() => setIsSendOpen(false)} />
+        <AnamnesisSendLinkFormDialog
+          patientId={patientId}
+          onClose={() => setIsSendOpen(false)}
+        />
       ) : null}
-    </div>
+    </Card>
   );
 }

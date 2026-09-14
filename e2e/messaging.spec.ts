@@ -12,7 +12,7 @@ test.describe('Messaging WhatsApp (E8a ops)', () => {
     const whatsappRow = page.locator('li').filter({ hasText: 'WhatsApp' });
     await expect(whatsappRow.getByRole('link', { name: 'Configurar' })).toHaveAttribute(
       'href',
-      '/app/whatsapp',
+      '/app/configuracoes/whatsapp',
     );
   });
 

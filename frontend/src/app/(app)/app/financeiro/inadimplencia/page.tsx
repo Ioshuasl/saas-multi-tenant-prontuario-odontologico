@@ -1,5 +1,5 @@
-import { OverdueIndex } from '@/packages/financeiro/components/Overdue/OverdueIndex';
+import { redirect } from 'next/navigation';
 
-export default function InadimplenciaPage() {
-  return <OverdueIndex />;
+export default function InadimplenciaRedirectPage() {
+  redirect('/app/financeiro');
 }

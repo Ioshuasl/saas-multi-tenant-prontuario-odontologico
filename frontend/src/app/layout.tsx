@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Libre_Baskerville, Sora } from 'next/font/google';
+import { Playfair_Display, Sora } from 'next/font/google';
 import { CLIVRA } from '@/shared/brand/ClivraBrand';
 import { cn } from '@/shared/helpers/utils';
 import { AppProviders } from '@/shared/providers/AppProviders';
@@ -7,14 +7,14 @@ import './globals.css';
 
 const sora = Sora({
   subsets: ['latin'],
-  variable: '--font-sans',
+  variable: '--font-sora',
   display: 'swap',
 });
 
-const libreBaskerville = Libre_Baskerville({
+/** Títulos de marca / marketing (login e display) — referência visual Clivra. */
+const playfair = Playfair_Display({
   subsets: ['latin'],
-  weight: ['400', '700'],
-  variable: '--font-display',
+  variable: '--font-playfair',
   display: 'swap',
 });
 
@@ -26,14 +26,14 @@ export const metadata = {
   description: CLIVRA.description,
   applicationName: CLIVRA.name,
   icons: {
-    icon: CLIVRA.logoIcon,
-    apple: CLIVRA.logoIcon,
+    icon: [{ url: CLIVRA.favicon, type: 'image/x-icon' }, { url: '/favicon.png', type: 'image/png' }],
+    apple: CLIVRA.appleIcon,
   },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR" className={cn('font-sans', sora.variable, libreBaskerville.variable)}>
+    <html lang="pt-BR" className={cn('font-sans', sora.variable, playfair.variable)}>
       <body className="min-h-dvh bg-background text-foreground antialiased">
         <AppProviders>{children}</AppProviders>
       </body>

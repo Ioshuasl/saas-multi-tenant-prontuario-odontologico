@@ -1,9 +1,9 @@
 # Padrão UI/UX (stub)
 
-Este arquivo foi **substituído** por shards para economia de tokens.
+Este arquivo era o ponteiro da galeria Orius e foi **descontinuado**.
 
-**Ler:** [`.cursor/docs/ui/INDEX.md`](ui/INDEX.md) e apenas o shard indicado pela matriz.
+**Fonte oficial visual do Clivra:** [`01-clivra-design-system.md`](../../01-clivra-design-system.md) (raiz do repositório).
 
-Projeto: SaaS odontológico. Tokens/galeria Orius são **provisórios** até o design system definitivo.
+**Shards operacionais (economia de tokens):** [`.cursor/docs/ui/INDEX.md`](ui/INDEX.md) → ler apenas o shard da matriz.
 
-Não reconstrua monólito nem leia vários shards de uma vez.
+Não usar Notion-like, Orius, Geist, Inter ou `#FF781F` / `#37352F` como identidade.

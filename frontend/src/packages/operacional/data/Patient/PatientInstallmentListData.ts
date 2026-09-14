@@ -5,6 +5,8 @@ export type PatientInstallmentSummary = {
   amountCents: number;
   paidCents: number;
   status: string;
+  number?: number;
+  dueDate?: string;
 };
 
 export type PatientInstallmentListResult = {

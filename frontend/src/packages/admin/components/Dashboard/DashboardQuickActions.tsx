@@ -27,7 +27,7 @@ const ACTIONS = [
     icon: CirclePlusIcon,
   },
   {
-    href: '/app/financeiro/pagar',
+    href: '/app/financeiro',
     label: 'Lançar despesa',
     icon: CreditCardIcon,
   },
@@ -41,7 +41,7 @@ export function DashboardQuickActions() {
     >
       <header className="mb-3 flex items-center gap-1.5">
         <ZapIcon className="size-3.5 text-[#4A0F16]" strokeWidth={1.7} />
-        <h2 className="text-[13px] font-semibold text-[#1A1A1A]">Ações rápidas</h2>
+        <h2 className="font-sans text-[15px] font-semibold text-[#1A1A1A]">Ações rápidas</h2>
       </header>
       <div className="grid grid-cols-2 gap-2.5">
         {ACTIONS.map((action) => {
@@ -57,7 +57,7 @@ export function DashboardQuickActions() {
               )}
             >
               <Icon className="size-4 shrink-0 text-[#4A0F16]" strokeWidth={1.45} />
-              <span className="min-w-0 text-left text-[12px] font-medium leading-tight text-[#3A3330]">
+              <span className="min-w-0 text-left font-sans text-[13px] font-medium leading-tight text-[#3A3330]">
                 {action.label}
               </span>
             </Link>

@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { assertWritable } from '../../modules/subscription/subscription_public.js';
+import { assertSubscriptionWritable } from '../../modules/subscription/subscription_public.js';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -12,7 +12,7 @@ async function assertSubscriptionRequest(req: Request): Promise<void> {
   const method = req.method.toUpperCase();
   if (SAFE_METHODS.has(method)) return;
   if (isAllowedWrite(req.originalUrl ?? req.url ?? '')) return;
-  await assertWritable(req.ctx);
+  await assertSubscriptionWritable(req.ctx);
 }
 
 function isAllowedWrite(url: string): boolean {

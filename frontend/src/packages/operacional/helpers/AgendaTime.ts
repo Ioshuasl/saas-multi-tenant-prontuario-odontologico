@@ -8,7 +8,7 @@ import {
   startOfWeek,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { AGENDA_NOTION } from '@/packages/operacional/helpers/AgendaNotionTokens';
+import { AGENDA_TOKENS } from '@/packages/operacional/helpers/AgendaNotionTokens';
 
 export function toYmd(date: Date): string {
   return format(date, 'yyyy-MM-dd');
@@ -46,14 +46,14 @@ export function dayRange(anchor: Date): { from: Date; to: Date } {
 /** Minutos desde dayStartHour no mesmo dia civil local. */
 export function minutesFromGridStart(instant: Date): number {
   const start = new Date(instant);
-  start.setHours(AGENDA_NOTION.dayStartHour, 0, 0, 0);
+  start.setHours(AGENDA_TOKENS.dayStartHour, 0, 0, 0);
   return Math.max(0, differenceInMinutes(instant, start));
 }
 
 export function gridHeightPx(): number {
   const minutes =
-    (AGENDA_NOTION.dayEndHour - AGENDA_NOTION.dayStartHour) * 60;
-  return minutes * AGENDA_NOTION.pxPerMinute;
+    (AGENDA_TOKENS.dayEndHour - AGENDA_TOKENS.dayStartHour) * 60;
+  return minutes * AGENDA_TOKENS.pxPerMinute;
 }
 
 export function snapMinutes(value: number, slotMinutes: number): number {
@@ -65,14 +65,14 @@ export function buildSlotStart(
   minutesFromStart: number,
 ): Date {
   const base = startOfDay(day);
-  base.setHours(AGENDA_NOTION.dayStartHour, 0, 0, 0);
+  base.setHours(AGENDA_TOKENS.dayStartHour, 0, 0, 0);
   return addMinutes(base, minutesFromStart);
 }
 
 export function hoursAxis(): Date[] {
   const base = startOfDay(new Date());
-  base.setHours(AGENDA_NOTION.dayStartHour, 0, 0, 0);
-  const total = AGENDA_NOTION.dayEndHour - AGENDA_NOTION.dayStartHour;
+  base.setHours(AGENDA_TOKENS.dayStartHour, 0, 0, 0);
+  const total = AGENDA_TOKENS.dayEndHour - AGENDA_TOKENS.dayStartHour;
   return Array.from({ length: total + 1 }, (_, i) => addMinutes(base, i * 60));
 }
 

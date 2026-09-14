@@ -29,7 +29,7 @@ alwaysApply: false
 
 ## Proibido
 
-- CollectionHook obrigatório estilo Orius (substituído por TanStack Query).
+- CollectionHook legado obrigatório (substituído por TanStack Query).
 - Chamar API/`fetch` direto.
 - Lógica de reset do form dentro do FormHook (reset no componente).
 

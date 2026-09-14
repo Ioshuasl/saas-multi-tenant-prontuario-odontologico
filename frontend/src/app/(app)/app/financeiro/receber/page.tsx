@@ -1,10 +1,5 @@
-import { Suspense } from 'react';
-import { InstallmentIndex } from '@/packages/financeiro/components/Installment/InstallmentIndex';
+import { redirect } from 'next/navigation';
 
-export default function ReceberPage() {
-  return (
-    <Suspense fallback={<p className="text-sm text-muted-foreground">Carregando…</p>}>
-      <InstallmentIndex />
-    </Suspense>
-  );
+export default function ReceberRedirectPage() {
+  redirect('/app/financeiro');
 }

@@ -1,5 +1,5 @@
-import { ProductionIndex } from '@/packages/financeiro/components/Production/ProductionIndex';
+import { redirect } from 'next/navigation';
 
-export default function ProducaoPage() {
-  return <ProductionIndex />;
+export default function ProducaoRedirectPage() {
+  redirect('/app/financeiro/relatorios');
 }

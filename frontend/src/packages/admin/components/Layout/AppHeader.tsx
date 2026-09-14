@@ -52,26 +52,30 @@ export function AppHeader() {
     event.preventDefault();
     const q = search.trim();
     router.push(q ? `/app/pacientes?search=${encodeURIComponent(q)}` : '/app/pacientes');
+    setSearch('');
   };
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-[#E8E2DC] bg-[#F7F4F0] px-3 sm:px-5 desk:px-7">
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-5 desk:px-7">
       <AppSidebarTrigger />
 
       <form onSubmit={onSearch} className="relative hidden min-w-0 flex-1 md:block">
-        <SearchIcon
-          className="pointer-events-none absolute top-1/2 left-3.5 size-3.5 -translate-y-1/2 text-[#9A908A]"
-          strokeWidth={1.7}
-        />
+        <button
+          type="submit"
+          className="absolute top-1/2 left-1.5 z-10 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          aria-label="Buscar"
+        >
+          <SearchIcon className="size-3.5" strokeWidth={1.7} />
+        </button>
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Buscar paciente, nome, CPF ou telefone..."
           aria-label="Buscar paciente, nome, CPF ou telefone"
           className={cn(
-            'h-9 w-full max-w-2xl rounded-full border border-[#E4DDD6] bg-white',
-            'pr-4 pl-10 text-[13px] text-[#1A1A1A] placeholder:text-[#A39A94]',
-            'outline-none transition-[border-color,box-shadow] focus:border-[#4A0F16]/35 focus:ring-2 focus:ring-[#4A0F16]/10',
+            'h-10 w-full max-w-2xl rounded-md border border-input bg-card',
+            'pr-4 pl-10 text-sm text-foreground placeholder:text-muted-foreground',
+            'outline-none transition-[border-color,box-shadow] focus:border-ring focus:ring-2 focus:ring-ring/20',
           )}
         />
       </form>
@@ -79,33 +83,33 @@ export function AppHeader() {
       <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
         <button
           type="button"
-          className="relative inline-flex size-9 items-center justify-center rounded-full text-[#5C5652] transition-colors hover:bg-[#EFE9E3]"
+          className="relative inline-flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           aria-label="Notificações"
         >
           <BellIcon className="size-4.5" strokeWidth={1.6} />
-          <span className="absolute top-2 right-2 size-2 rounded-full bg-[#D64545] ring-2 ring-[#F7F4F0]" />
+          <span className="absolute top-2.5 right-2.5 size-2 rounded-full bg-destructive ring-2 ring-card" />
         </button>
 
         <div className="relative">
           <button
             type="button"
             onClick={() => setMenuOpen((open) => !open)}
-            className="flex items-center gap-2 rounded-full py-0.5 pr-1 pl-0.5 transition-colors hover:bg-[#EFE9E3]"
+            className="flex items-center gap-2 rounded-md py-0.5 pr-1 pl-0.5 transition-colors hover:bg-muted"
             aria-label="Menu do usuário"
             aria-expanded={menuOpen}
           >
-            <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#4A0F16] text-[11px] font-semibold text-white">
+            <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
               {userInitials(user?.name, user?.email)}
             </span>
             <span className="hidden min-w-0 flex-col items-start text-left sm:flex">
-              <span className="max-w-[11rem] truncate text-[13px] font-semibold leading-tight text-[#1A1A1A]">
+              <span className="max-w-[11rem] truncate text-sm font-semibold leading-tight text-foreground">
                 {fullName}
               </span>
-              <span className="max-w-[11rem] truncate text-[11px] leading-tight text-[#8A7F79]">
+              <span className="max-w-[11rem] truncate text-xs leading-tight text-muted-foreground">
                 {roleLabel}
               </span>
             </span>
-            <ChevronDownIcon className="hidden size-3.5 text-[#9A908A] sm:block" strokeWidth={1.8} />
+            <ChevronDownIcon className="hidden size-3.5 text-muted-foreground sm:block" strokeWidth={1.8} />
           </button>
 
           {menuOpen ? (
@@ -116,17 +120,17 @@ export function AppHeader() {
                 aria-label="Fechar menu"
                 onClick={() => setMenuOpen(false)}
               />
-              <div className="absolute top-full right-0 z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-[#E8E2DC] bg-white shadow-[0_12px_40px_rgb(0_0_0/0.12)]">
-                <div className="border-b border-[#F0EAE5] px-4 py-3">
-                  <p className="truncate text-sm font-semibold text-[#1A1A1A]">{fullName}</p>
-                  <p className="truncate text-xs text-[#8A7F79]">{user?.email ?? ''}</p>
+              <div className="absolute top-full right-0 z-50 mt-2 w-60 overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-clivra-lg)]">
+                <div className="border-b border-border px-4 py-3">
+                  <p className="truncate text-sm font-semibold text-foreground">{fullName}</p>
+                  <p className="truncate text-xs text-muted-foreground">{user?.email ?? ''}</p>
                 </div>
                 <div className="p-1.5">
                   <Link
                     href="/app/configuracoes/clinica"
                     prefetch={false}
                     onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#3A3330] transition-colors hover:bg-[#F3EEE9]"
+                    className="flex items-center gap-2 rounded-md px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted"
                   >
                     <SettingsIcon className="size-4" strokeWidth={1.7} />
                     Configurações
@@ -137,7 +141,7 @@ export function AppHeader() {
                       setMenuOpen(false);
                       void onLogout();
                     }}
-                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#B42318] transition-colors hover:bg-[#FDEBEC]"
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
                   >
                     <LogOutIcon className="size-4" strokeWidth={1.7} />
                     Sair

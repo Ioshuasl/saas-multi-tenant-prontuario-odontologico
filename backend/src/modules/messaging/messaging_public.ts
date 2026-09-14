@@ -17,6 +17,7 @@ const onboarding = new MessagingOnboardingRepository();
 const getAccount = new GetAccountRepository();
 const scheduleService = new ScheduleService();
 const disableAutomationsRepo = new DisableAllAutomationsRepository();
+const listPatientMessages = new ListTimelineByPatientRepository();
 
 /** Seed automations D-1/H-3/waitlist + créditos de cortesia no signup. */
 export async function seedMessagingOnSignup(

@@ -12,6 +12,7 @@ import type { SlotMinutes } from '@/packages/operacional/helpers/AgendaNotionTok
 import {
   dayRange,
   rangeIso,
+  snapMinutes,
   toYmd,
   weekDays,
   weekRange,
@@ -28,6 +29,15 @@ import type {
 } from '@/packages/operacional/types/Appointment/AppointmentTypes';
 import { ApiClientError } from '@/shared/api/api-client';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
+import { Badge } from '@/shared/ui/badge';
+import { Button } from '@/shared/ui/button';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from '@/shared/ui/card';
+import { cn } from '@/shared/helpers/utils';
 
 const AppointmentDetailsDialog = dynamic(
   () =>
@@ -53,6 +63,21 @@ const ScheduleBlockFormDialog = dynamic(
 
 function toLocalInput(date: Date): string {
   return format(date, "yyyy-MM-dd'T'HH:mm");
+}
+
+function defaultCreateSlot(anchor: Date, slotMinutes: SlotMinutes): {
+  startsAt: string;
+  endsAt: string;
+} {
+  const start = new Date(anchor);
+  const now = new Date();
+  if (toYmd(start) === toYmd(now)) {
+    start.setHours(now.getHours(), snapMinutes(now.getMinutes(), slotMinutes), 0, 0);
+  } else {
+    start.setHours(9, 0, 0, 0);
+  }
+  const end = new Date(start.getTime() + slotMinutes * 60000);
+  return { startsAt: start.toISOString(), endsAt: end.toISOString() };
 }
 
 export function AgendaIndex() {
@@ -164,27 +189,35 @@ export function AgendaIndex() {
       ? 'Cadastre um profissional para visualizar a agenda.'
       : 'Cadastre uma cadeira para visualizar a agenda.';
 
+  const openCreate = (startsAt?: Date, endsAt?: Date) => {
+    if (startsAt && endsAt) {
+      setCreateSlot({
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+      });
+      return;
+    }
+    setCreateSlot(defaultCreateSlot(anchor, slotMinutes));
+  };
+
   return (
-    <div className="grid gap-4">
-      <AgendaToolbar
-        viewMode={viewMode}
-        onViewMode={setViewMode}
-        anchorLabel={anchorLabel}
-        onPrev={() => setAnchor((d) => addDays(d, viewMode === 'week' ? -7 : -1))}
-        onNext={() => setAnchor((d) => addDays(d, viewMode === 'week' ? 7 : 1))}
-        onToday={() => setAnchor(new Date())}
-        slotMinutes={slotMinutes}
-        onSlotMinutes={setSlotMinutes}
-        resourceMode={resourceMode}
-        onResourceMode={setResourceMode}
-        professionals={professionals}
-        professionalId={professionalId}
-        onProfessionalId={setProfessionalId}
-        chairs={chairs}
-        chairId={chairId}
-        onChairId={setChairId}
-        onBlock={() => setBlockOpen(true)}
-      />
+    <div className="grid gap-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Agenda</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Consultas do dia e da semana · visão por profissional ou cadeira.
+          </p>
+        </div>
+        <Button
+          type="button"
+          className="cursor-pointer"
+          disabled={!resourceReady}
+          onClick={() => openCreate()}
+        >
+          Novo agendamento
+        </Button>
+      </div>
 
       {resourceError ? (
         <Alert variant="destructive" role="alert">
@@ -192,52 +225,79 @@ export function AgendaIndex() {
         </Alert>
       ) : null}
 
-      {!resourceReady ? (
-        <p className="text-sm text-muted-foreground">{emptyResourceMessage}</p>
-      ) : listQuery.isLoading ? (
-        <div className="h-64 animate-pulse rounded-md bg-muted" aria-hidden />
-      ) : listQuery.isError ? (
-        <Alert variant="destructive" role="alert">
-          <AlertDescription>{operacionalErrorMessage(listQuery.error)}</AlertDescription>
-        </Alert>
-      ) : (
-        <AgendaGrid
-          days={days}
-          appointments={appointments}
-          slotMinutes={slotMinutes}
-          showProfessional={resourceMode === 'chair'}
-          onSlotClick={(startsAt, endsAt) => {
-            setCreateSlot({
-              startsAt: startsAt.toISOString(),
-              endsAt: endsAt.toISOString(),
-            });
-          }}
-          onOpenAppointment={setSelected}
-          onMoveOrResize={(input) => {
-            void onMoveOrResize(input);
-          }}
-        />
-      )}
+      <Card>
+        <CardHeader className="border-b border-border pb-4">
+          <AgendaToolbar
+            viewMode={viewMode}
+            onViewMode={setViewMode}
+            anchorLabel={anchorLabel}
+            onPrev={() => setAnchor((d) => addDays(d, viewMode === 'week' ? -7 : -1))}
+            onNext={() => setAnchor((d) => addDays(d, viewMode === 'week' ? 7 : 1))}
+            onToday={() => setAnchor(new Date())}
+            slotMinutes={slotMinutes}
+            onSlotMinutes={setSlotMinutes}
+            resourceMode={resourceMode}
+            onResourceMode={setResourceMode}
+            professionals={professionals}
+            professionalId={professionalId}
+            onProfessionalId={setProfessionalId}
+            chairs={chairs}
+            chairId={chairId}
+            onChairId={setChairId}
+            onBlock={() => setBlockOpen(true)}
+          />
+        </CardHeader>
+        <CardContent className="pt-4">
+          {!resourceReady ? (
+            <p className="text-sm text-muted-foreground">{emptyResourceMessage}</p>
+          ) : listQuery.isLoading ? (
+            <div className="h-64 animate-pulse rounded-lg bg-muted" aria-hidden />
+          ) : listQuery.isError ? (
+            <Alert variant="destructive" role="alert">
+              <AlertDescription>{operacionalErrorMessage(listQuery.error)}</AlertDescription>
+            </Alert>
+          ) : (
+            <AgendaGrid
+              days={days}
+              appointments={appointments}
+              slotMinutes={slotMinutes}
+              showProfessional={resourceMode === 'chair'}
+              onSlotClick={(startsAt, endsAt) => openCreate(startsAt, endsAt)}
+              onOpenAppointment={setSelected}
+              onMoveOrResize={(input) => {
+                void onMoveOrResize(input);
+              }}
+            />
+          )}
 
-      {moveError ? (
-        <Alert variant="destructive" role="alert">
-          <AlertDescription>{moveError}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-        {(['REQUESTED', 'SCHEDULED', 'CONFIRMED', 'IN_SERVICE', 'NO_SHOW'] as const).map((status) => {
-          const meta = APPOINTMENT_STATUS_META[status];
-          return (
-            <span
-              key={status}
-              className={`rounded border px-2 py-0.5 ${meta.bg} ${meta.text} ${meta.border} ${status === 'REQUESTED' ? 'border-dashed' : ''}`}
-            >
-              {meta.label}
-            </span>
-          );
-        })}
-      </div>
+          {moveError ? (
+            <Alert variant="destructive" className="mt-4" role="alert">
+              <AlertDescription>{moveError}</AlertDescription>
+            </Alert>
+          ) : null}
+        </CardContent>
+        <CardFooter className="flex flex-wrap gap-2 border-t border-border pt-4">
+          {(['REQUESTED', 'SCHEDULED', 'CONFIRMED', 'IN_SERVICE', 'NO_SHOW'] as const).map(
+            (status) => {
+              const meta = APPOINTMENT_STATUS_META[status];
+              return (
+                <Badge
+                  key={status}
+                  variant="outline"
+                  className={cn(
+                    meta.bg,
+                    meta.text,
+                    meta.border,
+                    status === 'REQUESTED' && 'border-dashed',
+                  )}
+                >
+                  {meta.label}
+                </Badge>
+              );
+            },
+          )}
+        </CardFooter>
+      </Card>
 
       <WaitlistPanel professionalId={professionalId || undefined} />
 
@@ -247,7 +307,6 @@ export function AgendaIndex() {
           professionalId={resourceMode === 'professional' ? professionalId : professionals[0]?.id}
           chairId={resourceMode === 'chair' ? chairId : undefined}
           professionals={professionals}
-          chairs={chairs}
           startsAt={createSlot.startsAt}
           endsAt={createSlot.endsAt}
           onClose={() => setCreateSlot(null)}

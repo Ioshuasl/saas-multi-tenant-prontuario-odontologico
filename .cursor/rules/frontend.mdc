@@ -37,7 +37,7 @@ alwaysApply: false
 
 Packages: `operacional` · `clinico` · `financeiro` · `admin` · `messaging` · `public`.
 
-UI detalhada: `.cursor/docs/ui/INDEX.md` → **um** shard.
+UI detalhada: `01-clivra-design-system.md` + `.cursor/docs/ui/INDEX.md` → **um** shard (Clivra; sem Notion/Orius visual).
 
 ## Regras transversais bloqueantes
 

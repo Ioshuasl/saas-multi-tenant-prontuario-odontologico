@@ -1,5 +1,6 @@
-import { SubscriptionIndex } from '@/packages/admin/components/Subscription/SubscriptionIndex';
+import { redirect } from 'next/navigation';
+import { SETTINGS_SECTION, settingsHref } from '@/packages/admin/helpers/SettingsTabs';
 
-export default function AssinaturaPage() {
-  return <SubscriptionIndex />;
+export default function AssinaturaRedirectPage() {
+  redirect(settingsHref(SETTINGS_SECTION.ASSINATURA));
 }

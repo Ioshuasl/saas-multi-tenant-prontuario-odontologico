@@ -12,6 +12,7 @@ type DashboardHeroProps = {
   profileHref?: string;
 };
 
+/** Hero do dashboard — tipografia alinhada a `prototipos/dashboard-clivra.png` (Sora, não serif). */
 export function DashboardHero({
   greetingLabel,
   firstName,
@@ -28,14 +29,14 @@ export function DashboardHero({
         showCard ? 'lg:grid-cols-[minmax(0,1fr)_minmax(15rem,18rem)]' : null,
       )}
     >
-      <div className="flex min-w-0 flex-col justify-center gap-1">
-        <p className="text-[10px] font-semibold tracking-[0.14em] text-[#9A908A] uppercase">
+      <div className="flex min-w-0 flex-col justify-center gap-1.5">
+        <p className="font-sans text-[11px] font-semibold tracking-[0.14em] text-[#9A908A] uppercase">
           {greetingLabel}, {firstName}
         </p>
-        <h1 className="font-display max-w-[28ch] text-[1.35rem] leading-[1.2] font-bold text-[#4A0F16] lg:text-[1.5rem]">
+        <h1 className="font-sans max-w-[28ch] text-[28px] leading-[1.2] font-bold tracking-tight text-[#1A1A1A] lg:text-[30px]">
           Tudo certo para um excelente dia de atendimentos!
         </h1>
-        <p className="max-w-md text-[12px] leading-snug text-[#7A716C]">
+        <p className="font-sans max-w-md text-[14px] leading-snug text-[#7A716C]">
           Aqui você acompanha o que realmente importa na sua clínica.
         </p>
       </div>
@@ -61,16 +62,16 @@ export function DashboardHero({
           </span>
 
           <div className="relative z-10 min-w-0 flex-1 pr-3">
-            <p className="text-[12px] font-semibold leading-tight text-[#3A1018]">
+            <p className="font-sans text-[13px] font-semibold leading-tight text-[#3A1018]">
               Complete seu perfil
             </p>
-            <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-[#7A716C]">
+            <p className="mt-0.5 line-clamp-2 font-sans text-[11px] leading-snug text-[#7A716C]">
               Mantenha suas informações atualizadas no Clivra.
             </p>
             <Link
               href={profileHref}
               prefetch={false}
-              className="mt-1.5 inline-flex h-6 items-center rounded-md bg-[#4A0F16] px-2.5 text-[10px] font-medium text-white transition-colors hover:bg-[#3A0C12]"
+              className="mt-1.5 inline-flex h-7 items-center rounded-md bg-[#4A0F16] px-2.5 font-sans text-[11px] font-medium text-white transition-colors hover:bg-[#3A0C12]"
             >
               Ver perfil
             </Link>

@@ -16,8 +16,8 @@ Implementar/corrigir `frontend/` no fluxo:
 
 ## Política de tokens
 
-**Ordem:** classificar tipo de tela → rules das camadas → no máx. **1–2** shards em `.cursor/docs/ui/` → implementar → [checklist.md](checklist.md) no fim.  
-[layers.md](layers.md) só se a camada não estiver clara.
+**Ordem:** classificar tipo de tela → rules das camadas → no máx. **1–2** shards em `.cursor/docs/ui/` (identidade **Clivra**; norma `01-clivra-design-system.md`) → implementar → [checklist.md](checklist.md) no fim.  
+[layers.md](layers.md) só se a camada não estiver clara. **Proibido** Notion-like / Orius visual.
 
 ## Gate de pergunta (obrigatório)
 
@@ -72,7 +72,7 @@ Ver `rules/frontend.mdc` e `frontend-*.mdc`.
 - Package não importa outro package.
 - UI não duplica invariantes de domínio do backend.
 - Primitivos visuais só de `@/shared/ui/*`; compor variantes existentes (`variant`, `size`) antes de CSS ad hoc.
-- Cores via tokens CSS (claro/escuro); sem hex/`bg-white` salvo justificativa; sem recriar `ThemeToggle` na tela.
+- Cores via tokens CSS Clivra (claro/escuro); sem hex/`bg-white` salvo justificativa; sem recriar `ThemeToggle` na tela; sem identidade Notion/Orius.
 
 ## Saída
 

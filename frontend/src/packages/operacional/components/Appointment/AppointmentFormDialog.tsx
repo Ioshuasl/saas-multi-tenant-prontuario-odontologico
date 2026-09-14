@@ -1,6 +1,9 @@
 'use client';
 
-import { useDeferredValue, useEffect, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Controller } from 'react-hook-form';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { operacionalErrorMessage } from '@/packages/operacional/helpers/OperacionalErrorMessage';
 import {
   useAppointmentCreateHook,
@@ -13,23 +16,42 @@ import type { AppointmentFormDialogProps } from '@/packages/operacional/types/Ap
 import { MotionDialogBody } from '@/shared/motion/MotionDialogBody';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
+import { Checkbox } from '@/shared/ui/checkbox';
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/shared/ui/combobox';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/dialog';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/field';
-import { Input } from '@/shared/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/shared/ui/native-select';
+import { Textarea } from '@/shared/ui/textarea';
+
+function slotSummary(startsAt: string, endsAt: string): string {
+  try {
+    const start = parseISO(startsAt);
+    const end = parseISO(endsAt);
+    return `${format(start, "EEE, d MMM · HH:mm", { locale: ptBR })}–${format(end, 'HH:mm')}`;
+  } catch {
+    return '';
+  }
+}
 
 export function AppointmentFormDialog({
   open,
   professionalId,
   chairId,
   professionals = [],
-  chairs = [],
   startsAt,
   endsAt,
   onClose,
@@ -44,9 +66,15 @@ export function AppointmentFormDialog({
   const createSeries = useAppointmentSeriesCreateHook();
   const [patientSearch, setPatientSearch] = useState('');
   const deferredSearch = useDeferredValue(patientSearch);
-  const patientsQuery = usePatientListHook(deferredSearch);
+  const patientsQuery = usePatientListHook(deferredSearch, { active: 'true', limit: 30 });
   const lockProfessional = Boolean(professionalId) && !chairId;
-  const lockChair = Boolean(chairId);
+
+  const patients = patientsQuery.data?.items ?? [];
+  const patientIds = useMemo(() => patients.map((p) => p.id), [patients]);
+  const patientLabelById = useMemo(() => {
+    const map = new Map(patients.map((p) => [p.id, `#${p.code} ${p.name}`] as const));
+    return (id: string) => map.get(id) ?? id;
+  }, [patients]);
 
   const handleForm = () => {
     form.reset({
@@ -59,6 +87,7 @@ export function AppointmentFormDialog({
       recurring: false,
       rruleFreq: 'WEEKLY',
     });
+    setPatientSearch('');
   };
 
   useEffect(() => {
@@ -66,7 +95,7 @@ export function AppointmentFormDialog({
   }, [professionalId, chairId, startsAt, endsAt, form]);
 
   const onSubmit = async (values: AppointmentCreateFormValues) => {
-    const nextChairId = values.chairId ? values.chairId : null;
+    const nextChairId = chairId ? chairId : null;
     if (values.recurring) {
       const durationMinutes = Math.max(
         5,
@@ -99,6 +128,13 @@ export function AppointmentFormDialog({
 
   const pending = create.isPending || createSeries.isPending;
   const error = create.error ?? createSeries.error;
+  const professionalName =
+    professionals.find((p) => p.id === (professionalId || form.watch('professionalId')))?.name ??
+    null;
+  const summaryParts = [
+    slotSummary(startsAt, endsAt),
+    professionalName,
+  ].filter(Boolean);
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -106,6 +142,9 @@ export function AppointmentFormDialog({
         <MotionDialogBody>
           <DialogHeader>
             <DialogTitle>Novo agendamento</DialogTitle>
+            {summaryParts.length > 0 ? (
+              <DialogDescription>{summaryParts.join(' · ')}</DialogDescription>
+            ) : null}
           </DialogHeader>
           <form
             className="grid gap-4"
@@ -114,31 +153,50 @@ export function AppointmentFormDialog({
             }}
           >
             <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="appt-patient-search">Paciente</FieldLabel>
-                <Input
-                  id="appt-patient-search"
-                  placeholder="Buscar paciente…"
-                  value={patientSearch}
-                  onChange={(e) => setPatientSearch(e.target.value)}
-                />
-              </Field>
               <Field data-invalid={Boolean(form.formState.errors.patientId)}>
-                <FieldLabel htmlFor="appt-patient">Selecionar</FieldLabel>
-                <NativeSelect
-                  id="appt-patient"
-                  value={form.watch('patientId')}
-                  onChange={(e) => form.setValue('patientId', e.target.value, { shouldValidate: true })}
-                >
-                  <NativeSelectOption value="">Escolha…</NativeSelectOption>
-                  {(patientsQuery.data?.items ?? []).map((p) => (
-                    <NativeSelectOption key={p.id} value={p.id}>
-                      #{p.code} {p.name}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
+                <FieldLabel htmlFor="appt-patient">Paciente</FieldLabel>
+                <Controller
+                  control={form.control}
+                  name="patientId"
+                  render={({ field }) => (
+                    <Combobox
+                      items={patientIds}
+                      value={field.value || null}
+                      onValueChange={(next) => {
+                        field.onChange(typeof next === 'string' ? next : '');
+                      }}
+                      onInputValueChange={(value) => {
+                        setPatientSearch(value);
+                      }}
+                      itemToStringLabel={patientLabelById}
+                      filter={null}
+                    >
+                      <ComboboxInput
+                        id="appt-patient"
+                        placeholder="Buscar paciente…"
+                        className="w-full"
+                        showClear
+                      />
+                      <ComboboxContent className="z-[80]">
+                        <ComboboxEmpty>
+                          {patientsQuery.isLoading
+                            ? 'Carregando…'
+                            : 'Nenhum paciente encontrado.'}
+                        </ComboboxEmpty>
+                        <ComboboxList>
+                          {(id) => (
+                            <ComboboxItem key={id} value={id}>
+                              {patientLabelById(id)}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
+                  )}
+                />
                 <FieldError>{form.formState.errors.patientId?.message}</FieldError>
               </Field>
+
               {!lockProfessional ? (
                 <Field data-invalid={Boolean(form.formState.errors.professionalId)}>
                   <FieldLabel htmlFor="appt-professional">Profissional</FieldLabel>
@@ -159,33 +217,22 @@ export function AppointmentFormDialog({
                   <FieldError>{form.formState.errors.professionalId?.message}</FieldError>
                 </Field>
               ) : null}
-              {!lockChair ? (
-                <Field>
-                  <FieldLabel htmlFor="appt-chair">Cadeira (opcional)</FieldLabel>
-                  <NativeSelect
-                    id="appt-chair"
-                    value={form.watch('chairId') ?? ''}
-                    onChange={(e) => form.setValue('chairId', e.target.value)}
-                  >
-                    <NativeSelectOption value="">Nenhuma</NativeSelectOption>
-                    {chairs.map((c) => (
-                      <NativeSelectOption key={c.id} value={c.id}>
-                        {c.name}
-                      </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
-                </Field>
-              ) : null}
+
               <Field>
-                <FieldLabel className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="appt-recurring"
                     checked={Boolean(form.watch('recurring'))}
-                    onChange={(e) => form.setValue('recurring', e.target.checked)}
+                    onCheckedChange={(checked) =>
+                      form.setValue('recurring', checked === true)
+                    }
                   />
-                  Recorrente (série)
-                </FieldLabel>
+                  <FieldLabel htmlFor="appt-recurring" className="font-normal">
+                    Recorrente (série)
+                  </FieldLabel>
+                </div>
               </Field>
+
               {form.watch('recurring') ? (
                 <Field>
                   <FieldLabel htmlFor="appt-rrule">Frequência</FieldLabel>
@@ -201,6 +248,17 @@ export function AppointmentFormDialog({
                   </NativeSelect>
                 </Field>
               ) : null}
+
+              <Field>
+                <FieldLabel htmlFor="appt-notes">Observações</FieldLabel>
+                <Textarea
+                  id="appt-notes"
+                  rows={3}
+                  placeholder="Opcional"
+                  value={form.watch('notes') ?? ''}
+                  onChange={(e) => form.setValue('notes', e.target.value)}
+                />
+              </Field>
             </FieldGroup>
 
             {error ? (
@@ -210,10 +268,15 @@ export function AppointmentFormDialog({
             ) : null}
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
+              <Button
+                type="button"
+                variant="outline"
+                className="cursor-pointer"
+                onClick={onClose}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={pending}>
+              <Button type="submit" className="cursor-pointer" disabled={pending}>
                 {pending ? 'Salvando…' : 'Agendar'}
               </Button>
             </DialogFooter>

@@ -1,67 +1,114 @@
+import Image from 'next/image';
 import {
-  CalendarClockIcon,
+  CalendarDaysIcon,
   ChartColumnIncreasingIcon,
-  FilePieChartIcon,
-  ListChecksIcon,
+  UserRoundIcon,
 } from 'lucide-react';
 import { ClivraLogo } from '@/shared/brand/ClivraLogo';
+import { CLIVRA } from '@/shared/brand/ClivraBrand';
 
 const FEATURES = [
-  { icon: CalendarClockIcon, label: 'Manage your schedule with ease' },
-  { icon: ChartColumnIncreasingIcon, label: 'Real-time finance reports' },
-  { icon: FilePieChartIcon, label: 'Easy to add site documents' },
-  { icon: ListChecksIcon, label: 'Upcoming appointments' },
+  {
+    icon: CalendarDaysIcon,
+    title: 'Agenda inteligente',
+    description: 'Organize seus atendimentos com facilidade',
+  },
+  {
+    icon: UserRoundIcon,
+    title: 'Pacientes sempre no centro',
+    description: 'Histórico completo e acesso rápido',
+  },
+  {
+    icon: ChartColumnIncreasingIcon,
+    title: 'Controle financeiro',
+    description: 'Mais previsibilidade para o seu negócio',
+  },
 ] as const;
 
-/** Painel esquerdo da referência de login (altura total do card). */
+/** Painel de marca do login — tipografia alinhada a `prototipos/login-clivra.png`. */
 export function AuthBrandPanel() {
   return (
-    <aside className="relative flex h-full min-h-[280px] flex-col overflow-hidden bg-[#4A0F16] px-9 py-10 text-white lg:min-h-full lg:px-11 lg:py-12">
+    <aside className="relative flex h-full min-h-[320px] flex-col overflow-hidden text-white lg:min-h-dvh">
+      <Image
+        src={CLIVRA.loginClinicBg}
+        alt=""
+        fill
+        priority
+        sizes="(max-width: 1024px) 100vw, 45vw"
+        className="object-cover object-center"
+      />
       <div
-        className="pointer-events-none absolute inset-0"
+        className="absolute inset-0"
         style={{
-          backgroundImage: [
-            'radial-gradient(ellipse 80% 60% at 100% 0%, rgb(122 43 54 / 0.55) 0%, transparent 55%)',
-            'radial-gradient(ellipse 70% 50% at 0% 100%, rgb(26 8 12 / 0.5) 0%, transparent 50%)',
-          ].join(', '),
+          background:
+            'linear-gradient(180deg, rgb(74 15 22 / 0.72) 0%, rgb(74 15 22 / 0.84) 42%, rgb(42 10 16 / 0.94) 100%)',
         }}
-      />
-      <div
-        className="pointer-events-none absolute -top-32 -right-28 size-[28rem] rounded-full border border-white/[0.09]"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute -top-8 -right-4 size-[20rem] rounded-full border border-white/[0.06]"
+        className="pointer-events-none absolute -bottom-24 -left-16 size-[22rem] rounded-full opacity-50 blur-3xl"
+        style={{ background: 'radial-gradient(circle, rgb(168 91 103 / 0.55) 0%, transparent 70%)' }}
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute top-[36%] -right-20 size-[24rem] rounded-full border border-white/[0.05]"
+        className="pointer-events-none absolute bottom-[8%] left-[18%] size-[14rem] rounded-full opacity-40 blur-2xl"
+        style={{ background: 'radial-gradient(circle, rgb(122 43 54 / 0.7) 0%, transparent 70%)' }}
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute -bottom-40 -left-32 size-[34rem] rounded-full border border-white/[0.07]"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute bottom-[12%] left-[22%] size-[16rem] rounded-full border border-white/[0.04]"
+        className="pointer-events-none absolute top-[18%] -right-20 size-[18rem] rounded-full opacity-30 blur-3xl"
+        style={{ background: 'radial-gradient(circle, rgb(168 91 103 / 0.45) 0%, transparent 70%)' }}
         aria-hidden
       />
 
-      <div className="relative z-10 shrink-0">
-        <ClivraLogo size={34} wordmarkClassName="text-[1.4rem] font-semibold text-white" />
+      <div className="relative z-10 flex h-full min-h-dvh flex-1 flex-col px-10 py-9 lg:px-12 lg:py-10">
+        <ClivraLogo
+          size={34}
+          className="shrink-0"
+          wordmarkClassName="login-sans text-[22px] font-semibold tracking-[-0.02em] text-white"
+        />
+
+        <div className="mt-16 flex flex-1 flex-col lg:mt-[4.5rem]">
+          <div className="max-w-[32rem]">
+            <h2 className="login-display text-[42px] leading-[1.18] font-semibold tracking-[-0.015em] text-white">
+              Tecnologia e cuidado para uma odontologia mais eficiente.
+            </h2>
+            <p className="login-sans mt-4 text-[17px] leading-[1.55] font-normal text-white/88">
+              Gestão completa para clínicas odontológicas, em um só lugar.
+            </p>
+          </div>
+
+          <ul className="mt-12 grid gap-7">
+            {FEATURES.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <li key={feature.title} className="flex items-start gap-3.5">
+                  <Icon
+                    className="mt-0.5 size-[22px] shrink-0 text-[#F0C4CA]"
+                    strokeWidth={1.5}
+                    aria-hidden
+                  />
+                  <div className="min-w-0">
+                    <p className="login-sans text-[16px] leading-snug font-semibold text-white">
+                      {feature.title}
+                    </p>
+                    <p className="login-sans mt-1 text-[14px] leading-snug font-normal text-white/72">
+                      {feature.description}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="mt-auto pt-12">
+            <div className="mb-4 h-px w-full bg-white/25" aria-hidden />
+            <p className="login-sans text-[11px] font-medium tracking-[0.16em] text-white/78 uppercase">
+              Clínicas mais organizadas. Sorrisos mais saudáveis.
+            </p>
+          </div>
+        </div>
       </div>
-
-      <ul className="relative z-10 flex flex-1 flex-col justify-center gap-8 py-10">
-        {FEATURES.map((feature) => {
-          const Icon = feature.icon;
-          return (
-            <li key={feature.label} className="flex items-center gap-3.5">
-              <Icon className="size-[22px] shrink-0 text-white" strokeWidth={1.5} />
-              <span className="text-[15px] leading-snug text-white/95">{feature.label}</span>
-            </li>
-          );
-        })}
-      </ul>
     </aside>
   );
 }

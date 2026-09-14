@@ -1,5 +1,5 @@
-import { CashSessionIndex } from '@/packages/financeiro/components/CashSession/CashSessionIndex';
+import { redirect } from 'next/navigation';
 
-export default function CaixaPage() {
-  return <CashSessionIndex />;
+export default function CaixaRedirectPage() {
+  redirect('/app/financeiro');
 }

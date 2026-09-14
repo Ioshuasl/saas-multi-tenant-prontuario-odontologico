@@ -7,7 +7,6 @@ import {
   MedicalRecordNotFoundError,
   StorageUnavailableError,
 } from '../../models/errors/clinical_records.errors.js';
-import { assertCanAdd, UsageMetric } from '../../../subscription/subscription_public.js';
 import {
   PRESIGN_TTL_SECONDS,
   buildAttachmentStorageKey,
@@ -34,11 +33,6 @@ export class PresignService {
     if (!recordId) throw new MedicalRecordNotFoundError();
 
     await assertPlanLimit(ctx, UsageMetric.STORAGE_BYTES, attachmentSchema.sizeBytes);
-
-    const used = await this.usage.execute(ctx);
-    if (used + attachmentSchema.sizeBytes > env.ATTACHMENT_QUOTA_BYTES) {
-      throw new PlanLimitExceededError();
-    }
 
     const storageKey = buildAttachmentStorageKey({
       tenantId: ctx.tenantId,

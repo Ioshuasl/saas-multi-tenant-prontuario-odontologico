@@ -1,14 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
 import { PatientConsentsPanel } from '@/packages/operacional/components/Patient/PatientConsentsPanel';
+import { PatientDadosFields } from '@/packages/operacional/components/Patient/PatientDadosFields';
+import {
+  PatientDetailAside,
+  type PatientDetailTab,
+} from '@/packages/operacional/components/Patient/PatientDetailAside';
 import { PatientFinancePanel } from '@/packages/operacional/components/Patient/PatientFinancePanel';
 import { PatientGuardiansPanel } from '@/packages/operacional/components/Patient/PatientGuardiansPanel';
 import { PatientRecordPanel } from '@/packages/operacional/components/Patient/PatientRecordPanel';
 import { PatientTimeline } from '@/packages/operacional/components/Patient/PatientTimeline';
 import { PatientQuotesPanel } from '@/packages/operacional/components/Quote/PatientQuotesPanel';
 import { operacionalErrorMessage } from '@/packages/operacional/helpers/OperacionalErrorMessage';
+import {
+  formatCpfInputMask,
+  formatPhoneInputMask,
+  formatPhoneMask,
+  patientAgeYears,
+  patientInitials,
+} from '@/packages/operacional/helpers/FormatPatientContact';
+import {
+  usePatientAutosaveHook,
+  type PatientAutosaveStatus,
+} from '@/packages/operacional/hooks/Patient/usePatientAutosaveHook';
 import { usePatientDeleteHook } from '@/packages/operacional/hooks/Patient/usePatientDeleteHook';
 import { usePatientUpdateFormHook } from '@/packages/operacional/hooks/Patient/usePatientFormHook';
 import { usePatientGetHook } from '@/packages/operacional/hooks/Patient/usePatientGetHook';
@@ -17,16 +32,78 @@ import type { PatientUpdateFormValues } from '@/packages/operacional/schemas/Pat
 import { Can } from '@/shared/auth/Can';
 import { ApiClientError } from '@/shared/api/api-client';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
-import { Button } from '@/shared/ui/button';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/field';
-import { Input } from '@/shared/ui/input';
-import { NativeSelect, NativeSelectOption } from '@/shared/ui/native-select';
+import { Badge } from '@/shared/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/shared/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
-import { Textarea } from '@/shared/ui/textarea';
+import { cn } from '@/shared/helpers/utils';
 
 type PatientDetailProps = {
   patientId: string;
 };
+
+function AutosaveHint({
+  status,
+  savedAt,
+  errorMessage,
+  onRetry,
+}: {
+  status: PatientAutosaveStatus;
+  savedAt: Date | null;
+  errorMessage: string | null;
+  onRetry: () => void;
+}) {
+  if (status === 'idle') {
+    return (
+      <p className="text-sm text-muted-foreground" role="status">
+        Autosave ativo
+      </p>
+    );
+  }
+
+  const time =
+    savedAt != null
+      ? savedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      : null;
+
+  if (status === 'error') {
+    return (
+      <p className="text-sm text-destructive" role="status">
+        Não salvou{errorMessage ? `: ${errorMessage}` : '.'}{' '}
+        <button type="button" className="cursor-pointer underline" onClick={onRetry}>
+          Tentar de novo
+        </button>
+      </p>
+    );
+  }
+
+  if (status === 'saving') {
+    return (
+      <p className="text-sm text-muted-foreground" role="status">
+        Salvando…
+      </p>
+    );
+  }
+
+  if (status === 'pending') {
+    return (
+      <p className="text-sm text-muted-foreground" role="status">
+        Alterações pendentes…
+      </p>
+    );
+  }
+
+  return (
+    <p className="text-sm font-medium text-success" role="status">
+      Salvo{time ? ` às ${time}` : ''}
+    </p>
+  );
+}
 
 export function PatientDetail({ patientId }: PatientDetailProps) {
   const patientQuery = usePatientGetHook(patientId);
@@ -34,29 +111,49 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
   const update = usePatientUpdateHook(patientId);
   const deactivate = usePatientDeleteHook(patientId);
   const [confirmFuture, setConfirmFuture] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [tab, setTab] = useState<PatientDetailTab>('dados');
+  const [quoteCreateOpen, setQuoteCreateOpen] = useState(false);
+  const [anamnesisSendOpen, setAnamnesisSendOpen] = useState(false);
 
   useEffect(() => {
     const patient = patientQuery.data;
     if (!patient) return;
+    if (form.formState.isDirty) return;
     form.reset({
       name: patient.name,
       socialName: patient.socialName ?? '',
-      cpf: patient.cpf ?? '',
+      cpf: patient.cpf ? formatCpfInputMask(patient.cpf) : '',
       birthDate: patient.birthDate ?? '',
-      sex: patient.sex ?? '',
-      phonePrimary: patient.phonePrimary,
-      phoneSecondary: patient.phoneSecondary ?? '',
+      sex: patient.sex === 'M' || patient.sex === 'F' ? patient.sex : '',
+      phonePrimary: formatPhoneInputMask(patient.phonePrimary),
+      phoneSecondary: patient.phoneSecondary
+        ? formatPhoneInputMask(patient.phoneSecondary)
+        : '',
       email: patient.email ?? '',
       notes: patient.notes ?? '',
       active: patient.active,
     });
   }, [patientQuery.data, form]);
 
-  const onSave = async (values: PatientUpdateFormValues) => {
-    setSaved(false);
-    await update.mutateAsync(values);
-    setSaved(true);
+  const savePatient = useCallback(
+    async (values: PatientUpdateFormValues) => {
+      await update.mutateAsync(values);
+    },
+    [update],
+  );
+
+  const autosave = usePatientAutosaveHook({
+    form,
+    enabled: Boolean(patientQuery.data),
+    save: savePatient,
+  });
+
+  const onTabChange = (next: string | number | null) => {
+    if (typeof next !== 'string') return;
+    if (tab === 'dados' && next !== 'dados') {
+      void autosave.flush();
+    }
+    setTab(next as PatientDetailTab);
   };
 
   const onDeactivate = async () => {
@@ -68,6 +165,11 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
         setConfirmFuture(true);
       }
     }
+  };
+
+  const openNewQuote = () => {
+    setTab('orcamentos');
+    setQuoteCreateOpen(true);
   };
 
   if (patientQuery.isLoading) {
@@ -83,39 +185,57 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
   }
 
   const patient = patientQuery.data;
+  const displayName = patient.socialName || patient.name;
+  const age = patientAgeYears(patient.birthDate);
+  const initials = patientInitials(displayName);
+  const primaryGuardian = patient.guardians[0];
+  const hasMinorWarning = patient.warnings.includes('MINOR_WITHOUT_GUARDIAN');
+  const showMinorBanner = hasMinorWarning || (age != null && age < 18);
 
   return (
-    <div className="grid gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted-foreground">Ficha #{patient.code}</p>
-          <h1 className="text-xl font-semibold">{patient.socialName || patient.name}</h1>
+    <div className="grid gap-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-4">
+          <div
+            className="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
+            aria-hidden
+          >
+            {initials}
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-2xl font-semibold tracking-tight text-foreground">
+                {displayName}
+              </h1>
+              <Badge
+                variant="outline"
+                className={cn(
+                  patient.active
+                    ? 'border-transparent bg-success/15 text-success'
+                    : 'text-muted-foreground',
+                )}
+              >
+                {patient.active ? 'Ativo' : 'Inativo'}
+              </Badge>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Ficha #{patient.code}
+              {' · '}
+              {formatPhoneMask(patient.phonePrimary)}
+              {age != null ? ` · ${age} anos` : null}
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Can permission="audit.read">
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={
-                <Link href={`/app/auditoria?patientId=${patientId}`} prefetch={false} />
-              }
-            >
-              Ver acessos
-            </Button>
-          </Can>
-          {patient.active ? (
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={deactivate.isPending}
-              onClick={() => {
-                void onDeactivate();
-              }}
-            >
-              {confirmFuture ? 'Confirmar inativação' : 'Inativar'}
-            </Button>
-          ) : null}
-        </div>
+        {tab === 'dados' ? (
+          <AutosaveHint
+            status={autosave.status}
+            savedAt={autosave.savedAt}
+            errorMessage={autosave.errorMessage}
+            onRetry={() => {
+              void autosave.retry();
+            }}
+          />
+        ) : null}
       </div>
 
       {confirmFuture ? (
@@ -128,134 +248,136 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
         </Alert>
       ) : null}
 
-      {patient.warnings.includes('MINOR_WITHOUT_GUARDIAN') ? (
-        <Alert>
+      {showMinorBanner ? (
+        <Alert className="border-warning/40 bg-warning/10 text-foreground">
           <AlertDescription>
-            Paciente menor sem responsável legal cadastrado.
+            {hasMinorWarning
+              ? 'Paciente menor sem responsável legal cadastrado.'
+              : `Paciente menor — responsável legal cadastrado${
+                  primaryGuardian ? ` (${primaryGuardian.name})` : ''
+                }.`}
           </AlertDescription>
         </Alert>
       ) : null}
 
-      <Tabs defaultValue="dados">
-        <div className="overflow-x-auto">
-          <TabsList>
-            <TabsTrigger value="dados">Dados</TabsTrigger>
-            <TabsTrigger value="responsaveis">Responsáveis</TabsTrigger>
-            <TabsTrigger value="consentimentos">Consentimentos</TabsTrigger>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
+      <Tabs value={tab} onValueChange={onTabChange} className="gap-4">
+        <div className="overflow-x-auto border-b border-border">
+          <TabsList variant="line" className="h-auto min-h-9 w-max justify-start rounded-none p-0">
+            <TabsTrigger value="dados" className="cursor-pointer">
+              Dados
+            </TabsTrigger>
+            <TabsTrigger value="responsaveis" className="cursor-pointer">
+              Responsáveis
+            </TabsTrigger>
+            <TabsTrigger value="consentimentos" className="cursor-pointer">
+              Consentimentos
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="cursor-pointer">
+              Timeline
+            </TabsTrigger>
             <Can permission="quotes.read">
-              <TabsTrigger value="orcamentos">Orçamentos</TabsTrigger>
+              <TabsTrigger value="orcamentos" className="cursor-pointer">
+                Orçamentos
+              </TabsTrigger>
             </Can>
             <Can permission="finance.read">
-              <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+              <TabsTrigger value="financeiro" className="cursor-pointer">
+                Financeiro
+              </TabsTrigger>
             </Can>
             <Can permission="clinical_records.read">
-              <TabsTrigger value="prontuario">Prontuário</TabsTrigger>
+              <TabsTrigger value="prontuario" className="cursor-pointer">
+                Prontuário
+              </TabsTrigger>
             </Can>
           </TabsList>
         </div>
 
-        <TabsContent value="dados" className="mt-4">
-          <form
-            className="grid max-w-2xl gap-4"
-            onSubmit={(e) => {
-              void form.handleSubmit(onSave)(e);
+        <div className="flex gap-4">
+          <main className="flex min-w-0 flex-1 flex-col gap-4">
+            <TabsContent value="dados" className="mt-0">
+              <Card>
+                <CardHeader className="border-b border-border">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <CardTitle>Dados cadastrais</CardTitle>
+                      <CardDescription>
+                        Alterações são salvas automaticamente.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <PatientDadosFields form={form} idPrefix="patient-edit" showActive />
+                  {autosave.status === 'error' ? (
+                    <Alert variant="destructive" className="mt-4">
+                      <AlertDescription>
+                        {autosave.errorMessage ?? operacionalErrorMessage(update.error)}
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="responsaveis" className="mt-0">
+              <PatientGuardiansPanel patientId={patientId} guardians={patient.guardians} />
+            </TabsContent>
+
+            <TabsContent value="consentimentos" className="mt-0">
+              <PatientConsentsPanel patientId={patientId} consents={patient.consents} />
+            </TabsContent>
+
+            <TabsContent value="timeline" className="mt-0">
+              <PatientTimeline patientId={patientId} />
+            </TabsContent>
+
+            <Can permission="quotes.read">
+              <TabsContent value="orcamentos" className="mt-0">
+                <PatientQuotesPanel
+                  patientId={patientId}
+                  createOpen={quoteCreateOpen}
+                  onCreateOpenChange={setQuoteCreateOpen}
+                  hideHeaderCreate
+                />
+              </TabsContent>
+            </Can>
+
+            <Can permission="finance.read">
+              <TabsContent value="financeiro" className="mt-0">
+                <PatientFinancePanel patientId={patientId} />
+              </TabsContent>
+            </Can>
+
+            <Can permission="clinical_records.read">
+              <TabsContent value="prontuario" className="mt-0">
+                <PatientRecordPanel
+                  patientId={patientId}
+                  sendOpen={anamnesisSendOpen}
+                  onSendOpenChange={setAnamnesisSendOpen}
+                  hideHeaderSend
+                />
+              </TabsContent>
+            </Can>
+          </main>
+
+          <PatientDetailAside
+            tab={tab}
+            patientId={patientId}
+            patientActive={patient.active}
+            guardians={patient.guardians}
+            confirmFuture={confirmFuture}
+            deactivatePending={deactivate.isPending}
+            onDeactivate={() => {
+              void onDeactivate();
             }}
-          >
-            <FieldGroup>
-              <Field data-invalid={Boolean(form.formState.errors.name)}>
-                <FieldLabel htmlFor="edit-name">Nome completo</FieldLabel>
-                <Input id="edit-name" {...form.register('name')} />
-                <FieldError>{form.formState.errors.name?.message}</FieldError>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="edit-social">Nome social</FieldLabel>
-                <Input id="edit-social" {...form.register('socialName')} />
-              </Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field data-invalid={Boolean(form.formState.errors.phonePrimary)}>
-                  <FieldLabel htmlFor="edit-phone">Telefone</FieldLabel>
-                  <Input id="edit-phone" {...form.register('phonePrimary')} />
-                  <FieldError>{form.formState.errors.phonePrimary?.message}</FieldError>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="edit-cpf">CPF</FieldLabel>
-                  <Input id="edit-cpf" {...form.register('cpf')} />
-                </Field>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field>
-                  <FieldLabel htmlFor="edit-birth">Nascimento</FieldLabel>
-                  <Input id="edit-birth" type="date" {...form.register('birthDate')} />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="edit-email">E-mail</FieldLabel>
-                  <Input id="edit-email" type="email" {...form.register('email')} />
-                </Field>
-              </div>
-              <Field>
-                <FieldLabel htmlFor="edit-active">Status</FieldLabel>
-                <NativeSelect
-                  id="edit-active"
-                  value={form.watch('active') ? 'true' : 'false'}
-                  onChange={(e) => form.setValue('active', e.target.value === 'true')}
-                >
-                  <NativeSelectOption value="true">Ativo</NativeSelectOption>
-                  <NativeSelectOption value="false">Inativo</NativeSelectOption>
-                </NativeSelect>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="edit-notes">Observações</FieldLabel>
-                <Textarea id="edit-notes" rows={3} {...form.register('notes')} />
-              </Field>
-            </FieldGroup>
-
-            {update.isError ? (
-              <Alert variant="destructive">
-                <AlertDescription>{operacionalErrorMessage(update.error)}</AlertDescription>
-              </Alert>
-            ) : null}
-            {saved ? (
-              <Alert>
-                <AlertDescription>Alterações salvas.</AlertDescription>
-              </Alert>
-            ) : null}
-
-            <Button type="submit" disabled={update.isPending} className="w-fit">
-              {update.isPending ? 'Salvando…' : 'Salvar'}
-            </Button>
-          </form>
-        </TabsContent>
-
-        <TabsContent value="responsaveis" className="mt-4">
-          <PatientGuardiansPanel patientId={patientId} guardians={patient.guardians} />
-        </TabsContent>
-
-        <TabsContent value="consentimentos" className="mt-4">
-          <PatientConsentsPanel patientId={patientId} consents={patient.consents} />
-        </TabsContent>
-
-        <TabsContent value="timeline" className="mt-4">
-          <PatientTimeline patientId={patientId} />
-        </TabsContent>
-
-        <Can permission="quotes.read">
-          <TabsContent value="orcamentos" className="mt-4">
-            <PatientQuotesPanel patientId={patientId} />
-          </TabsContent>
-        </Can>
-
-        <Can permission="finance.read">
-          <TabsContent value="financeiro" className="mt-4">
-            <PatientFinancePanel patientId={patientId} />
-          </TabsContent>
-        </Can>
-
-        <Can permission="clinical_records.read">
-          <TabsContent value="prontuario" className="mt-4">
-            <PatientRecordPanel patientId={patientId} />
-          </TabsContent>
-        </Can>
+            onNewQuote={openNewQuote}
+            onSendAnamnesis={() => {
+              setTab('prontuario');
+              setAnamnesisSendOpen(true);
+            }}
+          />
+        </div>
       </Tabs>
     </div>
   );

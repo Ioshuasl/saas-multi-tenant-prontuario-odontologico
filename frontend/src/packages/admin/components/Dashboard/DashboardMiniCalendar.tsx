@@ -51,7 +51,7 @@ export function DashboardMiniCalendar({
       <header className="mb-2.5 flex shrink-0 items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <CalendarDaysIcon className="size-3.5 text-[#4A0F16]" strokeWidth={1.7} />
-          <h2 className="text-[13px] font-semibold text-[#1A1A1A]">Calendário</h2>
+          <h2 className="font-sans text-[15px] font-semibold text-[#1A1A1A]">Calendário</h2>
         </div>
         <div className="flex items-center gap-0.5">
           <button
@@ -62,7 +62,7 @@ export function DashboardMiniCalendar({
           >
             <ChevronLeftIcon className="size-3.5" />
           </button>
-          <p className="min-w-[7.5rem] text-center text-[12px] font-semibold text-[#1A1A1A]">
+          <p className="min-w-[7.5rem] text-center font-sans text-[13px] font-semibold text-[#1A1A1A]">
             {monthTitle(cursor)}
           </p>
           <button

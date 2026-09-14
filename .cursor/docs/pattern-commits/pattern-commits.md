@@ -52,7 +52,7 @@ feat(patients): adiciona create de paciente com Action e outbox
 
 fix(scheduling): impede double-booking no CreateRepository
 
-docs(16): alinha nomenclatura Orius híbrida ao Patient
+docs(cursor): alinha shards UI ao Design System Clivra
 
 refactor(frontend): troca CollectionHook por TanStack Query no Index
 
