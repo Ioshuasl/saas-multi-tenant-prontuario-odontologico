@@ -25,6 +25,7 @@ export const JOB = {
   generateQuotePdf: 'generate-quote-pdf',
   generateReceiptPdf: 'generate-receipt-pdf',
   expireQuotes: 'expire-quotes',
+  trialExpire: 'trial-expire',
 } as const;
 
 export type JobName = (typeof JOB)[keyof typeof JOB];
@@ -52,6 +53,7 @@ export const JOB_RETRY: Record<JobName, JobRetry> = {
   [JOB.generateQuotePdf]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
   [JOB.generateReceiptPdf]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
   [JOB.expireQuotes]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
+  [JOB.trialExpire]: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
 };
 
 export function dlqName(queue: QueueName): string {

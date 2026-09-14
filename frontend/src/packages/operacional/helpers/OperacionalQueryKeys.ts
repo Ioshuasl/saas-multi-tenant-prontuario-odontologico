@@ -1,5 +1,6 @@
 export const operacionalQueryKeys = {
-  patients: (search?: string) => ['patients', search ?? ''] as const,
+  patients: (search?: string, page?: number, active?: string) =>
+    ['patients', search ?? '', page ?? 1, active ?? 'all'] as const,
   patient: (id: string) => ['patient', id] as const,
   patientTimeline: (id: string) => ['patient-timeline', id] as const,
   patientConsents: (id: string) => ['patient-consents', id] as const,

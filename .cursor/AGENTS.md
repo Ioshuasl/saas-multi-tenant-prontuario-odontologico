@@ -9,6 +9,9 @@ Configura agents para `backend/` e `frontend/`.
 | Arquivo | Escopo |
 |---------|--------|
 | `rules/project-core.mdc` | Sempre |
+| `rules/product-decisions.mdc` | Sempre — dúvidas/decisões de produto em linguagem leiga |
+| `rules/tester.mdc` | Suíte local (skill tester / `pnpm tester`) |
+| `rules/sprint-orchestrator.mdc` | Sprint completa (blocos Must sequenciais + tester + commit/push) |
 | `rules/backend.mdc` | `backend/**` |
 | `rules/frontend.mdc` | `frontend/**` |
 | `rules/backend-*.mdc` | Por camada + modules / workers / shared |
@@ -28,6 +31,8 @@ Configura agents para `backend/` e `frontend/`.
 | `designer-ux` | Fluxo/tipo de tela (+ `02` ou `05` se preciso) |
 | `pencil-tsx-recreate` | Recriar `.tsx` → `.pen` |
 | `git` | Branch e commit no **repo único** deste projeto |
+| `tester` | Suíte local: Docker/stack, smokes, aceite curl, Playwright, localtunnel |
+| `sprint-orchestrator` | Sprint Must completa: Tasks sequenciais BE/FE + tester + docs + commit/push |
 
 ## UI/UX (progressive disclosure)
 

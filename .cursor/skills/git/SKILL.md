@@ -21,8 +21,8 @@ Não há multi-repo `app`/`api` separados. Paths de código: `backend/`, `fronte
 - Merge (com confirmação).
 - Usuário invoca a skill **git**.
 
-**Não usar** para: push, PR ou rebase (salvo pedido explícito).  
-**Não fazer commit** salvo pedido explícito.  
+**Não usar** para: push, PR ou rebase (salvo pedido explícito **ou** fechamento verde da skill `sprint-orchestrator`).  
+**Não fazer commit** salvo pedido explícito **ou** fechamento verde da skill `sprint-orchestrator`.  
 **NUNCA** injetar trailer `Co-authored-by` (Cursor ou outro) sem perguntar.
 
 ## Referência de commits

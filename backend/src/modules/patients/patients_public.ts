@@ -37,8 +37,18 @@ export async function findPatientIdByPhone(
   ctx: RequestContext,
   phone: string,
 ): Promise<string | null> {
-  const matches = await findByPhone.execute(ctx, toE164Br(phone));
-  return matches[0]?.id ?? null;
+  const e164 = toE164Br(phone);
+  const matchesE164 = await findByPhone.execute(ctx, e164);
+  if (matchesE164[0]?.id) return matchesE164[0].id;
+
+  // Cadastro MVP grava phonePrimary via normalizePhone (só dígitos, sem DDI 55).
+  if (e164.startsWith('55') && e164.length >= 12) {
+    const national = e164.slice(2);
+    const matchesNational = await findByPhone.execute(ctx, national);
+    if (matchesNational[0]?.id) return matchesNational[0].id;
+  }
+
+  return null;
 }
 
 /** Consentimento de marketing ativo? (messaging — RF-E3-08). */

@@ -84,25 +84,29 @@ export async function ensureOpenInstallmentForMaria(): Promise<{
   );
   if (!patient) throw new Error('paciente Maria não encontrado');
 
+  type InstallmentRow = {
+    id: string;
+    unitId: string;
+    patientId: string;
+    amountCents: number;
+    paidCents: number;
+    status: string;
+  };
+
+  /** Sem filtro de status a lista ordena por dueDate e afoga OPEN atrás de dezenas de PAID. */
   const listOpen = async () => {
-    const rows = await api<
-      Array<{
-        id: string;
-        unitId: string;
-        patientId: string;
-        amountCents: number;
-        paidCents: number;
-        status: string;
-      }>
-    >(`/installments?patientId=${encodeURIComponent(patient.id)}&limit=50`, {
-      token,
-      tenantId,
-    });
-    return (Array.isArray(rows) ? rows : []).find(
-      (row) =>
-        (row.status === 'OPEN' || row.status === 'PARTIALLY_PAID' || row.status === 'OVERDUE') &&
-        row.amountCents - row.paidCents >= 200,
-    );
+    const statuses = ['OPEN', 'PARTIALLY_PAID', 'OVERDUE'] as const;
+    for (const status of statuses) {
+      const rows = await api<InstallmentRow[]>(
+        `/installments?patientId=${encodeURIComponent(patient.id)}&status=${status}&limit=50`,
+        { token, tenantId },
+      );
+      const hit = (Array.isArray(rows) ? rows : []).find(
+        (row) => row.amountCents - row.paidCents >= 200,
+      );
+      if (hit) return hit;
+    }
+    return undefined;
   };
 
   let open = await listOpen();

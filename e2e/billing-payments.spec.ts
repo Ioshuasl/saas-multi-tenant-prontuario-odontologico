@@ -8,11 +8,13 @@ import { ASSISTANT, DENTIST, FINANCE, RECEPTION, SEED_PATIENT } from './helpers/
 
 test.describe('Contas a receber (recepção)', () => {
   test('baixa PIX+CASH da Maria, recibo visível e COPY sem Meta', async ({ page }) => {
+    // COPY exige PDF gerado pelo worker — pode levar >90s sob carga.
+    test.setTimeout(180_000);
     const seed = await ensureOpenInstallmentForMaria();
     await ensureCashSessionOpen(seed.unitId);
 
     await loginAs(page, RECEPTION);
-    await expect(page.getByRole('link', { name: 'Receber' })).toBeVisible();
+    await expect(page.locator('a[href="/app/financeiro/receber"]')).toBeVisible();
     await page.goto('/app/financeiro/receber');
     await expect(page.getByRole('heading', { name: 'Contas a receber' })).toBeVisible();
 
@@ -48,8 +50,8 @@ test.describe('Contas a receber (recepção)', () => {
 
     await expect(async () => {
       await page.getByRole('button', { name: 'Enviar (COPY)' }).click();
-      await expect(page.locator('#receipt-copy-text')).toBeVisible({ timeout: 8_000 });
-    }).toPass({ timeout: 120_000 });
+      await expect(page.locator('#receipt-copy-text')).toBeVisible({ timeout: 10_000 });
+    }).toPass({ timeout: 150_000 });
     await expect(page.getByLabel('Texto para colar')).toBeVisible();
   });
 });
@@ -57,23 +59,23 @@ test.describe('Contas a receber (recepção)', () => {
 test.describe('Financeiro (papéis)', () => {
   test('FINANCE vê nav Receber/Caixa/Pagar', async ({ page }) => {
     await loginAs(page, FINANCE);
-    await expect(page.getByRole('link', { name: 'Receber' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Caixa' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Pagar' })).toBeVisible();
+    await expect(page.locator('a[href="/app/financeiro/receber"]')).toBeVisible();
+    await expect(page.locator('a[href="/app/financeiro/caixa"]')).toBeVisible();
+    await expect(page.locator('a[href="/app/financeiro/pagar"]')).toBeVisible();
   });
 
   test('DENTIST não vê nav Receber/Caixa/Pagar', async ({ page }) => {
     await loginAs(page, DENTIST);
-    await expect(page.getByRole('link', { name: 'Receber' })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'Caixa' })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'Pagar' })).toHaveCount(0);
+    await expect(page.locator('a[href="/app/financeiro/receber"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/app/financeiro/caixa"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/app/financeiro/pagar"]')).toHaveCount(0);
   });
 
   test('ASB não vê nav financeiro', async ({ page }) => {
     await loginAs(page, ASSISTANT);
-    await expect(page.getByRole('link', { name: 'Receber' })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'Caixa' })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'Pagar' })).toHaveCount(0);
+    await expect(page.locator('a[href="/app/financeiro/receber"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/app/financeiro/caixa"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/app/financeiro/pagar"]')).toHaveCount(0);
   });
 
   test('recepção vê aba Financeiro na ficha', async ({ page }) => {

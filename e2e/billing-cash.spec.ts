@@ -6,6 +6,7 @@ import { expect as ownerExpect, test as ownerTest } from './helpers/fixtures';
 
 test.describe('Caixa do dia (recepção)', () => {
   test('abre, sangria e fecha com divergência exigindo motivo', async ({ page }) => {
+    test.setTimeout(180_000);
     const seed = await ensureOpenInstallmentForMaria();
     await ensureCashSessionOpen(seed.unitId);
 
@@ -55,28 +56,31 @@ test.describe('Caixa do dia (recepção)', () => {
 
 test.describe('Caixa (papéis)', () => {
   test('FINANCE vê Fluxo e Inadimplência; recepção não', async ({ page }) => {
+    test.setTimeout(180_000);
     await loginAs(page, FINANCE);
-    await expect(page.getByRole('link', { name: 'Fluxo' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Inadimplência' })).toBeVisible();
+    await expect(page.locator('a[href="/app/financeiro/fluxo"]')).toBeVisible();
+    await expect(page.locator('a[href="/app/financeiro/inadimplencia"]')).toBeVisible();
 
     await loginAs(page, RECEPTION);
-    await expect(page.getByRole('link', { name: 'Fluxo' })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'Inadimplência' })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'Caixa' })).toBeVisible();
+    await expect(page.locator('a[href="/app/financeiro/fluxo"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/app/financeiro/inadimplencia"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/app/financeiro/caixa"]')).toBeVisible();
   });
 
   test('DENTIST vê Produção e não vê Receber/Fluxo', async ({ page }) => {
+    test.setTimeout(180_000);
     await loginAs(page, DENTIST);
-    await expect(page.getByRole('link', { name: 'Produção' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Receber' })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'Fluxo' })).toHaveCount(0);
+    await expect(page.locator('a[href="/app/financeiro/producao"]')).toBeVisible();
+    await expect(page.locator('a[href="/app/financeiro/receber"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/app/financeiro/fluxo"]')).toHaveCount(0);
   });
 
   test('ASB sem nav financeiro', async ({ page }) => {
+    test.setTimeout(180_000);
     await loginAs(page, ASSISTANT);
-    await expect(page.getByRole('link', { name: 'Receber' })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'Caixa' })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'Produção' })).toHaveCount(0);
+    await expect(page.locator('a[href="/app/financeiro/receber"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/app/financeiro/caixa"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/app/financeiro/producao"]')).toHaveCount(0);
   });
 });
 

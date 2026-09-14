@@ -771,10 +771,12 @@ CREATE TABLE message (
   related_type      text,                 -- APPOINTMENT|QUOTE|INSTALLMENT
   related_id        uuid,
   sent_by           uuid,                 -- NULL = automação
+  idempotency_key   text,                 -- inbox send (S7); unique parcial (tenant_id, idempotency_key)
   created_at        timestamptz NOT NULL DEFAULT now(),
   updated_at        timestamptz NOT NULL DEFAULT now()
 );
 CREATE UNIQUE INDEX uq_message_provider_id ON message (provider_message_id) WHERE provider_message_id IS NOT NULL;
+CREATE UNIQUE INDEX uq_message_idempotency ON message (tenant_id, idempotency_key) WHERE idempotency_key IS NOT NULL;
 CREATE INDEX idx_message_conversation ON message (tenant_id, conversation_id, created_at);
 
 CREATE TABLE automation (
@@ -881,31 +883,50 @@ CREATE TABLE plan (
   name          text NOT NULL,
   price_cents   bigint NOT NULL,
   interval      text NOT NULL,          -- MONTHLY|YEARLY
-  limits        jsonb NOT NULL,         -- {professionals, units, storageGb, monthlyMessages}
-  active        boolean NOT NULL DEFAULT true
+  limits        jsonb NOT NULL,         -- {professionals, adminUsers, units, storageGb, messagesMonth}
+  active        boolean NOT NULL DEFAULT true,
+  created_at    timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE subscription (
   id                 uuid PRIMARY KEY,
   tenant_id          uuid NOT NULL UNIQUE REFERENCES tenant(id),
   plan_id            uuid NOT NULL REFERENCES plan(id),
-  status             text NOT NULL,     -- TRIALING|ACTIVE|PAST_DUE|CANCELED
+  status             text NOT NULL,     -- TRIAL|ACTIVE|PAST_DUE|SUSPENDED|EXPIRED|CANCELLED
+  trial_ends_at      timestamptz,
   current_period_end timestamptz,
   external_customer_id text,
   external_subscription_id text,
   cancel_at          timestamptz,
-  created_at         timestamptz NOT NULL DEFAULT now()
+  created_at         timestamptz NOT NULL DEFAULT now(),
+  updated_at         timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE usage_counter (
   id           uuid PRIMARY KEY,
   tenant_id    uuid NOT NULL,
-  metric       text NOT NULL,          -- ACTIVE_PROFESSIONALS|STORAGE_BYTES|MESSAGES_SENT
+  metric       text NOT NULL,          -- professionals|admin_users|units|messages_month|storage_bytes|patients
   period       text NOT NULL,          -- '2026-08' ou 'CURRENT'
   value        bigint NOT NULL DEFAULT 0,
   updated_at   timestamptz NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, metric, period)
 );
+
+CREATE TABLE report_export (            -- E9 export assíncrono (S7)
+  id            uuid PRIMARY KEY,
+  tenant_id     uuid NOT NULL REFERENCES tenant(id),
+  report        text NOT NULL,          -- dashboard|no-shows|revenue|procedures
+  format        text NOT NULL,          -- CSV|XLSX
+  status        text NOT NULL DEFAULT 'PENDING',  -- PENDING|RUNNING|READY|FAILED
+  filters       jsonb NOT NULL DEFAULT '{}',
+  storage_key   text,
+  requested_by  uuid NOT NULL,
+  error         text,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  updated_at    timestamptz NOT NULL DEFAULT now(),
+  completed_at  timestamptz
+);
+CREATE INDEX idx_report_export_tenant_created ON report_export (tenant_id, created_at DESC);
 ```
 
 ## 10. Views de leitura (contrato do módulo `reporting`)

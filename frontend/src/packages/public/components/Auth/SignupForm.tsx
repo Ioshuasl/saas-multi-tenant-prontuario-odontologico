@@ -7,6 +7,7 @@ import { authErrorMessage } from '@/packages/public/helpers/AuthErrorMessage';
 import { useAuthSignupFormHook } from '@/packages/public/hooks/Auth/useAuthSignupFormHook';
 import { useAuthSignupHook } from '@/packages/public/hooks/Auth/useAuthSignupHook';
 import type { AuthSignupFormValues } from '@/packages/public/schemas/Auth/AuthSchema';
+import { CLIVRA } from '@/shared/brand/ClivraBrand';
 import { markOnboardingSuggest } from '@/shared/helpers/onboarding-suggest-flag';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
@@ -27,7 +28,7 @@ export function SignupForm() {
   return (
     <AuthCard
       title="Criar clínica"
-      description="Cadastro do owner e da clínica. Senha com no mínimo 10 caracteres."
+      description={`Comece no ${CLIVRA.name}: cadastro do owner e da clínica. Senha com no mínimo 10 caracteres.`}
     >
       <form
         className="grid gap-4"

@@ -50,8 +50,9 @@ ownerTest.describe('Anamnese (ficha + público)', () => {
 
     await openSeedPatient(page);
     await page.getByRole('tab', { name: 'Prontuário' }).click();
-    await ownerExpect(page.getByText('Queixa principal')).toBeVisible();
-    await ownerExpect(page.getByText('Dor no dente 26')).toBeVisible();
+    // Histórico acumula respostas de runs anteriores — aceita o mais recente.
+    await ownerExpect(page.getByText('Queixa principal').first()).toBeVisible();
+    await ownerExpect(page.getByText('Dor no dente 26').first()).toBeVisible();
   });
 
   ownerTest('admin lista Anamnese Geral v1', async ({ page }) => {

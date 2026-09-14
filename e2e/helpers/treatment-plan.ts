@@ -5,19 +5,28 @@ const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3333';
 type Envelope<T> = { data?: T; meta?: { nextCursor?: string | null } };
 
 async function ownerSession(): Promise<{ token: string; tenantId: string }> {
-  const login = await fetch(`${API_URL}/api/v1/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: OWNER.email, password: OWNER.password }),
-  });
-  if (!login.ok) throw new Error(`login seed falhou: ${login.status}`);
-  const session = (await login.json()) as {
-    data?: { accessToken?: string; tenant?: { id?: string } };
-  };
-  const token = session.data?.accessToken;
-  const tenantId = session.data?.tenant?.id;
-  if (!token || !tenantId) throw new Error('sessão seed sem token/tenant');
-  return { token, tenantId };
+  let lastStatus = 0;
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    const login = await fetch(`${API_URL}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: OWNER.email, password: OWNER.password }),
+    });
+    lastStatus = login.status;
+    if (login.status === 429) {
+      await new Promise((resolve) => setTimeout(resolve, 16_000));
+      continue;
+    }
+    if (!login.ok) throw new Error(`login seed falhou: ${login.status}`);
+    const session = (await login.json()) as {
+      data?: { accessToken?: string; tenant?: { id?: string } };
+    };
+    const token = session.data?.accessToken;
+    const tenantId = session.data?.tenant?.id;
+    if (!token || !tenantId) throw new Error('sessão seed sem token/tenant');
+    return { token, tenantId };
+  }
+  throw new Error(`login seed falhou: ${lastStatus}`);
 }
 
 function headers(token: string, tenantId: string): HeadersInit {

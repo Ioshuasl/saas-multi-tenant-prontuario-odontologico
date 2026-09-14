@@ -161,11 +161,11 @@ Layout de três áreas em uma única rota (sem navegação entre telas durante o
 
 ### 4.3 Inbox WhatsApp
 
-- Três colunas: lista de conversas (não lidas primeiro) · thread · painel do paciente (agendamentos, débitos, ações rápidas).
-- Indicador explícito da janela de 24h: "janela aberta até 18:32" ou "janela fechada — só templates".
-- Envio de template com preview das variáveis preenchidas.
-- Atribuição de conversa a atendente; marcação de "resolvido".
-- Ações contextuais: criar agendamento, enviar orçamento, enviar link de anamnese, enviar recibo.
+- Três colunas: lista de conversas (não lidas / PENDING em destaque) · thread · painel do paciente (nome, próximo agendamento, link da ficha).
+- **Sem bloqueio de janela Meta 24h** (ADR-0016 / WAHA): a UI não impede envio por “janela fechada”. Indicador “última mensagem há X” é opcional (UX), não regra de negócio.
+- Envio de texto (e mídia via presign) na thread; templates/automations ficam em `/app/whatsapp` (conta/QR).
+- Marcação de “resolvido” (status CLOSED); atribuição a atendente quando exposto na UI.
+- Ações contextuais (Should RF-E8-10): navegar para agendar / orçamento / anamnese / recibo com `patientId` — não reimplementar fluxos no thread.
 
 ### 4.4 Autoagendamento público
 

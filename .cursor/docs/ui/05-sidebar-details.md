@@ -52,5 +52,5 @@ Alertas `CRITICAL` não são dispensáveis.
 
 ## 5. Inbox WhatsApp
 
-Três colunas: conversas | thread | painel do paciente (ações rápidas).  
-Indicador explícito da janela de 24h. Ver `docs/09` §4.3.
+Três colunas: conversas | thread | painel do paciente (ficha + próximo agendamento).  
+**Sem** bloqueio de janela Meta 24h (ADR-0016). Ver `docs/09` §4.3.

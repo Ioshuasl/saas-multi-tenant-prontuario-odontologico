@@ -18,12 +18,25 @@ $p1 = Invoke-ApiJson -Method POST -Path ("/api/v1/installments/{0}/payments" -f 
 
 Assert-Accept 'payment_partial_2xx' ($p1.Status -in @(200, 201)) ("HTTP {0}" -f $p1.Status)
 
-$after = Invoke-ApiJson -Method GET -Path ("/api/v1/installments/{0}" -f $inst.id) `
+# Filtrar por status evita página cheia de PAID antigos (dueDate ASC + limit).
+$listPartial = Invoke-ApiJson -Method GET `
+  -Path ('/api/v1/installments?patientId={0}&status=PARTIALLY_PAID&limit=50' -f $patientId) `
   -Token $session.Token -TenantId $session.TenantId
-$status = [string]$after.Body.data.status
+$after = @($listPartial.Body.data) | Where-Object { $_.id -eq $inst.id } | Select-Object -First 1
+if (-not $after) {
+  $listOpen = Invoke-ApiJson -Method GET `
+    -Path ('/api/v1/installments?patientId={0}&status=OPEN&limit=50' -f $patientId) `
+    -Token $session.Token -TenantId $session.TenantId
+  $after = @($listOpen.Body.data) | Where-Object { $_.id -eq $inst.id } | Select-Object -First 1
+}
+$status = if ($after) { [string]$after.status } else { [string]$p1.Body.data.installmentStatus }
 Assert-Accept 'payment_partial_status' ($status -eq 'PARTIALLY_PAID') ("status={0}" -f $status)
 
-$rest = [int64]$after.Body.data.amountCents - [int64]$after.Body.data.paidCents
+$rest = if ($after) {
+  [int64]$after.amountCents - [int64]$after.paidCents
+} else {
+  $balance - $partial
+}
 $overpay = $rest + 100
 $p2 = Invoke-ApiJson -Method POST -Path ("/api/v1/installments/{0}/payments" -f $inst.id) `
   -Token $session.Token -TenantId $session.TenantId -IdempotencyKey (New-IdempotencyKey) `
@@ -35,7 +48,7 @@ Assert-Accept 'payment_overpay_credit' ($creditGranted -ge 100) ("creditCentsGra
 
 $credit = Invoke-ApiJson -Method GET -Path ("/api/v1/patients/{0}/credit" -f $patientId) `
   -Token $session.Token -TenantId $session.TenantId
-$available = [int64]$credit.Body.data.availableCents
+$available = [int64]$credit.Body.data.balanceCents
 Assert-Accept 'patient_credit_available' ($available -ge 100) ("availableCents={0}" -f $available)
 
 $due = (Get-Date).AddDays(10).ToString('yyyy-MM-dd')
@@ -50,11 +63,15 @@ $recv = Invoke-ApiJson -Method POST -Path '/api/v1/receivables' `
   }
 Assert-Accept 'receivable_for_credit_consume' ($recv.Status -in @(200, 201)) ("HTTP {0}" -f $recv.Status)
 
-$listPath = '/api/v1/installments?patientId={0}&limit=20' -f $patientId
-$list = Invoke-ApiJson -Method GET -Path $listPath -Token $session.Token -TenantId $session.TenantId
-$newInst = @($list.Body.data) | Where-Object {
-  $_.status -eq 'OPEN' -and ([int64]$_.amountCents) -eq 150
-} | Select-Object -First 1
+$newInst = @($recv.Body.data.installments) | Select-Object -First 1
+if (-not $newInst) {
+  $list = Invoke-ApiJson -Method GET `
+    -Path ('/api/v1/installments?patientId={0}&status=OPEN&limit=50' -f $patientId) `
+    -Token $session.Token -TenantId $session.TenantId
+  $newInst = @($list.Body.data) | Where-Object {
+    $_.status -eq 'OPEN' -and ([int64]$_.amountCents) -eq 150
+  } | Select-Object -First 1
+}
 
 if ($newInst) {
   $use = [Math]::Min(100, $available)

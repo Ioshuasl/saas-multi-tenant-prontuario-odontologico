@@ -20,6 +20,7 @@ import { seedIdentity, seedIdentityTeam } from './identity.js';
 import { seedMessaging } from './messaging.js';
 import { seedPatients } from './patients.js';
 import { seedScheduling } from './scheduling.js';
+import { seedSubscription } from './subscription.js';
 import { seedTreatments } from './treatments.js';
 
 config({ path: resolve(process.cwd(), '../.env') });
@@ -60,7 +61,11 @@ async function main() {
       tenant.id,
       patients.map((p) => p.id),
     );
-    await seedBilling(prisma, tenant.id);
+    await seedBilling(prisma, {
+      tenantId: tenant.id,
+      unitId: unit.id,
+      patientId: patients[0]!.id,
+    });
     await seedTreatments(prisma, {
       tenantId: tenant.id,
       unitId: unit.id,
@@ -78,6 +83,7 @@ async function main() {
       ownerUserId: owner.id,
     });
     await seedMessaging(prisma, tenant.id);
+    await seedSubscription(prisma, tenant.id);
 
     console.info('seed: ok');
     console.info(`  login owner     ${OWNER_EMAIL} / ${OWNER_PASSWORD}`);
@@ -87,7 +93,7 @@ async function main() {
     console.info(`  login financeiro ${FINANCE_EMAIL} / ${SEED_PASSWORD}`);
     console.info(`  convite pendente ${INVITE_EMAIL} (token dev: ${INVITE_RAW_TOKEN})`);
     console.info('  S5: categoria Procedimentos + orçamento DRAFT da Maria (3 itens)');
-    console.info('  S6: categorias E7 (receitas/despesas) idempotentes');
+    console.info('  S6: categorias E7 + parcelas OPEN da Maria (aceite billing)');
   } finally {
     await prisma.$disconnect();
   }

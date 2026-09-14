@@ -75,16 +75,23 @@ export type PatientCreateResult = {
   warnings: PatientWarning[];
 };
 
+export type PatientActiveFilter = 'all' | 'true' | 'false';
+
 export type PatientListQuery = {
   search?: string;
-  cursor?: string;
+  page?: number;
   limit?: number;
   active?: 'true' | 'false';
+  cursor?: string;
 };
 
 export type PatientListResult = {
   items: PatientSummary[];
   nextCursor: string | null;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
 };
 
 export type TimelineSource =

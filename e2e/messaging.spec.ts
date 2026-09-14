@@ -1,6 +1,11 @@
 import { expect, test } from './helpers/fixtures';
+import { ensureSubscriptionActive } from './helpers/subscription';
 
 test.describe('Messaging WhatsApp (E8a ops)', () => {
+  test.beforeEach(async () => {
+    await ensureSubscriptionActive();
+  });
+
   test('onboarding aponta para a rota WhatsApp', async ({ page }) => {
     await page.goto('/app/onboarding');
     await expect(page.getByRole('heading', { name: 'Onboarding' })).toBeVisible();
@@ -13,11 +18,14 @@ test.describe('Messaging WhatsApp (E8a ops)', () => {
 
   test('wizard conecta conta fake e mostra uso/logs', async ({ page }) => {
     await page.goto('/app/whatsapp');
-    await expect(page.getByRole('heading', { name: 'WhatsApp' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'WhatsApp' })).toBeVisible({ timeout: 45_000 });
 
-    const connectButton = page.getByRole('button', { name: 'Conectar' });
-    if (await connectButton.isVisible().catch(() => false)) {
-      await page.getByRole('checkbox').check();
+    const connected = page.getByText('Conectado');
+    if (!(await connected.isVisible().catch(() => false))) {
+      const connectButton = page.getByRole('button', { name: 'Conectar' });
+      await expect(connectButton).toBeVisible({ timeout: 20_000 });
+      const terms = page.getByRole('checkbox').first();
+      await terms.check();
       await connectButton.click();
     }
 
@@ -31,7 +39,7 @@ test.describe('Messaging WhatsApp (E8a ops)', () => {
       await testButton.click();
     }
 
-    await expect(page.getByText('Conectado')).toBeVisible({ timeout: 20_000 });
+    await expect(connected).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel('Kill switch')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Uso' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Logs de envio' })).toBeVisible();

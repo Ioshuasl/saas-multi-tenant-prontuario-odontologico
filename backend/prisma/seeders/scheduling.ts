@@ -2,6 +2,42 @@ import type { PrismaClient } from '@prisma/client';
 import { idGenerator } from '../../src/shared/helpers/id_generator.js';
 import { spDateTime } from './helpers.js';
 
+/** Cancela conflitos ativos no intervalo (EXCLUDE gist) para o seed ser reentrante entre dias. */
+async function releaseSeedSlot(
+  prisma: PrismaClient,
+  input: {
+    tenantId: string;
+    professionalId: string;
+    chairId: string | null;
+    startsAt: Date;
+    endsAt: Date;
+    keepId?: string;
+  },
+) {
+  const base = {
+    tenantId: input.tenantId,
+    status: { notIn: ['CANCELLED', 'NO_SHOW'] as const },
+    startsAt: { lt: input.endsAt },
+    endsAt: { gt: input.startsAt },
+    ...(input.keepId ? { id: { not: input.keepId } } : {}),
+  };
+  const data = {
+    status: 'CANCELLED' as const,
+    cancelledAt: new Date(),
+    cancelReason: '[seed] slot reservado para seed',
+  };
+  await prisma.appointment.updateMany({
+    where: { ...base, professionalId: input.professionalId },
+    data,
+  });
+  if (input.chairId) {
+    await prisma.appointment.updateMany({
+      where: { ...base, chairId: input.chairId },
+      data,
+    });
+  }
+}
+
 export async function seedScheduling(
   prisma: PrismaClient,
   input: {
@@ -98,16 +134,32 @@ export async function seedScheduling(
     const existing = await prisma.appointment.findFirst({
       where: { tenantId: input.tenantId, idempotencyKey: slot.key },
     });
+
+    await releaseSeedSlot(prisma, {
+      tenantId: input.tenantId,
+      professionalId: slot.professionalId,
+      chairId: slot.chairId,
+      startsAt: slot.startsAt,
+      endsAt: slot.endsAt,
+      keepId: existing?.id,
+    });
+
     if (existing) {
       await prisma.appointment.update({
         where: { id: existing.id },
         data: {
+          patientId: slot.patientId,
+          professionalId: slot.professionalId,
+          chairId: slot.chairId,
+          procedureId: slot.procedureId,
           startsAt: slot.startsAt,
           endsAt: slot.endsAt,
           status: slot.status,
+          notes: slot.notes,
           confirmedAt: slot.status === 'CONFIRMED' || slot.status === 'IN_SERVICE' ? slot.startsAt : null,
           arrivedAt: slot.status === 'IN_SERVICE' ? slot.startsAt : null,
           cancelledAt: slot.status === 'CANCELLED' ? slot.startsAt : null,
+          cancelReason: slot.status === 'CANCELLED' ? 'Paciente desmarcou' : null,
         },
       });
       continue;

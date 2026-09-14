@@ -4,18 +4,19 @@ import { useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { AppHeader } from '@/packages/admin/components/Layout/AppHeader';
 import { AppSidebar } from '@/packages/admin/components/Layout/AppSidebar';
+import { ClivraShellProvider } from '@/packages/admin/components/Layout/ClivraShellContext';
+import { SubscriptionBanner } from '@/packages/admin/components/Subscription/SubscriptionBanner';
 import { useClinicGetHook } from '@/packages/admin/hooks/Clinic/useClinicGetHook';
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { SidebarInset } from '@/shared/ui/sidebar-chrome';
-import { SidebarProvider } from '@/shared/ui/sidebar-context';
 import { TooltipProvider } from '@/shared/ui/tooltip';
 
 type AppShellProps = {
   children: ReactNode;
+  inboxBadgeCount?: number;
 };
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, inboxBadgeCount = 0 }: AppShellProps) {
   const { ready, isAuthenticated } = useAuth();
   const router = useRouter();
   const clinicQuery = useClinicGetHook({ enabled: ready && isAuthenticated });
@@ -36,13 +37,18 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <TooltipProvider>
-      <SidebarProvider>
-        <AppSidebar clinicName={clinicQuery.data?.name} />
-        <SidebarInset>
-          <AppHeader />
-          <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">{children}</div>
-        </SidebarInset>
-      </SidebarProvider>
+      <ClivraShellProvider>
+        <div className="flex min-h-svh w-full min-w-0 bg-[#F7F4F0]">
+          <AppSidebar clinicName={clinicQuery.data?.name} inboxBadgeCount={inboxBadgeCount} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <AppHeader />
+            <main className="mx-auto flex w-full min-w-0 max-w-[1280px] flex-1 flex-col gap-3 bg-[#F7F4F0] p-3 sm:p-4 desk:max-w-[1480px] desk:p-5 desk:px-7">
+              <SubscriptionBanner />
+              {children}
+            </main>
+          </div>
+        </div>
+      </ClivraShellProvider>
     </TooltipProvider>
   );
 }

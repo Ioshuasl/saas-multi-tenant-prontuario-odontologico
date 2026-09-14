@@ -75,8 +75,61 @@ model Tenant {
   payables        Payable[]
   cashSessions    CashSession[]
   cashMovements   CashMovement[]
+  reportExports   ReportExport[]
+  subscription    Subscription?
+  usageCounters   UsageCounter[]
 
   @@map("tenant")
+}
+
+/// Plano SaaS global (sem tenant). docs/07 §9 · módulo subscription
+model Plan {
+  id          String         @id @db.Uuid
+  code        String         @unique
+  name        String
+  priceCents  BigInt         @map("price_cents")
+  interval    String         @default("MONTHLY")
+  limits      Json
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  subscriptions Subscription[]
+
+  @@map("plan")
+}
+
+/// Assinatura da clínica (1:1 tenant). docs/modulos/10-billing-saas.md
+model Subscription {
+  id                     String    @id @db.Uuid
+  tenantId               String    @unique @map("tenant_id") @db.Uuid
+  planId                 String    @map("plan_id") @db.Uuid
+  status                 String
+  trialEndsAt            DateTime? @map("trial_ends_at") @db.Timestamptz
+  currentPeriodEnd       DateTime? @map("current_period_end") @db.Timestamptz
+  externalCustomerId     String?   @map("external_customer_id")
+  externalSubscriptionId String?   @map("external_subscription_id")
+  cancelAt               DateTime? @map("cancel_at") @db.Timestamptz
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  tenant                 Tenant    @relation(fields: [tenantId], references: [id])
+  plan                   Plan      @relation(fields: [planId], references: [id])
+
+  @@index([status, trialEndsAt], map: "idx_subscription_status_trial")
+  @@map("subscription")
+}
+
+/// Contadores de uso vs limites do plano.
+model UsageCounter {
+  id        String   @id @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  metric    String
+  period    String
+  value     BigInt   @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, metric, period], map: "usage_counter_tenant_metric_period_key")
+  @@index([tenantId, metric], map: "idx_usage_counter_tenant")
+  @@map("usage_counter")
 }
 
 /// DEK wrapped por tenant (envelope). Ver docs/07 §14.
@@ -655,6 +708,7 @@ model Message {
   relatedType       String?   @map("related_type")
   relatedId         String?   @map("related_id") @db.Uuid
   sentBy            String?   @map("sent_by") @db.Uuid
+  idempotencyKey    String?   @map("idempotency_key")
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   tenant            Tenant    @relation(fields: [tenantId], references: [id])
@@ -1229,4 +1283,25 @@ model CashMovement {
 
   @@index([tenantId, cashSessionId, createdAt], map: "idx_cash_movement_session")
   @@map("cash_movement")
+}
+
+/// Export assíncrono de relatório (E9). docs/07 · S7 Bloco 4
+model ReportExport {
+  id          String    @id @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  report      String
+  format      String
+  status      String    @default("PENDING")
+  filters     Json      @default("{}")
+  storageKey  String?   @map("storage_key")
+  requestedBy String    @map("requested_by") @db.Uuid
+  error       String?
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_report_export_tenant_created")
+  @@index([tenantId, status], map: "idx_report_export_tenant_status")
+  @@map("report_export")
 }

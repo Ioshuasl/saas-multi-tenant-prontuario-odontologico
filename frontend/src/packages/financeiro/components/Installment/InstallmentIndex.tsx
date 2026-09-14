@@ -40,6 +40,7 @@ function buildListQuery(
   if (preset === 'overdue') {
     return { patientId, status: 'OVERDUE', limit: 50 };
   }
+  // Em aberto: API sem status já devolve só pagáveis (OPEN/PARCIAL/OVERDUE).
   return { patientId, limit: 50 };
 }
 

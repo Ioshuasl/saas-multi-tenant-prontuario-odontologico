@@ -1,6 +1,7 @@
 import type { RequestContext } from '../../../../shared/domain/request_context.js';
 import { getTenantPrisma } from '../../../../shared/database/tenant_prisma.js';
 import { idGenerator } from '../../../../shared/helpers/id_generator.js';
+import { assertPlanLimit, UsageMetric } from '../../../subscription/subscription_public.js';
 import { DuplicateNameError } from '../../models/errors/clinic.errors.js';
 import { FindByNameRepository, seedDefaultHoursForUnit } from '../../repositories/unit/unit.repository.js';
 import type { UnitCreateSchema } from '../../schemas/clinic.schema.js';
@@ -19,6 +20,8 @@ export class CreateService {
     if (duplicate) {
       throw new DuplicateNameError('Unidade', unitSchema.name);
     }
+
+    await assertPlanLimit(ctx, UsageMetric.UNITS);
 
     const tenantPrisma = getTenantPrisma();
     return tenantPrisma.runInTenantContext(ctx, async (tx) => {

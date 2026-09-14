@@ -3,6 +3,7 @@ import type { RequestContext } from '../../shared/domain/request_context.js';
 import { DEFAULT_BOOKING_SETTINGS } from '../clinic/clinic_public.js';
 import { MessagingOnboardingRepository } from './repositories/onboarding/messaging_onboarding.repository.js';
 import { GetAccountRepository } from './repositories/whatsapp_account/whatsapp_account.repository.js';
+import { DisableAllAutomationsRepository } from './repositories/automation/automation.repository.js';
 import {
   ScheduleService,
   type NotificationScheduleInput,
@@ -13,6 +14,7 @@ import type { WhatsappAccountSummary } from './types/messaging.types.js';
 const onboarding = new MessagingOnboardingRepository();
 const getAccount = new GetAccountRepository();
 const scheduleService = new ScheduleService();
+const disableAutomationsRepo = new DisableAllAutomationsRepository();
 
 /** Seed automations D-1/H-3/waitlist + créditos de cortesia no signup. */
 export async function seedMessagingOnSignup(
@@ -24,6 +26,11 @@ export async function seedMessagingOnSignup(
     idNext: input.idNext,
     courtesyCredits: input.courtesyCredits ?? DEFAULT_BOOKING_SETTINGS.courtesyTransactionalMessages,
   });
+}
+
+/** Desliga todas as automações do tenant (suspensão / disconnect WA). */
+export async function disableAllAutomations(ctx: RequestContext): Promise<void> {
+  await disableAutomationsRepo.execute(ctx);
 }
 
 /** Status da conta WABA para outros BCs (somente leitura). */

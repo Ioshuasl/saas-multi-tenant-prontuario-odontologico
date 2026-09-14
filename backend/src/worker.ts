@@ -1,6 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import { env } from './shared/config/env.js';
 import { logger } from './shared/config/logger.js';
+import { isOutboxDispatchPaused } from './shared/database/outbox_dispatch_pause.js';
 import { OutboxDispatcher } from './shared/database/outbox_dispatcher.js';
 import { getPrismaClient } from './shared/database/tenant_prisma.js';
 import { scheduleAppointmentNotificationsJob } from './modules/scheduling/jobs/schedule_appointment_notifications.job.js';
@@ -13,6 +14,9 @@ import { generateQuotePdfJob } from './modules/treatments/jobs/generate_quote_pd
 import { expireQuotesJob } from './modules/treatments/jobs/expire_quotes.job.js';
 import { markOverdueInstallmentsJob } from './modules/billing/jobs/mark_overdue_installments.job.js';
 import { generateReceiptPdfJob } from './modules/billing/jobs/generate_receipt_pdf.job.js';
+import { generateExportJob } from './modules/reporting/jobs/report_export.job.js';
+import { trialExpireJob } from './modules/subscription/jobs/trial_expire.job.js';
+import { recalculateUsageCountersJob } from './modules/subscription/jobs/recalculate_usage_counters.job.js';
 import { listTenantsForScheduledJobs } from './modules/clinic/clinic_public.js';
 import { todayInTimezone } from './modules/treatments/helpers/quote_valid_until.helper.js';
 import { hourInTimezone } from './modules/billing/helpers/civil_date.helper.js';
@@ -24,6 +28,7 @@ import { JOB, QUEUE } from './shared/queue/queue_names.js';
 const DISPATCH_INTERVAL_MS = 5_000;
 const EXPIRE_QUOTES_INTERVAL_MS = 15 * 60_000;
 const MARK_OVERDUE_INTERVAL_MS = 15 * 60_000;
+const TRIAL_EXPIRE_INTERVAL_MS = 15 * 60_000;
 
 async function enqueueMarkOverdue(queue: BullmqJobQueue): Promise<void> {
   if (!queue.isConnected()) return;
@@ -54,6 +59,31 @@ async function enqueueExpireQuotes(queue: BullmqJobQueue): Promise<void> {
   }
 }
 
+async function enqueueTrialExpire(queue: BullmqJobQueue): Promise<void> {
+  if (!queue.isConnected()) return;
+  const ymd = new Date().toISOString().slice(0, 10);
+  await queue.add(
+    QUEUE.platform,
+    JOB.trialExpire,
+    { tenantId: '00000000-0000-0000-0000-000000000000', requestId: `trial-expire:${ymd}` },
+    { jobId: `trial-expire:${ymd}:${new Date().getUTCHours()}` },
+  );
+}
+
+async function enqueueRecalculateUsage(queue: BullmqJobQueue): Promise<void> {
+  if (!queue.isConnected()) return;
+  const tenants = await listTenantsForScheduledJobs();
+  for (const tenant of tenants) {
+    const ymd = todayInTimezone(tenant.timezone);
+    await queue.add(
+      QUEUE.platform,
+      JOB.recalculateUsageCounters,
+      { tenantId: tenant.id, requestId: `usage-recalc:${ymd}` },
+      { jobId: `usage-recalc:${tenant.id}:${ymd}` },
+    );
+  }
+}
+
 async function main(): Promise<void> {
   logger.info('worker_starting');
 
@@ -63,7 +93,10 @@ async function main(): Promise<void> {
   queue.register(QUEUE.platform, JOB.generateAttachmentThumbnail, generateAttachmentThumbnailJob);
   queue.register(QUEUE.platform, JOB.generateQuotePdf, generateQuotePdfJob);
   queue.register(QUEUE.platform, JOB.generateReceiptPdf, generateReceiptPdfJob);
+  queue.register(QUEUE.reporting, JOB.generateExport, generateExportJob);
   queue.register(QUEUE.platform, JOB.expireQuotes, expireQuotesJob);
+  queue.register(QUEUE.platform, JOB.trialExpire, trialExpireJob);
+  queue.register(QUEUE.platform, JOB.recalculateUsageCounters, recalculateUsageCountersJob);
   queue.register(QUEUE.billing, JOB.markOverdueInstallments, markOverdueInstallmentsJob);
   queue.register(QUEUE.platform, JOB.smokePing, async (payload: JobPayload) => {
     logger.info(
@@ -95,6 +128,7 @@ async function main(): Promise<void> {
 
   const tick = async (): Promise<void> => {
     try {
+      if (await isOutboxDispatchPaused()) return;
       const n = await dispatcher.dispatchOnce();
       if (n > 0) logger.info({ dispatched: n }, 'outbox_dispatched');
     } catch (err) {
@@ -133,6 +167,18 @@ async function main(): Promise<void> {
     logger.error({ err }, 'mark_overdue_enqueue_error');
   });
 
+  const trialInterval = setInterval(() => {
+    void enqueueTrialExpire(queue).catch((err) => {
+      logger.error({ err }, 'trial_expire_enqueue_error');
+    });
+    void enqueueRecalculateUsage(queue).catch((err) => {
+      logger.error({ err }, 'usage_recalc_enqueue_error');
+    });
+  }, TRIAL_EXPIRE_INTERVAL_MS);
+  void enqueueTrialExpire(queue).catch((err) => {
+    logger.error({ err }, 'trial_expire_enqueue_error');
+  });
+
   const health = startWorkerHealth(() => ({
     status: 'ok',
     service: 'worker',
@@ -143,6 +189,7 @@ async function main(): Promise<void> {
     clearInterval(interval);
     clearInterval(expireInterval);
     clearInterval(overdueInterval);
+    clearInterval(trialInterval);
     health.close();
     await queue.close();
     await getPrismaClient().$disconnect();

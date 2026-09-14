@@ -2,6 +2,7 @@ import type { RequestContext } from '../../../../shared/domain/request_context.j
 import { env } from '../../../../shared/config/env.js';
 import { idGenerator } from '../../../../shared/helpers/id_generator.js';
 import { getObjectStorage, ObjectStorageError } from '../../../../shared/storage/index.js';
+import { assertPlanLimit, UsageMetric } from '../../../subscription/subscription_public.js';
 import { Attachment } from '../../models/attachment/attachment.model.js';
 import {
   MedicalRecordNotFoundError,
@@ -36,6 +37,8 @@ export class PresignService {
 
     const recordId = await this.getRecordId.execute(ctx, patientId);
     if (!recordId) throw new MedicalRecordNotFoundError();
+
+    await assertPlanLimit(ctx, UsageMetric.STORAGE_BYTES, attachmentSchema.sizeBytes);
 
     const used = await this.usage.execute(ctx);
     if (used + attachmentSchema.sizeBytes > env.ATTACHMENT_QUOTA_BYTES) {

@@ -6,6 +6,12 @@ export function messagingErrorMessage(error: unknown): string {
     if (error.code === 'PROVIDER_UNAVAILABLE') {
       return error.message || 'Falha no envio de teste. Verifique as credenciais.';
     }
+    if (error.code === 'IDEMPOTENCY_KEY_REUSED') {
+      return 'Esta mensagem já foi enviada com outro conteúdo. Tente de novo.';
+    }
+    if (error.code === 'PLAN_LIMIT_EXCEEDED' || error.code === 'SUBSCRIPTION_REQUIRED') {
+      return error.message || 'Assinatura inativa. A inbox está somente leitura.';
+    }
     return error.message;
   }
   if (error instanceof Error) return error.message;

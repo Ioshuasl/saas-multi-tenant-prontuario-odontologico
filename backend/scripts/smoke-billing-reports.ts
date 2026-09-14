@@ -8,6 +8,7 @@ import { hashToken } from '../src/shared/helpers/token_hash.js';
 import { addDays } from '../src/modules/identity/helpers/slug.helper.js';
 import { generateReceiptPdfJob } from '../src/modules/billing/jobs/generate_receipt_pdf.job.js';
 import { resetObjectStorageForTests } from '../src/shared/storage/index.js';
+import { PLAN_IDS } from '../src/modules/subscription/enum/plan/plan_code.enum.js';
 
 type Json = { status: number; body: Record<string, unknown> | null };
 type ProcedureRow = { id: string; code: string };
@@ -66,6 +67,19 @@ async function main() {
     month: '2-digit',
     day: '2-digit',
   }).format(new Date());
+  const dueFuture = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(addDays(new Date(), 7));
+  // 45 dias → faixa 31_60 (estável independente do calendário do runner).
+  const dueOverdue = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(addDays(new Date(), -45));
 
   const password = 'SenhaForte!99';
   const signup = await request('/api/v1/auth/signup', {
@@ -119,7 +133,7 @@ async function main() {
       unitId,
       totalCents: 10000,
       installmentCount: 1,
-      firstDueDate: '2026-09-05',
+      firstDueDate: dueFuture,
       description: 'Parcela futura smoke',
     }),
   });
@@ -134,7 +148,7 @@ async function main() {
       unitId,
       totalCents: 8000,
       installmentCount: 1,
-      firstDueDate: '2026-07-01',
+      firstDueDate: dueOverdue,
       description: 'Parcela vencida smoke',
     }),
   });
@@ -289,6 +303,13 @@ async function main() {
     ?? (accept.body?.data as { membership?: { id: string } } | undefined)?.membership?.id;
 
   jar.clear();
+  // Essencial = 1 profissional; smoke precisa de owner + dentista → sobe para Clínica.
+  await tenantDb.runInTenantContext(smokeCtx, (tx) =>
+    tx.subscription.update({
+      where: { tenantId },
+      data: { planId: PLAN_IDS.CLINICA },
+    }),
+  );
   const dentistProf = await request('/api/v1/clinic/professionals', {
     method: 'POST',
     headers: { ...authHeaders(token, tenantId), 'content-type': 'application/json' },

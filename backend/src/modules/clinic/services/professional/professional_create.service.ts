@@ -1,5 +1,6 @@
 import type { RequestContext } from '../../../../shared/domain/request_context.js';
 import { AppError } from '../../../../shared/middlewares/error_handler.middleware.js';
+import { assertPlanLimit, UsageMetric } from '../../../subscription/subscription_public.js';
 import {
   CreateProfessionalRepository,
   FindByMembershipRepository,
@@ -38,6 +39,8 @@ export class CreateService {
         );
       }
     }
+
+    await assertPlanLimit(ctx, UsageMetric.PROFESSIONALS);
 
     return this.create.execute(ctx, professionalSchema);
   }

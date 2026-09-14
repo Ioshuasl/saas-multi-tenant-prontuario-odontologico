@@ -60,8 +60,11 @@ export function AgendaGrid({
       )}
     >
       <div
-        className="grid min-w-[720px]"
-        style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}
+        className="grid"
+        style={{
+          gridTemplateColumns: `56px repeat(${days.length}, minmax(130px, 1fr))`,
+          minWidth: `${56 + days.length * 130}px`,
+        }}
       >
         <div className={cn('sticky top-0 z-20 border-b', AGENDA_NOTION.dayHeader)} />
         {days.map((day) => (

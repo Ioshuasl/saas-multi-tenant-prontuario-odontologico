@@ -43,6 +43,7 @@ export const OUTBOX_ROUTES: Record<string, OutboxRouteTarget> = {
   'messaging.confirmation_received': 'emit-only',
   'messaging.cancellation_received': 'emit-only',
   'messaging.waitlist_offer_accepted': 'emit-only',
+  'messaging.message_received': 'emit-only',
   'messaging.credits_low': 'emit-only',
   'messaging.credits_exhausted': 'emit-only',
   'clinical_records.critical_alert_created': 'emit-only',
@@ -78,4 +79,5 @@ export const OUTBOX_ROUTES: Record<string, OutboxRouteTarget> = {
   'billing.cash_session_closed': 'emit-only',
   'billing.payable_paid': 'emit-only',
   'billing.installment_overdue': 'emit-only',
+  'reporting.export_requested': { queue: QUEUE.reporting, job: JOB.generateExport },
 };

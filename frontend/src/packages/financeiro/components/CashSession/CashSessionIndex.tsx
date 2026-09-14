@@ -52,7 +52,7 @@ export function CashSessionIndex() {
   const [closeDialog, setCloseDialog] = useState(false);
   const [moveDialog, setMoveDialog] = useState(false);
 
-  if (unitQuery.isLoading || currentQuery.isLoading) {
+  if (unitQuery.isLoading || (Boolean(unitId) && currentQuery.isLoading)) {
     return <p className="text-sm text-muted-foreground">Carregando caixa…</p>;
   }
 

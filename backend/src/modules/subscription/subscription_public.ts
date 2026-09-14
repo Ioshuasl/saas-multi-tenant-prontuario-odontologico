@@ -1,0 +1,50 @@
+import type { DbTransaction } from '../../shared/database/db_transaction.js';
+import type { RequestContext } from '../../shared/domain/request_context.js';
+import { DEFAULT_PLAN_ID } from './enum/plan/plan_code.enum.js';
+import { SubscriptionStatus } from './enum/subscription/subscription_status.enum.js';
+import { UsageMetric } from './enum/usage/usage_metric.enum.js';
+import { asyncSubscriptionGuard } from './middlewares/subscription_guard.middleware.js';
+import { CreateRepository } from './repositories/subscription/subscription_create.repository.js';
+import { PlanLimitGuard } from './services/plan_limit/plan_limit_guard.service.js';
+import { AssertWritableService } from './services/subscription/subscription_assert_writable.service.js';
+
+const createSubscription = new CreateRepository();
+const planLimitGuard = new PlanLimitGuard();
+const assertWritable = new AssertWritableService();
+
+export type SeedSubscriptionInput = {
+  tenantId: string;
+  trialEndsAt: Date | null;
+  idNext: () => string;
+  planId?: string;
+};
+
+/** Cria subscription TRIAL no plano Essencial (signup / backfill programático). */
+export async function seedSubscriptionOnSignup(
+  tx: DbTransaction,
+  input: SeedSubscriptionInput,
+): Promise<void> {
+  await createSubscription.execute(tx, {
+    id: input.idNext(),
+    tenantId: input.tenantId,
+    planId: input.planId ?? DEFAULT_PLAN_ID,
+    status: SubscriptionStatus.TRIAL,
+    trialEndsAt: input.trialEndsAt,
+  });
+}
+
+export async function assertPlanLimit(
+  ctx: RequestContext,
+  metric: UsageMetric,
+  amount = 1,
+): Promise<void> {
+  await planLimitGuard.assertCanAdd(ctx, metric, amount);
+}
+
+export async function assertSubscriptionWritable(ctx: RequestContext): Promise<void> {
+  await assertWritable.execute(ctx);
+}
+
+export { asyncSubscriptionGuard, UsageMetric, PlanLimitGuard };
+
+export type { PlanSummary, SubscriptionSummary, UsageSummary } from './types/subscription.types.js';

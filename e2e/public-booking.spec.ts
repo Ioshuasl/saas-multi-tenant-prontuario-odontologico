@@ -43,8 +43,8 @@ test.describe('Public booking (E4b)', () => {
     await page.getByLabel('Nome completo').fill(`Paciente OTP ${stamp}`);
     await page.getByLabel('Telefone').fill(`6298${String(stamp).slice(-7)}`);
     await page.getByLabel('E-mail').fill(`e2e-otp-${stamp}@example.com`);
-    await page.getByLabel('Aceito o tratamento dos meus dados pessoais').click();
-    await page.getByLabel('Aceito os termos de uso').click();
+    await page.getByRole('checkbox', { name: /Aceito o tratamento dos meus dados pessoais/i }).click();
+    await page.getByRole('checkbox', { name: /Aceito os termos de uso/i }).click();
     await page.getByRole('button', { name: 'Enviar código' }).click();
 
     await expect(page.getByText(/código de 6 dígitos/i)).toBeVisible({ timeout: 20_000 });
@@ -78,8 +78,8 @@ test.describe('Public booking (E4b)', () => {
     await page.getByLabel('Nome completo').fill(`Paciente Público ${stamp}`);
     await page.getByLabel('Telefone').fill(`6299${String(stamp).slice(-7)}`);
     await page.getByLabel('E-mail').fill(email);
-    await page.getByLabel('Aceito o tratamento dos meus dados pessoais').click();
-    await page.getByLabel('Aceito os termos de uso').click();
+    await page.getByRole('checkbox', { name: /Aceito o tratamento dos meus dados pessoais/i }).click();
+    await page.getByRole('checkbox', { name: /Aceito os termos de uso/i }).click();
     await page.getByRole('button', { name: 'Enviar código' }).click();
 
     await expect(page.getByText(/código de 6 dígitos/i)).toBeVisible({ timeout: 20_000 });

@@ -68,11 +68,11 @@ export function AttendanceForm({ appointmentId }: AttendanceFormProps) {
         alerts={recordQuery.data.alerts}
       />
 
-      <div className="flex flex-col gap-4 lg:flex-row">
-        <main className="min-w-0 flex-1">
+      <div className="flex flex-col gap-4 xl:flex-row">
+        <main className="min-w-0 max-w-4xl flex-1">
           <OdontogramPanel patientId={patientId} />
         </main>
-        <aside className="w-full shrink-0 lg:w-[360px]">
+        <aside className="w-full shrink-0 xl:w-[360px]">
           <div className="sticky top-4 grid gap-4">
             <Can permission="quotes.read">
               <TreatmentPlanPanel patientId={patientId} appointmentId={appointment.id} />

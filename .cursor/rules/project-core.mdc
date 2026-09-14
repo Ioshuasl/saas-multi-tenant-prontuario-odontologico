@@ -81,7 +81,7 @@ Em dúvida de pasta/nomenclatura, seguir `docs/16`.
 - Não expor tokens, senhas ou credenciais de `.env`.
 - Não inventar infraestrutura inexistente.
 - Ao concluir: informar arquivos alterados, validações e bloqueios.
-- Em dúvida/tomada de decisão: **perguntar ao usuário**.
+- Em dúvida/tomada de decisão: **perguntar ao usuário** — explicar no nível leigo detalhado (`product-decisions.mdc`).
 
 ## Rules por camada
 
@@ -100,3 +100,5 @@ Frontend: `frontend-types`, `frontend-enum`, `frontend-schema`, `frontend-data`,
 | Design Pencil UI/UX | `.cursor/skills/designer-ui/` · `designer-ux/` |
 | TSX → Pencil | `.cursor/skills/pencil-tsx-recreate/` |
 | Git | `.cursor/skills/git/` |
+| Tester (suíte local) | `.cursor/skills/tester/` |
+| Sprint (orquestrador) | `.cursor/skills/sprint-orchestrator/` |

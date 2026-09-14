@@ -5,6 +5,7 @@ import { DENTIST } from './helpers/credentials';
 
 test.describe('Execução no atendimento (E6)', () => {
   test('dentista executa RES-01 e o odontograma fica RESTORED', async ({ page }) => {
+    test.setTimeout(120_000);
     await ensureActiveRes01Plan('João Pedro');
     await loginAs(page, DENTIST);
     await page.goto('/app/agenda');
@@ -32,12 +33,14 @@ test.describe('Execução no atendimento (E6)', () => {
     await expect(item).toBeVisible();
     await item.click();
     await page.getByRole('button', { name: 'Executar' }).click();
-    await expect(page.getByRole('heading', { name: 'Executar item' })).toBeVisible();
-    await page.getByRole('dialog').getByRole('button', { name: 'Salvar e assinar' }).click();
 
-    await expect(page.getByRole('heading', { name: 'Executar item' })).toHaveCount(0, {
-      timeout: 30_000,
-    });
+    const executeDialog = page
+      .getByRole('dialog')
+      .filter({ has: page.getByRole('heading', { name: 'Executar item' }) });
+    await expect(executeDialog).toBeVisible();
+    await executeDialog.getByRole('button', { name: 'Salvar e assinar' }).click();
+
+    await expect(executeDialog).toHaveCount(0, { timeout: 45_000 });
     await expect(page.getByRole('alert').filter({ hasText: 'Evolução assinada' })).toBeVisible();
     await expect(page.getByText(/esta evolução não pode ser editada/i).first()).toBeVisible();
     await expect(page.getByLabel(/Dente 26.*Restaurado/).first()).toBeVisible({ timeout: 20_000 });

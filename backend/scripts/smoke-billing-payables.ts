@@ -7,8 +7,17 @@ import { Role } from '../src/modules/identity/enum/role/role.enum.js';
 import { hashToken } from '../src/shared/helpers/token_hash.js';
 import { addDays } from '../src/modules/identity/helpers/slug.helper.js';
 import { MarkOverdueService } from '../src/modules/billing/services/installment/installment_mark_overdue.service.js';
+import { addCalendarMonths } from '../src/modules/billing/helpers/installment_due_dates.helper.js';
 
 type Json = { status: number; body: Record<string, unknown> | null };
+
+/** YYYY-MM-DD civil UTC a partir de hoje ± offset de dias (smoke estável no calendário). */
+function ymdFromToday(offsetDays: number): string {
+  const d = new Date();
+  d.setUTCHours(12, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
 
 async function main() {
   const app = createApp();
@@ -102,6 +111,11 @@ async function main() {
   console.log('category-dup', dupCat.status, errorCode(dupCat));
   if (dupCat.status !== 409) failed = true;
 
+  // Vencimento passado (pagável) + próximo mês ainda no futuro → spawned OPEN.
+  const payableDue = ymdFromToday(-20);
+  const expectedSpawnDue = addCalendarMonths(payableDue, 1);
+  const recurrenceUntil = addCalendarMonths(ymdFromToday(0), 24);
+
   const payable = await request('/api/v1/payables', {
     method: 'POST',
     headers: { ...authHeaders(token, tenantId), 'content-type': 'application/json' },
@@ -110,12 +124,12 @@ async function main() {
       categoryId: rent?.id,
       description: 'Aluguel agosto',
       amountCents: 250000,
-      dueDate: '2026-08-10',
+      dueDate: payableDue,
       supplier: 'Imobiliaria Centro',
-      recurrence: { frequency: 'MONTHLY', until: '2027-12-31' },
+      recurrence: { frequency: 'MONTHLY', until: recurrenceUntil },
     }),
   });
-  console.log('payable-create', payable.status);
+  console.log('payable-create', payable.status, payableDue, '→', expectedSpawnDue);
   if (payable.status !== 201) failed = true;
   const payableId = dataOf(payable).id as string;
 
@@ -176,7 +190,7 @@ async function main() {
   });
   console.log('spawned', spawned.status, dataOf(spawned).dueDate, dataOf(spawned).status);
   if (spawned.status !== 200) failed = true;
-  if (dataOf(spawned).dueDate !== '2026-09-10') failed = true;
+  if (dataOf(spawned).dueDate !== expectedSpawnDue) failed = true;
   if (dataOf(spawned).status !== 'OPEN') failed = true;
 
   const patchPaid = await request(`/api/v1/payables/${payableId}`, {

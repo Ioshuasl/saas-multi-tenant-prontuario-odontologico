@@ -187,6 +187,19 @@ Sem Co-authored-by. Sem push.
 
 ---
 
+### Sprint (`sprint-orchestrator`)
+
+**P18 — Executar sprint Must completa**
+
+```
+Use a skill sprint-orchestrator.
+Sprint: S7.
+Fila Must por Bloco, Tasks sequenciais (backend/frontend), smoke do bloco, pnpm tester no fim.
+Se falhar: correção (máx. 2 ciclos). No sucesso: atualizar checklist em docs + commit + push.
+```
+
+---
+
 ## Qual skill?
 
 | Eu quero… | Skill | Prompt |
@@ -198,6 +211,8 @@ Sem Co-authored-by. Sem push.
 | Ler padrão visual | `ui-ux-systems` | P11 |
 | Polir visual | `ui-refactor` | P12 |
 | Branch / commit | `git` | P15–P17 |
+| Sprint inteira | `sprint-orchestrator` | P18 |
+| Suíte de testes | `tester` | (skill tester / `pnpm tester`) |
 
 ---
 

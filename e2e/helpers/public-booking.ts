@@ -5,20 +5,29 @@ const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3333';
 const MAILPIT_URL = process.env.E2E_MAILPIT_URL ?? 'http://localhost:8025';
 
 export async function getSeedClinicSlug(): Promise<string> {
-  const res = await fetch(`${API_URL}/api/v1/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: OWNER.email, password: OWNER.password }),
-  });
-  if (!res.ok) {
-    throw new Error(`login seed falhou: ${res.status}`);
+  let lastStatus = 0;
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    const res = await fetch(`${API_URL}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: OWNER.email, password: OWNER.password }),
+    });
+    lastStatus = res.status;
+    if (res.status === 429) {
+      await new Promise((resolve) => setTimeout(resolve, 16_000));
+      continue;
+    }
+    if (!res.ok) {
+      throw new Error(`login seed falhou: ${res.status}`);
+    }
+    const json = (await res.json()) as { data?: { tenant?: { slug?: string } } };
+    const slug = json.data?.tenant?.slug;
+    if (!slug) {
+      throw new Error('slug da clínica seed não retornado');
+    }
+    return slug;
   }
-  const json = (await res.json()) as { data?: { tenant?: { slug?: string } } };
-  const slug = json.data?.tenant?.slug;
-  if (!slug) {
-    throw new Error('slug da clínica seed não retornado');
-  }
-  return slug;
+  throw new Error(`login seed falhou: ${lastStatus}`);
 }
 
 export async function waitForMailpitOtp(email: string, timeoutMs = 20_000): Promise<string> {
@@ -43,19 +52,26 @@ export async function waitForMailpitOtp(email: string, timeoutMs = 20_000): Prom
   throw new Error(`OTP não encontrado no Mailpit para ${email}`);
 }
 
+/** Aguarda disponibilidade carregar e escolhe o 1º horário livre (pula fim de semana/seed). */
 export async function pickFirstPublicSlot(page: Page): Promise<void> {
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const slot = page.getByRole('button', { name: /^\d{2}:\d{2}$/ }).first();
+  await page.getByRole('button', { name: 'Próximos dias' }).waitFor({ state: 'visible', timeout: 45_000 });
+
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    const dayWithSlots = page.getByRole('button').filter({ hasText: /[1-9]\d*\s+horários/ }).first();
+    if (await dayWithSlots.isVisible().catch(() => false)) {
+      await dayWithSlots.click();
+    }
+
+    const slot = page.getByRole('button', { name: /^\d{1,2}:\d{2}$/ }).first();
     if (await slot.isVisible().catch(() => false)) {
       await slot.click();
       await page.getByRole('button', { name: 'Continuar' }).click();
       return;
     }
-    const nextDays = page.getByRole('button', { name: 'Próximos dias' });
-    if (await nextDays.isVisible().catch(() => false)) {
-      await nextDays.click();
-      await page.waitForTimeout(400);
-    }
+
+    await page.getByRole('button', { name: 'Próximos dias' }).click();
+    await page.getByRole('button', { name: 'Próximos dias' }).waitFor({ state: 'visible', timeout: 30_000 });
+    await page.waitForTimeout(300);
   }
   throw new Error('Nenhum horário público disponível');
 }

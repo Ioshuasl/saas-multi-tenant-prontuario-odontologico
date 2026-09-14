@@ -123,21 +123,23 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
       ) : null}
 
       <Tabs defaultValue="dados">
-        <TabsList>
-          <TabsTrigger value="dados">Dados</TabsTrigger>
-          <TabsTrigger value="responsaveis">Responsáveis</TabsTrigger>
-          <TabsTrigger value="consentimentos">Consentimentos</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <Can permission="quotes.read">
-            <TabsTrigger value="orcamentos">Orçamentos</TabsTrigger>
-          </Can>
-          <Can permission="finance.read">
-            <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-          </Can>
-          <Can permission="clinical_records.read">
-            <TabsTrigger value="prontuario">Prontuário</TabsTrigger>
-          </Can>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="dados">Dados</TabsTrigger>
+            <TabsTrigger value="responsaveis">Responsáveis</TabsTrigger>
+            <TabsTrigger value="consentimentos">Consentimentos</TabsTrigger>
+            <TabsTrigger value="timeline">Timeline</TabsTrigger>
+            <Can permission="quotes.read">
+              <TabsTrigger value="orcamentos">Orçamentos</TabsTrigger>
+            </Can>
+            <Can permission="finance.read">
+              <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+            </Can>
+            <Can permission="clinical_records.read">
+              <TabsTrigger value="prontuario">Prontuário</TabsTrigger>
+            </Can>
+          </TabsList>
+        </div>
 
         <TabsContent value="dados" className="mt-4">
           <form

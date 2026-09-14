@@ -4,6 +4,28 @@ Append-only. Entradas mais recentes no topo.
 
 ---
 
+## 2026-09-12 — S7 fechada: aceite via skill tester
+
+### Feito
+
+- `pnpm tester` full verde: Pass=36 Fail=0 Skip=1 (tunnel off)
+- Smokes S7: `messaging-inbox`, `reporting-dashboard`, `reporting-export`, `subscription`
+- Playwright full (incl. inbox / dashboard / assinatura / regressão S0–S6)
+- Fixes de aceite: datas relativas em `smoke-billing-payables`; listagem de installments sem status só pagáveis; e2e agenda em dia útil/manhã; helper billing filtra OPEN/PARCIAL/OVERDUE
+- Checklist [S7](./sprints/S7-inbox-relatorios-billing-saas.md) + README desenvolvimento: **fechada**
+- Cobrança SaaS continua manual (ADR-0010) — Stripe **não** entrou
+
+### Validação
+
+- Relatório: `.cursor/skills/tester/.run/last-report.md`
+
+### Próximo
+
+- S8 — endurecimento, LGPD, piloto
+- M2 (WA real) / M3 (uso real S4) / M5 (piloto) fora do código Must S7
+
+---
+
 ## 2026-08-17 — S7 planejada (checklist)
 
 ### Feito

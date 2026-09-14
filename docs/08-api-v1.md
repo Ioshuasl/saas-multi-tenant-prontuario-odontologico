@@ -455,38 +455,72 @@ PATCH  /api/v1/messaging/automations/:key   { enabled?, config? }  keys: CONFIRM
 GET    /api/v1/messaging/usage              sent / failed / flags (sem saldo Meta)
 GET    /api/v1/messaging/logs               ?from=&to=&result=&cursor=&limit=  (sem body clínico)
 
+GET    /api/v1/messaging/conversations           ?status=OPEN|PENDING|CLOSED&patientId=&q=&unread=&cursor=&limit=
+GET    /api/v1/messaging/conversations/:id
+GET    /api/v1/messaging/conversations/:id/messages  ?cursor=&limit=
+POST   /api/v1/messaging/conversations/:id/messages  Idempotency-Key  { text?, mediaStorageKey? }
+PATCH  /api/v1/messaging/conversations/:id           { assignedToUserId?, status?, patientId? }
+POST   /api/v1/messaging/conversations/:id/read
+POST   /api/v1/messaging/media/presign               { fileName, mimeType, sizeBytes }
+
+GET    /api/v1/stream                           SSE (`messaging.read`) — `message_received` / `unread_updated`
+
 POST   /api/v1/webhooks/whatsapp            público, HMAC do WAHA (raw body, 2 MB)
 ```
 
-**E8a:** inbox (`/messaging/conversations*`) **não** entra — S7. Frontend **nunca** chama o WAHA. `WAHA_API_KEY` só no backend. Sem `accessToken` Meta no POST. Teste fake em `NODE_ENV=test|development`. **Não** debitar crédito no delivery. Marketing exige consentimento (`BLOCKED_NO_CONSENT`). Connect sem `riskAccepted` → 422.
+**E8a (conta):** Frontend **nunca** chama o WAHA. `WAHA_API_KEY` só no backend. Sem `accessToken` Meta no POST. Teste fake em `NODE_ENV=test|development`. **Não** debitar crédito no delivery. Marketing exige consentimento (`BLOCKED_NO_CONSENT`). Connect sem `riskAccepted` → 422.
 
 **Account:** `PENDING` (QR) → `CONNECTED` (ou `ERROR` + `lastError`). Kill switch: `PATCH { killSwitch: true }` ou `DELETE`.
 
 **Automations config (exemplo):** `{ "sendAtLocalTime": "12:00", "onlyForStatuses": ["SCHEDULED","CONFIRMED"], "templateKey": "appointment_confirmation" }`.
 
+**Inbox (E8b — S7):** permissões `messaging.read` (list/get/messages/stream) e `messaging.write` (send/patch/read/presign). Envelope `{ data }` (+ `meta.nextCursor` nas listas). Filtros: `status`, `patientId` (histórico na ficha do paciente — RF-E8-09), busca `q` (telefone/nome do contato ou paciente), `unread=true|false`. Paginação cursor. Envio: **texto** e/ou **mídia** (`mediaStorageKey` após presign + PUT no storage). MIME allowlist: `image/jpeg|png|webp`, `application/pdf` (≤20 MB). WAHA: `sendImage` / `sendFile` com URL pré-assinada GET; provedor sem mídia (Cloud) → `501 NOT_IMPLEMENTED`. `Idempotency-Key` obrigatório no POST message; replay com mesmo payload (text+mediaKey) devolve a mesma mensagem; payload diferente → `409 IDEMPOTENCY_KEY_REUSED`. Paciente vinculado por telefone E.164 (`patients_public`) no inbound e no send se ainda null. Inbound incrementa `unreadCount` + outbox `messaging.message_received` + fan-out SSE; `POST …/read` zera e emite `unread_updated`. Sem janela Meta de preço (ADR-0016). Bloqueio de send em `SUSPENDED`/`EXPIRED` → Bloco 5 (`subscriptionGuard`). Fallback FE: polling 5–10s se SSE cair (hub in-memory — multi-instância exige Redis depois).
+
+**POST `/messaging/media/presign`:** `{ fileName, mimeType, sizeBytes }` → `{ uploadUrl, method: "PUT", headers, storageKey, expiresIn: 900 }`. MIME inválido → `415`; tamanho → `422`; storage down → `503 STORAGE_UNAVAILABLE`.
+
+**GET `/stream` (SSE):** eventos `ready`, `message_received` (`conversationId`, `messageId`, `unreadCount`), `unread_updated` (`conversationId`, `unreadCount`); keep-alive `: ping` ~25s.
+
+**Conversation (resumo):** `{ id, whatsappAccountId, patientId, contactPhone, contactName, status, assignedToUserId, unreadCount, lastMessageAt, serviceWindowExpiresAt, createdAt }`.
+
+**Message (inbox):** `{ id, conversationId, direction, type, body, mediaKey, status, sentBy, createdAt }`.
+
 ### 2.9 Relatórios (`reporting`)
 
-S6 entrega **somente** cash-flow / overdue / production (rotas no módulo `billing`). Dashboard, no-shows, procedures e `POST /reports/:report/export` → **S7**.
+S6: `cash-flow` / `overdue` / `production` permanecem no módulo **`billing`** (paths estáveis).  
+S7 Bloco 3: `dashboard` / `no-shows` / `revenue` / `procedures` no BC **`reporting`**. Export assíncrono → Bloco 4.
 
 ```
-GET    /api/v1/reports/dashboard            ?unitId=&date=
-GET    /api/v1/reports/no-shows              ?from=&to=&professionalId=
-GET    /api/v1/reports/revenue               ?from=&to=&groupBy=day|month|professional
-GET    /api/v1/reports/overdue
-GET    /api/v1/reports/production            ?from=&to=&professionalId=
-GET    /api/v1/reports/procedures            ?from=&to=
-GET    /api/v1/reports/cash-flow             ?from=&to=&basis=CASH|ACCRUAL
-POST   /api/v1/reports/:report/export        { format: CSV|XLSX } → job assíncrono
-GET    /api/v1/exports/:id                   status + URL de download
+GET    /api/v1/reports/dashboard            ?unitId=&date=          reports.read
+GET    /api/v1/reports/no-shows              ?from=&to=&professionalId=&unitId=   reports.financial
+GET    /api/v1/reports/revenue               ?from=&to=&groupBy=day|month|professional&unitId=   reports.financial
+GET    /api/v1/reports/procedures            ?from=&to=&professionalId=&unitId=   reports.read
+GET    /api/v1/reports/overdue               (billing)
+GET    /api/v1/reports/production            (billing)  reports.read (escopo por papel)
+GET    /api/v1/reports/cash-flow             (billing)  reports.financial
+POST   /api/v1/reports/:report/export        { format: CSV, from?, to?, … } → 202 { exportId, status }
+GET    /api/v1/exports/:id                   status + downloadUrl assinada 15 min (quando READY)
 ```
+
+**GET `/reports/dashboard`:** `date` civil opcional (default = hoje no fuso do tenant). Shape: `date`, `timezone`, `agendaByStatus` (mapa status→count do dia), `receivableTodayCents` + `receivableTodayCount` (parcelas com `due_date` = date, restante > 0; **omitido/zerado para DENTIST** sem `reports.financial`), `noShowsMonthCount`, `productionMonthCents` (mês civil do `date`), `drillDown` (paths FE). Money em **cents** inteiros. Cache Redis ≤60s (se Redis down, calcula sem cache — não 503). DENTIST: agenda/faltas/produção do próprio profissional.
+
+**GET `/reports/no-shows`:** período `from`/`to` (teto **366** dias → `422`). Contagens `noShowCount` / `cancelledCount`, `estimatedLossCents` (preço do procedimento nas faltas), `items[]`. Exige `reports.financial`.
+
+**GET `/reports/revenue`:** pagamentos não estornados no período (TZ tenant); `groupBy=day|month|professional`; `totalCents` + `buckets[{ key, label, amountCents, count }]`. Exige `reports.financial`.
+
+**GET `/reports/procedures`:** agrega `production_entry` por procedimento; `items[{ procedureId, procedureCode, procedureName, count, totalCents }]`. `reports.read`; DENTIST só o próprio escopo (`403` se `professionalId` de outro).
+
+**POST `/reports/:report/export`:** `:report` ∈ `dashboard` | `no-shows` | `revenue` | `procedures`. Body: `format` (**CSV** Must; XLSX não nesta sprint), `from`/`to` (obrigatórios exceto dashboard), filtros opcionais (`unitId`, `professionalId`, `groupBy`, `date`). Resposta `202 { data: { exportId, status: "PENDING" } }`. Job gera CSV (`;`, UTF-8 BOM; money em **cents** inteiros) no ObjectStorage. Audit `REPORT_EXPORTED` com filtros. Mesmas permissões do GET correspondente (`reports.financial` para no-shows/revenue). DENTIST: filtros já resolvidos ao próprio profissional. Cross-tenant no GET export → `404`.
+
+**GET `/exports/:id`:** `{ id, report, format, status, error, createdAt, completedAt, downloadUrl, downloadExpiresInSeconds }`. `downloadUrl` só quando `READY` (presign **15 min**). Exige `reports.read`.
 
 ### 2.10 Assinatura, auditoria e LGPD
 
 ```
 GET    /api/v1/subscription
 GET    /api/v1/subscription/plans
-POST   /api/v1/subscription/checkout
+POST   /api/v1/subscription/checkout      → 501 NOT_IMPLEMENTED (“fale conosco”; ADR-0010)
 GET    /api/v1/subscription/usage
+POST   /api/v1/subscription/ops/status    → ops auditado (ACTIVE|SUSPENDED|…); sem gateway
 
 GET    /api/v1/audit-logs                   ?patientId=&actorId=&action=&from=&to=
 POST   /api/v1/privacy/data-subject-requests
@@ -496,6 +530,15 @@ GET    /api/v1/health                        liveness
 GET    /api/v1/ready                         readiness (db, redis, storage)
 ```
 
+**Assinatura (E10 — S7, cobrança manual):** `subscription.manage` (OWNER) para GET subscription/plans/usage e ops. Envelope `{ data }`.
+
+- `GET /subscription` — assinatura atual + plano (`status`: TRIAL|ACTIVE|PAST_DUE|SUSPENDED|EXPIRED|CANCELLED; `trialEndsAt`; `plan.limits`).
+- `GET /subscription/plans` — catálogo ativo (Essencial / Clínica / Rede).
+- `GET /subscription/usage` — métricas ao vivo vs limites (`professionals`, `admin_users`, `units`, `storage_bytes`, `messages_month`, `patients`).
+- `POST /subscription/checkout` — **não** implementa pagamento; `501 NOT_IMPLEMENTED` com mensagem para falar conosco ([ADR-0010](./adr/0010-billing-saas-manual-mvp.md)).
+- `POST /subscription/ops/status` — `{ "status", "reason"? }` no tenant autenticado; audita `SUBSCRIPTION_STATUS_CHANGED`; em SUSPENDED/EXPIRED/CANCELLED desliga automações de messaging. Alternativa CLI: `backend/scripts/ops-subscription-status.ts`.
+
+**Guards:** `subscriptionGuard` bloqueia escrita HTTP (`402 SUBSCRIPTION_REQUIRED`) quando SUSPENDED/EXPIRED/CANCELLED; GET e `POST /reports/:report/export` liberados. `PlanLimitGuard` → `402 PLAN_LIMIT_EXCEEDED` em novo profissional, convite de usuário admin, unidade e upload de storage.
 ## 3. Contratos detalhados dos fluxos críticos
 
 ### 3.1 Criar agendamento
@@ -813,6 +856,6 @@ Payloads HTTP vivos (Bloco 5): recibo PDF/send, `POST /installments/:id/charge`,
 
 **Concorrência otimista:** recursos editáveis expõem `version`; `PATCH` aceita `If-Match: "<version>"` e devolve `412` em conflito (usado na agenda, onde duas recepcionistas podem editar ao mesmo tempo).
 
-**Long-running:** exportações e relatórios grandes retornam `202` com `{ jobId }`; cliente consulta `GET /exports/:id`.
+**Long-running:** exportações de relatório retornam `202` com `{ exportId }`; cliente consulta `GET /exports/:id` (URL assinada 15 min quando READY).
 
 **Webhooks de saída (fase 2):** entrega assinada com HMAC, retry exponencial em 5 tentativas, log consultável pelo tenant.
