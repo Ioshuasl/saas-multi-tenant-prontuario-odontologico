@@ -34,14 +34,14 @@ export function AuthBrandPanel() {
         alt=""
         fill
         priority
-        sizes="(max-width: 1024px) 100vw, 45vw"
+        sizes="(max-width: 1024px) 100vw, 55vw"
         className="object-cover object-center"
       />
       <div
         className="absolute inset-0"
         style={{
           background:
-            'linear-gradient(180deg, rgb(74 15 22 / 0.72) 0%, rgb(74 15 22 / 0.84) 42%, rgb(42 10 16 / 0.94) 100%)',
+            'linear-gradient(90deg, rgba(74, 15, 22, 0.88), rgba(74, 15, 22, 0.62))',
         }}
         aria-hidden
       />
@@ -65,15 +65,17 @@ export function AuthBrandPanel() {
         <ClivraLogo
           size={34}
           className="shrink-0"
-          wordmarkClassName="login-sans text-[22px] font-semibold tracking-[-0.02em] text-white"
+          wordmarkClassName="login-display text-[22px] font-semibold text-white"
         />
 
         <div className="mt-16 flex flex-1 flex-col lg:mt-[4.5rem]">
-          <div className="max-w-[32rem]">
-            <h2 className="login-display text-[42px] leading-[1.18] font-semibold tracking-[-0.015em] text-white">
-              Tecnologia e cuidado para uma odontologia mais eficiente.
+          <div className="w-full max-w-[34rem]">
+            <h2 className="login-display text-[42px] leading-[1.18] font-semibold text-white">
+              <span className="block whitespace-nowrap">Tecnologia e cuidado</span>
+              <span className="block whitespace-nowrap">para uma odontologia</span>
+              <span className="block whitespace-nowrap">mais eficiente.</span>
             </h2>
-            <p className="login-sans mt-4 text-[17px] leading-[1.55] font-normal text-white/88">
+            <p className="login-sans mt-4 max-w-[28rem] text-[17px] leading-[1.55] font-normal text-white/88">
               Gestão completa para clínicas odontológicas, em um só lugar.
             </p>
           </div>

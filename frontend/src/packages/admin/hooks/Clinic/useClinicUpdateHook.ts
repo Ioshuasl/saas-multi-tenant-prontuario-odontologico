@@ -12,6 +12,7 @@ export function useClinicUpdateHook() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.clinic });
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.onboarding });
+      await queryClient.invalidateQueries({ queryKey: ['agenda-clinic-settings'] });
     },
   });
 }

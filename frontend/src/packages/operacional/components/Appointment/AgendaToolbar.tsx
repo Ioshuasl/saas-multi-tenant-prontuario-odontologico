@@ -25,6 +25,7 @@ type AgendaToolbarProps = {
   onSlotMinutes: (value: SlotMinutes) => void;
   resourceMode: AgendaResourceMode;
   onResourceMode: (mode: AgendaResourceMode) => void;
+  chairsEnabled?: boolean;
   professionals: ProfessionalOption[];
   professionalId: string;
   onProfessionalId: (id: string) => void;
@@ -32,6 +33,8 @@ type AgendaToolbarProps = {
   chairId: string;
   onChairId: (id: string) => void;
   onBlock: () => void;
+  waitlistOpen?: boolean;
+  onWaitlistToggle?: () => void;
 };
 
 export function AgendaToolbar({
@@ -45,6 +48,7 @@ export function AgendaToolbar({
   onSlotMinutes,
   resourceMode,
   onResourceMode,
+  chairsEnabled = false,
   professionals,
   professionalId,
   onProfessionalId,
@@ -52,6 +56,8 @@ export function AgendaToolbar({
   chairId,
   onChairId,
   onBlock,
+  waitlistOpen = false,
+  onWaitlistToggle,
 }: AgendaToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -111,28 +117,30 @@ export function AgendaToolbar({
         </span>
       </div>
 
-      <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-0.5">
-        <Button
-          type="button"
-          size="sm"
-          variant={resourceMode === 'professional' ? 'secondary' : 'ghost'}
-          className="cursor-pointer"
-          onClick={() => onResourceMode('professional')}
-        >
-          Profissional
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant={resourceMode === 'chair' ? 'secondary' : 'ghost'}
-          className="cursor-pointer"
-          onClick={() => onResourceMode('chair')}
-        >
-          Cadeira
-        </Button>
-      </div>
+      {chairsEnabled ? (
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-0.5">
+          <Button
+            type="button"
+            size="sm"
+            variant={resourceMode === 'professional' ? 'secondary' : 'ghost'}
+            className="cursor-pointer"
+            onClick={() => onResourceMode('professional')}
+          >
+            Profissional
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={resourceMode === 'chair' ? 'secondary' : 'ghost'}
+            className="cursor-pointer"
+            onClick={() => onResourceMode('chair')}
+          >
+            Cadeira
+          </Button>
+        </div>
+      ) : null}
 
-      {resourceMode === 'professional' ? (
+      {resourceMode === 'professional' || !chairsEnabled ? (
         <NativeSelect
           aria-label="Profissional"
           value={professionalId}
@@ -184,6 +192,18 @@ export function AgendaToolbar({
       >
         Bloquear
       </Button>
+      {onWaitlistToggle ? (
+        <Button
+          type="button"
+          size="sm"
+          variant={waitlistOpen ? 'secondary' : 'outline'}
+          className="cursor-pointer"
+          aria-pressed={waitlistOpen}
+          onClick={onWaitlistToggle}
+        >
+          Fila de espera
+        </Button>
+      ) : null}
     </div>
   );
 }

@@ -17,19 +17,20 @@ import {
 } from '@/packages/operacional/hooks/Appointment/useAppointmentStatusHook';
 import type { AppointmentSummary } from '@/packages/operacional/types/Appointment/AppointmentTypes';
 import { Can } from '@/shared/auth/Can';
-import { MotionDialogBody } from '@/shared/motion/MotionDialogBody';
+import { useSheetOpenState } from '@/shared/motion/useSheetOpenState';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
 import { Field, FieldLabel } from '@/shared/ui/field';
 import { Input } from '@/shared/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/shared/ui/native-select';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/shared/ui/sheet';
 
 type AppointmentDetailsDialogProps = {
   appointment: AppointmentSummary | null;
@@ -59,13 +60,25 @@ export function AppointmentDetailsDialog({
 
   const start = parseInstant(appointment.startsAt);
   const end = parseInstant(appointment.endsAt);
+  const statusMeta =
+    APPOINTMENT_STATUS_META[
+      (appointment.status in APPOINTMENT_STATUS_META
+        ? appointment.status
+        : 'SCHEDULED') as keyof typeof APPOINTMENT_STATUS_META
+    ];
+
+  const error = statusMutation.error ?? deleteMutation.error ?? seriesDelete.error;
+  const { sheetOpen, requestClose, onOpenChange, onOpenChangeComplete } = useSheetOpenState(
+    true,
+    onClose,
+  );
 
   const onStatus = async () => {
     await statusMutation.mutateAsync({
       appointmentId: appointment.id,
       statusSchema: { status },
     });
-    onClose();
+    requestClose();
   };
 
   const onCancel = async () => {
@@ -74,7 +87,7 @@ export function AppointmentDetailsDialog({
       appointmentId: appointment.id,
       reason: cancelReason.trim(),
     });
-    onClose();
+    requestClose();
   };
 
   const onSeriesDelete = async () => {
@@ -85,34 +98,31 @@ export function AppointmentDetailsDialog({
       appointmentId: appointment.id,
       reason: 'Exclusão pela agenda',
     });
-    onClose();
+    requestClose();
   };
 
-  const error = statusMutation.error ?? deleteMutation.error ?? seriesDelete.error;
-
   return (
-    <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <MotionDialogBody>
-          <DialogHeader>
-            <DialogTitle>{appointment.patient?.name ?? 'Agendamento'}</DialogTitle>
-          </DialogHeader>
+    <Sheet
+      open={sheetOpen}
+      onOpenChange={onOpenChange}
+      onOpenChangeComplete={onOpenChangeComplete}
+    >
+      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
+        <SheetHeader className="border-b border-border px-4 py-4 text-left">
+          <SheetTitle>{appointment.patient?.name ?? 'Agendamento'}</SheetTitle>
+          <SheetDescription>
+            {formatHour(start)}–{formatHour(end)} · {statusMeta.label}
+            {appointment.procedure ? ` · ${appointment.procedure.name}` : ''}
+          </SheetDescription>
+        </SheetHeader>
 
-          <div className="grid gap-3 text-sm text-foreground">
-            <p>
-              {formatHour(start)}–{formatHour(end)} ·{' '}
-              {APPOINTMENT_STATUS_META[
-                (appointment.status in APPOINTMENT_STATUS_META
-                  ? appointment.status
-                  : 'SCHEDULED') as keyof typeof APPOINTMENT_STATUS_META
-              ].label}
-            </p>
-            {appointment.procedure ? <p>{appointment.procedure.name}</p> : null}
-
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          <div className="grid gap-4 text-sm text-foreground">
             <Can permission="clinical_records.read">
               {appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED' ? (
                 <Button
                   type="button"
+                  className="cursor-pointer"
                   disabled={statusMutation.isPending}
                   onClick={() => {
                     void (async () => {
@@ -131,6 +141,7 @@ export function AppointmentDetailsDialog({
                 <Button
                   type="button"
                   variant="outline"
+                  className="cursor-pointer"
                   onClick={() => {
                     router.push(`/app/atendimento/${appointment.id}`);
                   }}
@@ -158,6 +169,7 @@ export function AppointmentDetailsDialog({
             <Button
               type="button"
               size="sm"
+              className="cursor-pointer"
               disabled={statusMutation.isPending}
               onClick={() => {
                 void onStatus();
@@ -178,6 +190,7 @@ export function AppointmentDetailsDialog({
               type="button"
               size="sm"
               variant="destructive"
+              className="cursor-pointer"
               disabled={deleteMutation.isPending || !cancelReason.trim()}
               onClick={() => {
                 void onCancel();
@@ -207,6 +220,7 @@ export function AppointmentDetailsDialog({
                   type="button"
                   size="sm"
                   variant="outline"
+                  className="cursor-pointer"
                   disabled={seriesDelete.isPending}
                   onClick={() => {
                     void onSeriesDelete();
@@ -223,14 +237,14 @@ export function AppointmentDetailsDialog({
               </Alert>
             ) : null}
           </div>
+        </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Fechar
-            </Button>
-          </DialogFooter>
-        </MotionDialogBody>
-      </DialogContent>
-    </Dialog>
+        <SheetFooter className="border-t border-border px-4 py-3 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" className="cursor-pointer" onClick={requestClose}>
+            Fechar
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

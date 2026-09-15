@@ -11,6 +11,7 @@ import type { PatientCreateFormValues } from '@/packages/operacional/schemas/Pat
 import type { PatientFormDrawerProps } from '@/packages/operacional/types/Patient/PatientFormDialogTypes';
 import type { PatientDuplicateMatch } from '@/packages/operacional/types/Patient/PatientTypes';
 import { ApiClientError } from '@/shared/api/api-client';
+import { useSheetOpenState } from '@/shared/motion/useSheetOpenState';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 import {
@@ -68,12 +69,17 @@ export function PatientFormDrawer({ open, onClose, onCreated }: PatientFormDrawe
     setPhoneWarning(result.phoneMatches);
   };
 
+  const { sheetOpen, requestClose, onOpenChange, onOpenChangeComplete } = useSheetOpenState(
+    open,
+    onClose,
+  );
+
   const onSubmit = async (values: PatientCreateFormValues) => {
     if (cpfBlock) return;
     try {
       const result = await create.mutateAsync(values);
       onCreated?.(result.patient.id);
-      onClose();
+      requestClose();
     } catch (error) {
       if (error instanceof ApiClientError && error.code === 'DUPLICATE_RESOURCE') {
         const details = error.details as {
@@ -95,7 +101,11 @@ export function PatientFormDrawer({ open, onClose, onCreated }: PatientFormDrawe
   };
 
   return (
-    <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
+    <Sheet
+      open={sheetOpen}
+      onOpenChange={onOpenChange}
+      onOpenChangeComplete={onOpenChangeComplete}
+    >
       <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-md">
         <SheetHeader className="border-b border-border px-4 py-4 text-left">
           <SheetTitle>Novo paciente</SheetTitle>
@@ -152,7 +162,7 @@ export function PatientFormDrawer({ open, onClose, onCreated }: PatientFormDrawe
           </div>
 
           <SheetFooter className="border-t border-border px-4 py-3 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" className="cursor-pointer" onClick={onClose}>
+            <Button type="button" variant="outline" className="cursor-pointer" onClick={requestClose}>
               Cancelar
             </Button>
             <Button

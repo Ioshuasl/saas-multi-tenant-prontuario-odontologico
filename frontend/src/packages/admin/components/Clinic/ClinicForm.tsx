@@ -59,6 +59,7 @@ import {
   InputGroupInput,
 } from '@/shared/ui/input-group';
 import { Separator } from '@/shared/ui/separator';
+import { Switch } from '@/shared/ui/switch';
 
 const PAYMENT_ITEMS = [...PAYMENT_METHODS];
 
@@ -109,6 +110,7 @@ export function ClinicForm() {
       responsibleCro: clinic.responsibleCro ?? '',
       timezone: clinic.timezone,
       acceptedPaymentMethods: clinic.acceptedPaymentMethods,
+      chairsEnabled: clinic.chairsEnabled === true,
       phone: formatPhoneInputMask(clinic.defaultUnit?.phone ?? ''),
       address: {
         street: clinic.defaultUnit?.address?.street ?? '',
@@ -444,6 +446,33 @@ export function ClinicForm() {
                 <FieldError>{form.formState.errors.timezone?.message}</FieldError>
               </Field>
             </div>
+
+            <Field data-invalid={Boolean(form.formState.errors.chairsEnabled)}>
+              <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-background/60 px-3 py-3">
+                <div className="min-w-0">
+                  <FieldLabel htmlFor="chairsEnabled" className="text-sm font-medium">
+                    Usar agenda por cadeira
+                  </FieldLabel>
+                  <FieldDescription className="mt-1">
+                    Para clínicas com mais de um box/sala. Quando desligado, some a visão por
+                    cadeira na agenda e o menu Configurações → Cadeiras.
+                  </FieldDescription>
+                </div>
+                <Controller
+                  control={form.control}
+                  name="chairsEnabled"
+                  render={({ field }) => (
+                    <Switch
+                      id="chairsEnabled"
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                      aria-label="Usar agenda por cadeira"
+                    />
+                  )}
+                />
+              </div>
+              <FieldError>{form.formState.errors.chairsEnabled?.message}</FieldError>
+            </Field>
           </FieldGroup>
         </FormSection>
 

@@ -19,6 +19,8 @@ model Tenant {
   acceptedPaymentMethods String[]    @default(["CASH", "PIX", "CREDIT_CARD", "DEBIT_CARD"]) @map("accepted_payment_methods")
   onboarding      Json               @default("{\"skippedSteps\":[]}")
   bookingSettings Json               @default("{\"minLeadMinutes\":120,\"maxLeadDays\":60,\"publicStatus\":\"REQUESTED\",\"courtesyTransactionalMessages\":50}") @map("booking_settings")
+  /// Agenda por cadeira (visão + cadastro). Default off — clínicas simples usam só profissional.
+  chairsEnabled   Boolean            @default(false) @map("chairs_enabled")
   status          String             @default("TRIAL")
   trialEndsAt     DateTime?          @map("trial_ends_at") @db.Timestamptz
   createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz
@@ -78,6 +80,7 @@ model Tenant {
   reportExports   ReportExport[]
   subscription    Subscription?
   usageCounters   UsageCounter[]
+  dataSubjectRequests DataSubjectRequest[]
 
   @@map("tenant")
 }
@@ -1307,4 +1310,28 @@ model ReportExport {
   @@index([tenantId, createdAt(sort: Desc)], map: "idx_report_export_tenant_created")
   @@index([tenantId, status], map: "idx_report_export_tenant_status")
   @@map("report_export")
+}
+
+/// Solicitação do titular (LGPD). docs/07 · S8
+model DataSubjectRequest {
+  id          String    @id @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  patientId   String    @map("patient_id") @db.Uuid
+  type        String
+  status      String    @default("RECEIVED")
+  requestedAt DateTime  @default(now()) @map("requested_at") @db.Timestamptz
+  dueAt       DateTime  @map("due_at") @db.Timestamptz
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+  handledBy   String?   @map("handled_by") @db.Uuid
+  resolution  String?
+  exportKey   String?   @map("export_key")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  patient     Patient   @relation(fields: [patientId], references: [id])
+  handler     User?     @relation("DsrHandler", fields: [handledBy], references: [id])
+
+  @@index([tenantId, requestedAt(sort: Desc)], map: "idx_dsr_tenant_requested")
+  @@index([tenantId, dueAt], map: "idx_dsr_tenant_due")
+  @@map("data_subject_request")
 }

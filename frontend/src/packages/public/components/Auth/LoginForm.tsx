@@ -41,29 +41,29 @@ export function LoginForm() {
   };
 
   return (
-    <div className="login-page grid min-h-dvh bg-[#F7F5F2] lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
+    <div className="login-page grid min-h-dvh bg-[#F7F5F2] lg:grid-cols-[minmax(0,0.55fr)_minmax(0,0.45fr)]">
       <div className="hidden lg:block">
         <AuthBrandPanel />
       </div>
 
       <main className="relative flex flex-col items-center justify-center px-6 py-10 sm:px-12 lg:px-16 lg:py-12">
-        <div className="mb-8 flex w-full max-w-[420px] justify-center lg:hidden">
+        <div className="mb-8 flex w-full max-w-[480px] justify-center lg:hidden">
           <ClivraLogo
             size={34}
-            wordmarkClassName="login-sans text-[22px] font-semibold tracking-[-0.02em] text-primary"
+            wordmarkClassName="login-display text-[22px] font-semibold text-primary"
           />
         </div>
 
-        <div className="w-full max-w-[420px]">
+        <div className="w-full max-w-[480px]">
           <div className="mb-9">
             <div className="mb-5 h-0.5 w-11 bg-primary" aria-hidden />
             <p className="login-sans mb-2 text-[14px] font-medium text-primary">
               Bem-vindo de volta
             </p>
-            <h1 className="login-display text-[40px] leading-[1.12] font-semibold tracking-[-0.015em] text-[#1A1A1A]">
+            <h1 className="login-display text-[40px] leading-[1.12] font-semibold text-[#1A1A1A]">
               Acesse sua conta
             </h1>
-            <p className="login-sans mt-3 text-[15px] leading-[1.5] text-[#6B6663]">
+            <p className="login-sans mt-3 text-[15px] leading-[1.55] text-[#6B6663]">
               Informe seus dados para continuar com o Clivra.
             </p>
           </div>
@@ -94,7 +94,7 @@ export function LoginForm() {
                     autoComplete="email"
                     placeholder="seu@email.com"
                     className={cn(
-                      'login-sans h-12 rounded-[10px] border-[#DDD8D3] bg-[#F3F0EC] pl-10 text-[15px] shadow-none',
+                      'login-sans h-12 rounded-[10px] border-[#DDD8D3] bg-[#F3F0EC] pl-10 text-[15px] shadow-none md:text-[15px]',
                       'placeholder:text-[#9A948E] focus-visible:border-secondary focus-visible:bg-white',
                     )}
                     {...form.register('email')}
@@ -122,7 +122,7 @@ export function LoginForm() {
                     autoComplete="current-password"
                     placeholder="Digite sua senha"
                     className={cn(
-                      'login-sans h-12 rounded-[10px] border-[#DDD8D3] bg-[#F3F0EC] pr-11 pl-10 text-[15px] shadow-none',
+                      'login-sans h-12 rounded-[10px] border-[#DDD8D3] bg-[#F3F0EC] pr-11 pl-10 text-[15px] shadow-none md:text-[15px]',
                       'placeholder:text-[#9A948E] focus-visible:border-secondary focus-visible:bg-white',
                     )}
                     {...form.register('password')}
@@ -183,6 +183,7 @@ export function LoginForm() {
 
             <Button
               variant="outline"
+              nativeButton={false}
               render={<Link href="/signup" />}
               className="login-sans h-12 justify-center gap-2.5 rounded-[10px] border-[#DDD8D3] bg-white text-[15px] font-medium text-[#2A2A2A] hover:bg-[#F3F0EC]"
             >

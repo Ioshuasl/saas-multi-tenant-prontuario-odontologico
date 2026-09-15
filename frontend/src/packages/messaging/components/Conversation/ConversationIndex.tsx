@@ -47,9 +47,9 @@ export function ConversationIndex() {
     <div className="grid min-h-0 gap-4 lg:h-[calc(100vh-7.5rem)]">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h1 className="text-xl font-semibold">Inbox</h1>
+          <h1 className="text-xl font-semibold">WhatsApp</h1>
           <p className="text-sm text-muted-foreground">
-            Conversas do WhatsApp da clínica. Envio liberado a qualquer momento — sem janela de 24h.
+            Conversas da clínica. Responda a qualquer momento — sem janela de 24h.
           </p>
         </div>
         <Button

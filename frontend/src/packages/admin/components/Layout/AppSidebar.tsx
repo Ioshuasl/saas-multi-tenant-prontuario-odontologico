@@ -13,7 +13,11 @@ import {
   type AdminNavGroup,
   type AdminNavItem,
 } from '@/packages/admin/helpers/AdminNav';
-import { isSettingsPath } from '@/packages/admin/helpers/SettingsTabs';
+import {
+  SETTINGS_SECTION,
+  isSettingsPath,
+  settingsHref,
+} from '@/packages/admin/helpers/SettingsTabs';
 import { useClivraShell } from '@/packages/admin/components/Layout/ClivraShellContext';
 import { CLIVRA } from '@/shared/brand/ClivraBrand';
 import { useAuth } from '@/shared/auth/AuthProvider';
@@ -30,6 +34,7 @@ const SIDEBAR_TAGLINE = 'Gestão completa para clínicas odontológicas.';
 
 type AppSidebarProps = {
   clinicName?: string;
+  chairsEnabled?: boolean;
   inboxBadgeCount?: number;
 };
 
@@ -56,11 +61,11 @@ function NavLink({
       prefetch={false}
       onClick={onNavigate}
       className={cn(
-        'group relative flex items-center gap-3 rounded-md text-sm font-medium transition-colors',
-        nested ? 'px-3 py-2' : 'px-3 py-2.5',
+        'group relative flex items-center gap-3 rounded-[10px] text-[13px] font-medium transition-colors',
+        nested ? 'px-3 py-2' : 'px-3 py-2',
         active
           ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
+          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground',
       )}
     >
       {active ? (
@@ -72,8 +77,8 @@ function NavLink({
       <Icon
         className={cn(
           'shrink-0 stroke-[1.5]',
-          nested ? 'size-4' : 'size-[1.15rem]',
-          active ? 'text-sidebar-accent-foreground' : 'text-sidebar-foreground/75',
+          nested ? 'size-3.5' : 'size-4',
+          active ? 'text-sidebar-accent-foreground' : 'text-sidebar-foreground/70',
         )}
         aria-hidden
       />
@@ -114,10 +119,10 @@ function SettingsNavBranch({
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
         className={cn(
-          'group relative flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
+          'group relative flex w-full cursor-pointer items-center gap-3 rounded-[10px] px-3 py-2 text-[13px] font-medium transition-colors',
           parentActive
             ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
-            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
+            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground',
         )}
       >
         {parentActive ? (
@@ -128,8 +133,8 @@ function SettingsNavBranch({
         ) : null}
         <Icon
           className={cn(
-            'size-[1.15rem] shrink-0 stroke-[1.5]',
-            parentActive ? 'text-sidebar-accent-foreground' : 'text-sidebar-foreground/75',
+            'size-4 shrink-0 stroke-[1.5]',
+            parentActive ? 'text-sidebar-accent-foreground' : 'text-sidebar-foreground/70',
           )}
           aria-hidden
         />
@@ -188,17 +193,17 @@ function SidebarBrand({ clinicName }: { clinicName?: string }) {
 
 function SidebarFooter() {
   return (
-    <div className="border-t border-sidebar-border px-4 py-4">
+    <div className="border-t border-sidebar-border px-3.5 py-3.5">
       <div className="flex items-start gap-2.5">
         <Image
           src={CLIVRA.logoIcon}
           alt=""
-          width={36}
-          height={36}
-          className="mt-0.5 size-9 shrink-0 opacity-90"
+          width={32}
+          height={32}
+          className="mt-0.5 size-8 shrink-0 opacity-90"
         />
         <div className="min-w-0">
-          <p className="text-sm font-semibold tracking-tight text-sidebar-foreground">{CLIVRA.name}</p>
+          <p className="text-[13px] font-semibold tracking-tight text-sidebar-foreground">{CLIVRA.name}</p>
           <p className="mt-0.5 text-[11px] leading-snug text-sidebar-foreground/55">{SIDEBAR_TAGLINE}</p>
         </div>
       </div>
@@ -208,11 +213,13 @@ function SidebarFooter() {
 
 function SidebarBody({
   clinicName,
+  chairsEnabled = false,
   inboxBadgeCount,
   onNavigate,
   showClose,
 }: {
   clinicName?: string;
+  chairsEnabled?: boolean;
   inboxBadgeCount: number;
   onNavigate?: () => void;
   showClose?: boolean;
@@ -220,10 +227,11 @@ function SidebarBody({
   const pathname = usePathname();
   const { me } = useAuth();
   const { setMobileOpen } = useClivraShell();
+  const chairsHref = settingsHref(SETTINGS_SECTION.CADEIRAS);
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-2 pt-5">
+      <div className="flex shrink-0 items-center justify-between gap-2 px-3.5 pb-3 pt-4">
         <SidebarBrand clinicName={clinicName} />
         {showClose ? (
           <Button
@@ -239,8 +247,6 @@ function SidebarBody({
         ) : null}
       </div>
 
-      <div className="mb-2" />
-
       <nav
         className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2.5 pb-3"
         aria-label="Navegação principal"
@@ -254,15 +260,17 @@ function SidebarBody({
           if (items.length === 0) return null;
 
           return (
-            <div key={group.id} className={cn(groupIndex > 0 && 'mt-2')}>
+            <div key={group.id} className={cn(groupIndex > 0 && 'mt-3')}>
               {groupIndex > 0 ? (
-                <div className="mx-3 mb-2 border-t border-sidebar-border" aria-hidden />
+                <div className="mx-2.5 mb-2.5 border-t border-sidebar-border" aria-hidden />
               ) : null}
-              <ul className="flex flex-col gap-1">
+              <ul className="flex flex-col gap-0.5">
                 {items.map((item) => {
-                  const visibleChildren = (item.children ?? []).filter(
-                    (child) => !child.permission || hasPermission(me, child.permission),
-                  );
+                  const visibleChildren = (item.children ?? []).filter((child) => {
+                    if (child.permission && !hasPermission(me, child.permission)) return false;
+                    if (!chairsEnabled && child.href === chairsHref) return false;
+                    return true;
+                  });
 
                   if (visibleChildren.length > 0) {
                     return (
@@ -302,7 +310,11 @@ function SidebarBody({
 }
 
 /** Sidebar Clivra — sempre expandida no desktop; drawer só no mobile. */
-export function AppSidebar({ clinicName, inboxBadgeCount = 0 }: AppSidebarProps) {
+export function AppSidebar({
+  clinicName,
+  chairsEnabled = false,
+  inboxBadgeCount = 0,
+}: AppSidebarProps) {
   const { mobileOpen, isMobile, setMobileOpen } = useClivraShell();
 
   if (isMobile) {
@@ -325,6 +337,7 @@ export function AppSidebar({ clinicName, inboxBadgeCount = 0 }: AppSidebarProps)
         >
           <SidebarBody
             clinicName={clinicName}
+            chairsEnabled={chairsEnabled}
             inboxBadgeCount={inboxBadgeCount}
             showClose
             onNavigate={() => setMobileOpen(false)}
@@ -336,7 +349,11 @@ export function AppSidebar({ clinicName, inboxBadgeCount = 0 }: AppSidebarProps)
 
   return (
     <aside className="sticky top-0 z-20 hidden h-svh w-[15.5rem] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
-      <SidebarBody clinicName={clinicName} inboxBadgeCount={inboxBadgeCount} />
+      <SidebarBody
+        clinicName={clinicName}
+        chairsEnabled={chairsEnabled}
+        inboxBadgeCount={inboxBadgeCount}
+      />
     </aside>
   );
 }

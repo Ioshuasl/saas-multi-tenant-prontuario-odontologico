@@ -1,12 +1,16 @@
 import type { Transition, Variants } from 'motion/react';
 
-/** Só para dialogs (chunk lazy). Index/Form não importam motion. */
+/** Só para dialogs/sheets (chunk lazy). Index/Form não importam motion. */
 export const motionDurations = {
-  micro: 0.15,
+  micro: 0.12,
   enter: 0.28,
   exit: 0.18,
+  /** Abertura do Sheet — um pouco mais lenta/suave. */
+  sheet: 0.58,
 } as const;
 
+/** Desaceleração longa no fim — sensação de painel deslizando com peso. */
+export const easeSheet: Transition['ease'] = [0.16, 1, 0.3, 1];
 export const easeOut: Transition['ease'] = [0.16, 1, 0.3, 1];
 export const easeInOut: Transition['ease'] = [0.4, 0, 0.2, 1];
 

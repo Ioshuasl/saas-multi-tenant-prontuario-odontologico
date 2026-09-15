@@ -36,13 +36,14 @@ const ACTIONS = [
 export function DashboardQuickActions() {
   return (
     <section
-      className="rounded-2xl border border-[#EBE4DE] bg-white p-3.5 shadow-[0_1px_2px_rgb(74_15_22/0.04)]"
+      className="shrink-0 rounded-[14px] border border-border bg-card p-4 shadow-clivra-sm"
       data-testid="dashboard-quick-actions"
     >
-      <header className="mb-3 flex items-center gap-1.5">
-        <ZapIcon className="size-3.5 text-[#4A0F16]" strokeWidth={1.7} />
-        <h2 className="font-sans text-[15px] font-semibold text-[#1A1A1A]">Ações rápidas</h2>
+      <header className="mb-3.5 flex items-center gap-2">
+        <ZapIcon className="size-4 text-primary" strokeWidth={1.6} />
+        <h2 className="text-[15px] font-semibold text-primary">Ações rápidas</h2>
       </header>
+
       <div className="grid grid-cols-2 gap-2.5">
         {ACTIONS.map((action) => {
           const Icon = action.icon;
@@ -52,12 +53,14 @@ export function DashboardQuickActions() {
               href={action.href}
               prefetch={false}
               className={cn(
-                'flex min-h-[3.25rem] items-center gap-2.5 rounded-xl border border-[#EBE4DE]',
-                'bg-white px-3 py-2.5 transition-colors hover:border-[#4A0F16]/25 hover:bg-[#FCFAF8]',
+                'flex min-h-[3.25rem] items-center gap-2.5 rounded-[10px] border border-border bg-card px-3 py-2.5',
+                'text-left transition-colors hover:border-primary/20 hover:bg-muted/40',
               )}
             >
-              <Icon className="size-4 shrink-0 text-[#4A0F16]" strokeWidth={1.45} />
-              <span className="min-w-0 text-left font-sans text-[13px] font-medium leading-tight text-[#3A3330]">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-primary">
+                <Icon className="size-4" strokeWidth={1.55} />
+              </span>
+              <span className="min-w-0 text-[12px] font-medium leading-snug text-foreground">
                 {action.label}
               </span>
             </Link>

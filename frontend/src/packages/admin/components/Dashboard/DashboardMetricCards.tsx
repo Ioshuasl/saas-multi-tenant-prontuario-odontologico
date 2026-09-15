@@ -22,7 +22,7 @@ type DashboardMetricCardsProps = {
 export function DashboardMetricCards({ metrics }: DashboardMetricCardsProps) {
   return (
     <section
-      className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-5"
+      className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5"
       data-testid="dashboard-kpi-grid"
     >
       {metrics.map((metric) => {
@@ -33,29 +33,31 @@ export function DashboardMetricCards({ metrics }: DashboardMetricCardsProps) {
             href={metric.href}
             prefetch={false}
             className={cn(
-              'group flex min-h-[6.25rem] min-w-0 flex-col justify-between gap-2.5 rounded-2xl border border-[#EBE4DE] bg-white p-3.5',
-              'shadow-[0_1px_2px_rgb(74_15_22/0.04)] transition-shadow hover:shadow-md',
+              'group flex min-h-0 min-w-0 flex-col gap-3 rounded-[12px] border border-border bg-card p-3.5',
+              'transition-colors hover:border-primary/20 hover:bg-muted/30',
             )}
           >
-            <div className="flex items-center justify-between gap-1.5">
+            <div className="flex items-start justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#F3EEE9] text-[#4A0F16]">
-                  <Icon className="size-4" strokeWidth={1.55} />
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-primary">
+                  <Icon className="size-3.5" strokeWidth={1.6} />
                 </span>
-                <p className="truncate font-sans text-[13px] font-medium text-[#6F6762]">{metric.title}</p>
+                <p className="truncate text-[12px] font-medium text-muted-foreground">
+                  {metric.title}
+                </p>
               </div>
               <ChevronRightIcon
-                className="size-3.5 shrink-0 text-[#C9C0B9] transition-colors group-hover:text-[#4A0F16]"
+                className="mt-0.5 size-3.5 shrink-0 text-border transition-colors group-hover:text-primary"
                 strokeWidth={1.8}
               />
             </div>
 
             <div className="grid min-w-0 gap-1.5">
-              <p className="truncate font-sans text-[22px] leading-none font-semibold tracking-tight text-[#1A1A1A] tabular-nums">
+              <p className="truncate text-[22px] leading-none font-semibold tracking-tight text-foreground tabular-nums">
                 {metric.valueHint ? (
                   <>
                     {metric.value}
-                    <span className="ml-1 text-[13px] font-medium text-[#8A7F79]">
+                    <span className="ml-1 text-[12px] font-medium text-muted-foreground">
                       {metric.valueHint}
                     </span>
                   </>
@@ -63,7 +65,7 @@ export function DashboardMetricCards({ metrics }: DashboardMetricCardsProps) {
                   metric.value
                 )}
               </p>
-              <div className="font-sans text-[12px] text-[#7A716C]">{metric.footer}</div>
+              <div className="text-[12px] leading-snug text-muted-foreground">{metric.footer}</div>
             </div>
           </Link>
         );
@@ -81,12 +83,12 @@ export function MetricDotFooter({
 }) {
   const dot =
     color === 'green'
-      ? 'bg-[#2F9E5B]'
+      ? 'bg-success'
       : color === 'rose'
-        ? 'bg-[#C14C4A]'
+        ? 'bg-destructive'
         : color === 'primary'
-          ? 'bg-[#4A0F16]'
-          : 'bg-[#C4BBB4]';
+          ? 'bg-primary'
+          : 'bg-border';
 
   return (
     <span className="inline-flex items-center gap-1.5">

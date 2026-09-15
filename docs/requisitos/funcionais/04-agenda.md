@@ -4,7 +4,7 @@
 
 | ID | Requisito | Prioridade | Rastreabilidade |
 | --- | --- | --- | --- |
-| RF-E4-01 | Recepção visualiza agenda dia/semana por profissional e/ou cadeira, com grade configurável (10/15/20/30/60 min) | Must | US-4.1, J2 |
+| RF-E4-01 | Recepção visualiza agenda dia/semana por profissional e/ou cadeira (cadeira só se `tenant.chairs_enabled`), com grade configurável (10/15/20/30/60 min) | Must | US-4.1, J2 |
 | RF-E4-02 | Agendamentos exibem status coloridos: Solicitado, Agendado, Confirmado, Atendendo, Atendido, Faltou, Cancelado | Must | US-4.1, benchmark |
 | RF-E4-03 | Recepção cria agendamento a partir de slot livre em no máximo 3 interações (paciente, procedimento/duração, confirmação) | Must | US-4.2, J2 |
 | RF-E4-04 | Duração padrão vem do procedimento; usuário pode ajustar | Must | US-4.2 |

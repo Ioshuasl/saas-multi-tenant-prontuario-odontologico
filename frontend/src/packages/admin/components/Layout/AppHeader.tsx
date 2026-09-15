@@ -56,7 +56,7 @@ export function AppHeader() {
   };
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-5 desk:px-7">
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-5 desk:px-6">
       <AppSidebarTrigger />
 
       <form onSubmit={onSearch} className="relative hidden min-w-0 flex-1 md:block">
@@ -73,28 +73,28 @@ export function AppHeader() {
           placeholder="Buscar paciente, nome, CPF ou telefone..."
           aria-label="Buscar paciente, nome, CPF ou telefone"
           className={cn(
-            'h-10 w-full max-w-2xl rounded-md border border-input bg-card',
+            'h-9 w-full max-w-[560px] rounded-[10px] border border-input bg-background',
             'pr-4 pl-10 text-sm text-foreground placeholder:text-muted-foreground',
             'outline-none transition-[border-color,box-shadow] focus:border-ring focus:ring-2 focus:ring-ring/20',
           )}
         />
       </form>
 
-      <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
         <button
           type="button"
-          className="relative inline-flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="relative inline-flex size-9 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           aria-label="Notificações"
         >
-          <BellIcon className="size-4.5" strokeWidth={1.6} />
-          <span className="absolute top-2.5 right-2.5 size-2 rounded-full bg-destructive ring-2 ring-card" />
+          <BellIcon className="size-4" strokeWidth={1.6} />
+          <span className="absolute top-2 right-2 size-1.5 rounded-full bg-destructive ring-2 ring-card" />
         </button>
 
         <div className="relative">
           <button
             type="button"
             onClick={() => setMenuOpen((open) => !open)}
-            className="flex items-center gap-2 rounded-md py-0.5 pr-1 pl-0.5 transition-colors hover:bg-muted"
+            className="flex items-center gap-2 rounded-[10px] py-0.5 pr-1 pl-0.5 transition-colors hover:bg-muted"
             aria-label="Menu do usuário"
             aria-expanded={menuOpen}
           >

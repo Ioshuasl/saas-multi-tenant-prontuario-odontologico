@@ -5,6 +5,7 @@ import { INSTALLMENT_PAYABLE_STATUSES } from '@/packages/financeiro/enum/Install
 import { remainingCents } from '@/packages/financeiro/helpers/FinanceiroDate';
 import { formatCents } from '@/packages/financeiro/helpers/FormatCents';
 import type { MovementFormDrawerProps } from '@/packages/financeiro/types/FinancePanel/FinancePanelTypes';
+import { useSheetOpenState } from '@/shared/motion/useSheetOpenState';
 import { Button } from '@/shared/ui/button';
 import {
   Sheet,
@@ -26,12 +27,20 @@ export function MovementFormDrawer({
   onCreateSaida,
 }: MovementFormDrawerProps) {
   const [kind, setKind] = useState<'entrada' | 'saida'>('entrada');
+  const { sheetOpen, requestClose, onOpenChange, onOpenChangeComplete } = useSheetOpenState(
+    true,
+    onClose,
+  );
   const openInstallments = installments.filter((item) =>
     INSTALLMENT_PAYABLE_STATUSES.includes(item.status),
   );
 
   return (
-    <Sheet open onOpenChange={(open) => !open && onClose()}>
+    <Sheet
+      open={sheetOpen}
+      onOpenChange={onOpenChange}
+      onOpenChangeComplete={onOpenChangeComplete}
+    >
       <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-md">
         <SheetHeader className="border-b border-border px-4 py-4 text-left">
           <SheetTitle>Registrar movimentação</SheetTitle>
@@ -134,7 +143,7 @@ export function MovementFormDrawer({
         </div>
 
         <SheetFooter className="border-t border-border px-4 py-3">
-          <Button type="button" variant="ghost" className="cursor-pointer" onClick={onClose}>
+          <Button type="button" variant="ghost" className="cursor-pointer" onClick={requestClose}>
             Cancelar
           </Button>
         </SheetFooter>

@@ -117,7 +117,7 @@ PATCH  /api/v1/procedures/:id
 POST   /api/v1/procedures/import-catalog   importa catálogo sugerido
 ```
 
-**GET `/clinic`**, **GET `/clinic/professionals`**, **GET `/clinic/units/:id/chairs`**: `settings.read` **ou** `agenda.read` (catálogo operacional da agenda — dentista/recepção/ASB). Escrita (`POST`/`PATCH`) permanece `settings.write`.
+**GET `/clinic`**, **GET `/clinic/professionals`**, **GET `/clinic/units/:id/chairs`**: `settings.read` **ou** `agenda.read` (catálogo operacional da agenda — dentista/recepção/ASB). Escrita (`POST`/`PATCH`) permanece `settings.write`. Resposta de `GET`/`PATCH /clinic` inclui `chairsEnabled` (default `false`): quando desligado, a UI omite visão/cadastro de cadeiras e `POST`/`PATCH` de cadeiras retorna `FEATURE_DISABLED`.
 
 **GET `/procedures`**: `settings.read` **ou** `quotes.read` **ou** `quotes.write` (montagem de orçamento pela recepção/dentista). Mutações do catálogo (`POST`/`PATCH`/`import-catalog`) permanecem `settings.write`. ASB **não** lista o catálogo por esta rota (sem `quotes.*`).
 

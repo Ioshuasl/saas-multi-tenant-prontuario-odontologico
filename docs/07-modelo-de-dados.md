@@ -58,6 +58,7 @@ CREATE TABLE tenant (
   responsible_cro   text,                            -- CRO do responsável técnico
   timezone          text NOT NULL DEFAULT 'America/Sao_Paulo',
   booking_settings  jsonb NOT NULL DEFAULT '{"minLeadMinutes":120,"maxLeadDays":60,"publicStatus":"REQUESTED","courtesyTransactionalMessages":50}',
+  chairs_enabled    boolean NOT NULL DEFAULT false,   -- agenda/cadastro por cadeira (tenant)
   status            text NOT NULL DEFAULT 'TRIAL',    -- TRIAL|ACTIVE|PAST_DUE|SUSPENDED|CANCELLED|DELETED
   trial_ends_at     timestamptz,
   created_at        timestamptz NOT NULL DEFAULT now(),

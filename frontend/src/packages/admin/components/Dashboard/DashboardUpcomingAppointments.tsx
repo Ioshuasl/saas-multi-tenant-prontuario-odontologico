@@ -9,43 +9,43 @@ import { cn } from '@/shared/helpers/utils';
 const STATUS_UI: Record<string, { label: string; className: string; dot: string }> = {
   CONFIRMED: {
     label: 'Confirmado',
-    className: 'bg-[#E8F6EE] text-[#1F7A45]',
-    dot: 'bg-[#1F7A45]',
+    className: 'bg-success/10 text-success',
+    dot: 'bg-success',
   },
   SCHEDULED: {
     label: 'Aguardando',
-    className: 'bg-[#FFF1E0] text-[#B86A00]',
-    dot: 'bg-[#B86A00]',
+    className: 'bg-warning/15 text-warning',
+    dot: 'bg-warning',
   },
   REQUESTED: {
     label: 'Aguardando',
-    className: 'bg-[#FFF1E0] text-[#B86A00]',
-    dot: 'bg-[#B86A00]',
+    className: 'bg-warning/15 text-warning',
+    dot: 'bg-warning',
   },
   CHECKED_IN: {
     label: 'Aguardando',
-    className: 'bg-[#FFF1E0] text-[#B86A00]',
-    dot: 'bg-[#B86A00]',
+    className: 'bg-warning/15 text-warning',
+    dot: 'bg-warning',
   },
   IN_SERVICE: {
     label: 'Em atendimento',
-    className: 'bg-[#FBF3DB] text-[#9F6B53]',
-    dot: 'bg-[#9F6B53]',
+    className: 'bg-info/15 text-info',
+    dot: 'bg-info',
   },
   COMPLETED: {
     label: 'Finalizado',
-    className: 'bg-[#E8F6EE] text-[#1F7A45]',
-    dot: 'bg-[#1F7A45]',
+    className: 'bg-success/10 text-success',
+    dot: 'bg-success',
   },
   CANCELLED: {
     label: 'Cancelado',
-    className: 'bg-[#FDEBEC] text-[#C14C4A]',
-    dot: 'bg-[#C14C4A]',
+    className: 'bg-destructive/10 text-destructive',
+    dot: 'bg-destructive',
   },
   NO_SHOW: {
     label: 'Falta',
-    className: 'bg-[#FDEBEC] text-[#C14C4A]',
-    dot: 'bg-[#C14C4A]',
+    className: 'bg-destructive/10 text-destructive',
+    dot: 'bg-destructive',
   },
 };
 
@@ -88,113 +88,92 @@ export function DashboardUpcomingAppointments({
   loading,
 }: DashboardUpcomingAppointmentsProps) {
   return (
-    <section className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-[#EBE4DE] bg-white shadow-[0_1px_2px_rgb(74_15_22/0.04)]">
-      <header className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5">
-        <h2 className="inline-flex items-center gap-1.5 font-sans text-[15px] font-semibold text-[#1A1A1A]">
-          <CalendarDaysIcon className="size-3.5 text-[#4A0F16]" strokeWidth={1.7} />
+    <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-[12px] border border-border bg-card">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 py-3">
+        <h2 className="inline-flex items-center gap-2 text-[15px] font-semibold text-foreground">
+          <CalendarDaysIcon className="size-3.5 text-primary" strokeWidth={1.7} />
           Próximos atendimentos
         </h2>
         <Link
           href={agendaHref}
           prefetch={false}
-          className="font-sans text-[12px] font-medium text-[#4A0F16] transition-opacity hover:opacity-80"
+          className="text-[12px] font-medium text-primary transition-opacity hover:opacity-80"
         >
-          Ver todos os atendimentos →
+          Ver todos →
         </Link>
       </header>
 
-      <div className="min-w-0 overflow-x-auto border-t border-[#F0EAE5]">
-        <table className="w-full table-fixed border-collapse text-left">
-          <colgroup>
-            <col className="w-[4.25rem]" />
-            <col className="w-[32%]" />
-            <col />
-            <col className="w-[6.5rem]" />
-            <col className="w-9" />
-          </colgroup>
-          <thead>
-            <tr className="font-sans text-[10px] font-semibold tracking-[0.1em] text-[#A39A94] uppercase">
-              <th className="px-3 py-2 font-semibold">Horário</th>
-              <th className="px-2 py-2 font-semibold">Paciente</th>
-              <th className="px-2 py-2 font-semibold">Procedimento</th>
-              <th className="px-2 py-2 font-semibold">Status</th>
-              <th className="px-1 py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={5} className="px-3 py-8 text-sm text-[#7A716C]">
-                  Carregando…
-                </td>
-              </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-3 py-8 text-sm text-[#7A716C]">
-                  Nenhum atendimento hoje.
-                </td>
-              </tr>
-            ) : (
-              items.map((row) => {
-                const name = row.patient?.name ?? 'Paciente';
-                const status = STATUS_UI[row.status] ?? {
-                  label: row.status,
-                  className: 'bg-[#F3EEE9] text-[#5C5652]',
-                  dot: 'bg-[#5C5652]',
-                };
-                return (
-                  <tr key={row.id} className="border-t border-[#F0EAE5]">
-                    <td className="px-3 py-2.5 font-sans text-[13px] font-semibold tabular-nums text-[#1A1A1A]">
+      <div className="min-h-0 min-w-0 flex-1 overflow-auto border-t border-border">
+        {loading ? (
+          <p className="px-4 py-6 text-sm text-muted-foreground">Carregando…</p>
+        ) : items.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <p className="text-sm font-medium text-foreground">Nenhum atendimento próximo</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              Não existem atendimentos agendados para este período.
+            </p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {items.map((row) => {
+              const name = row.patient?.name ?? 'Paciente';
+              const status = STATUS_UI[row.status] ?? {
+                label: row.status,
+                className: 'bg-muted text-muted-foreground',
+                dot: 'bg-muted-foreground',
+              };
+              return (
+                <li key={row.id} className="flex items-start gap-3 px-4 py-3">
+                  <div className="w-12 shrink-0 pt-0.5">
+                    <p className="text-[15px] font-semibold tabular-nums text-foreground">
                       {format(new Date(row.startsAt), 'HH:mm')}
-                    </td>
-                    <td className="px-2 py-2.5">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#EFE8E2] text-[10px] font-semibold text-[#4A0F16]">
-                          {initials(name)}
+                    </p>
+                  </div>
+
+                  <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-primary">
+                    {initials(name)}
+                  </span>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[14px] font-semibold text-foreground">{name}</p>
+                    <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+                      {row.procedure?.name ?? 'Consulta'}
+                    </p>
+                    <p className="mt-0.5 truncate text-[12px] text-muted-foreground/80">
+                      {professionalLabel(row.professional?.name)}
+                      {row.patient?.phonePrimary ? (
+                        <span className="text-muted-foreground/60">
+                          {' · '}
+                          {formatPhone(row.patient.phonePrimary)}
                         </span>
-                        <div className="min-w-0">
-                          <p className="truncate font-sans text-[13px] font-semibold text-[#1A1A1A]">{name}</p>
-                          <p className="truncate font-sans text-[11px] text-[#9A908A]">
-                            {formatPhone(row.patient?.phonePrimary)}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2.5">
-                      <p className="truncate font-sans text-[13px] font-semibold text-[#1A1A1A]">
-                        {row.procedure?.name ?? 'Consulta'}
-                      </p>
-                      <p className="truncate font-sans text-[11px] text-[#9A908A]">
-                        {professionalLabel(row.professional?.name)}
-                      </p>
-                    </td>
-                    <td className="px-2 py-2.5">
-                      <span
-                        className={cn(
-                          'inline-flex max-w-full items-center gap-1 truncate rounded-full px-2 py-0.5 text-[10px] font-medium',
-                          status.className,
-                        )}
-                      >
-                        <span className={cn('size-1.5 shrink-0 rounded-full', status.dot)} aria-hidden />
-                        <span className="truncate">{status.label}</span>
-                      </span>
-                    </td>
-                    <td className="px-1 py-2.5 text-right">
-                      <Link
-                        href={`/app/agenda?appointmentId=${row.id}`}
-                        prefetch={false}
-                        className="inline-flex size-7 items-center justify-center rounded-lg text-[#9A908A] transition-colors hover:bg-[#F3EEE9] hover:text-[#4A0F16]"
-                        aria-label="Abrir atendimento"
-                      >
-                        <MoreVerticalIcon className="size-3.5" />
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      ) : null}
+                    </p>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <span
+                      className={cn(
+                        'inline-flex max-w-[7.5rem] items-center gap-1 truncate rounded-full px-2 py-0.5 text-[11px] font-medium',
+                        status.className,
+                      )}
+                    >
+                      <span className={cn('size-1.5 shrink-0 rounded-full', status.dot)} aria-hidden />
+                      <span className="truncate">{status.label}</span>
+                    </span>
+                    <Link
+                      href={`/app/agenda?appointmentId=${row.id}`}
+                      prefetch={false}
+                      className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      aria-label="Abrir atendimento"
+                    >
+                      <MoreVerticalIcon className="size-3.5" />
+                    </Link>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </section>
   );

@@ -17,6 +17,7 @@ export function useClinicFormHook() {
       responsibleCro: '',
       timezone: 'America/Sao_Paulo',
       acceptedPaymentMethods: [],
+      chairsEnabled: false,
       phone: '',
       address: {
         street: '',

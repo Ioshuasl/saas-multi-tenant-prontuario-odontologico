@@ -5,10 +5,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    /* next/font: --font-sora / --font-playfair no <html> (layout.tsx) */
-    --font-sans: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
-    --font-heading: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
-    --font-display: var(--font-playfair), ui-serif, Georgia, "Times New Roman", serif;
+    /* Tipografia Clivra: somente Sora (DS oficial). */
+    --font-sans: "Sora", sans-serif;
+    --font-heading: "Sora", sans-serif;
+    --font-display: "Sora", sans-serif;
     /* Desktop real: acima de 1920×1080 @125% Windows (≈1536 CSS). Notebook usa o default. */
     --breakpoint-desk: 105rem;
     --color-sidebar-ring: var(--sidebar-ring);
@@ -147,16 +147,11 @@
   * {
     @apply border-border outline-ring/50;
   }
-  /*
-    Espelha tokens de fonte no <html> — @theme inline do Tailwind v4 nem sempre
-    expõe --font-sans/--font-display em :root (fica vazio no DevTools).
-    next/font continua injetando --font-sora / --font-playfair via className.
-  */
   html {
-    --font-sans: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
-    --font-heading: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
-    --font-display: var(--font-playfair), ui-serif, Georgia, "Times New Roman", serif;
-    font-family: var(--font-sans);
+    --font-sans: "Sora", sans-serif;
+    --font-heading: "Sora", sans-serif;
+    --font-display: "Sora", sans-serif;
+    font-family: "Sora", sans-serif;
     /*
       Notebook Windows (escala 125%/150%): rem um pouco menor → densidade operacional.
       Desktop (≥1680 CSS) volta a 16px. Viewport prioritário Clivra: 1366×768.
@@ -170,24 +165,18 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: var(--font-sans);
+    font-family: "Sora", sans-serif;
   }
 }
 
-/*
-  Login Clivra — tipografia à prova de sobrescrita do tema.
-  Usa as vars injetadas pelo next/font (--font-sora / --font-playfair).
-*/
+/* Login — mesma família do DS; base 16px para não herdar o rem de 15px do html. */
 @layer components {
   .login-page {
-    font-family: var(--font-sans);
+    font-family: "Sora", sans-serif;
     font-size: 16px;
   }
-  .login-page .login-display {
-    font-family: var(--font-display);
-    font-synthesis: none;
-  }
+  .login-page .login-display,
   .login-page .login-sans {
-    font-family: var(--font-sans);
+    font-family: "Sora", sans-serif;
   }
 }

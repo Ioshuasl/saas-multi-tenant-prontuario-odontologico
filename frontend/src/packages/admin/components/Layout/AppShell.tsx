@@ -38,13 +38,19 @@ export function AppShell({ children, inboxBadgeCount = 0 }: AppShellProps) {
   return (
     <TooltipProvider>
       <ClivraShellProvider>
-        <div className="flex min-h-svh w-full min-w-0 bg-background">
-          <AppSidebar clinicName={clinicQuery.data?.name} inboxBadgeCount={inboxBadgeCount} />
-          <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex h-svh w-full min-w-0 overflow-hidden bg-background">
+          <AppSidebar
+            clinicName={clinicQuery.data?.name}
+            chairsEnabled={clinicQuery.data?.chairsEnabled === true}
+            inboxBadgeCount={inboxBadgeCount}
+          />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <AppHeader />
-            <main className="mx-auto flex w-full min-w-0 max-w-[1440px] flex-1 flex-col gap-4 bg-background p-4 sm:p-6 desk:max-w-[1440px] desk:px-8 desk:py-6">
+            <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 overflow-hidden bg-background px-5 py-4 sm:px-6 sm:py-5">
               <SubscriptionBanner />
-              {children}
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+                {children}
+              </div>
             </main>
           </div>
         </div>

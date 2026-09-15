@@ -160,7 +160,7 @@ export function DashboardHome() {
           icon: CircleDollarSignIcon,
           footer: (
             <span className="inline-flex items-center gap-1.5">
-              <UserIcon className="size-3 text-[#4A0F16]" strokeWidth={1.7} />
+              <UserIcon className="size-3 text-primary" strokeWidth={1.7} />
               {data?.receivableTodayCount ?? 0} paciente
               {(data?.receivableTodayCount ?? 0) === 1 ? '' : 's'}
             </span>
@@ -192,7 +192,7 @@ export function DashboardHome() {
           <MetricDotFooter color="rose">registradas no mês</MetricDotFooter>
         ) : (
           <span className="inline-flex items-center gap-1.5">
-            <TrendingDownIcon className="size-3 text-[#8A7F79]" strokeWidth={1.7} />
+            <TrendingDownIcon className="size-3 text-muted-foreground" strokeWidth={1.7} />
             {String(noShowPct).replace('.', ',')}% do total
           </span>
         ),
@@ -209,12 +209,12 @@ export function DashboardHome() {
           productionDelta === null ? (
             <span>no mês atual</span>
           ) : productionDelta >= 0 ? (
-            <span className="inline-flex items-center gap-1 text-emerald-700">
+            <span className="inline-flex items-center gap-1 text-success">
               <ArrowUpIcon className="size-3" />
               +{productionDelta}% em relação ao mês anterior
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-rose-700">
+            <span className="inline-flex items-center gap-1 text-destructive">
               {productionDelta}% em relação ao mês anterior
             </span>
           ),
@@ -234,14 +234,14 @@ export function DashboardHome() {
 
   if (!canReports && !canAgenda) {
     return (
-      <div className="rounded-2xl border border-[#EBE4DE] bg-white px-4 py-6 text-sm text-[#7A716C]">
+      <div className="rounded-[12px] border border-border bg-card px-4 py-6 text-sm text-muted-foreground">
         Seu perfil não tem acesso aos indicadores do painel.
       </div>
     );
   }
 
   return (
-    <div className="grid min-w-0 gap-3.5">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
       <DashboardHero
         greetingLabel={greet}
         firstName={firstName}
@@ -250,26 +250,26 @@ export function DashboardHome() {
       />
 
       {dashboard.isError ? (
-        <p className="text-sm text-rose-700" role="alert">
+        <p className="text-sm text-destructive" role="alert">
           {adminErrorMessage(dashboard.error)}
         </p>
       ) : null}
 
       {canReports || canFinancial ? (
         dashboard.isLoading ? (
-          <p className="text-sm text-[#7A716C]">Carregando indicadores…</p>
+          <p className="text-sm text-muted-foreground">Carregando indicadores…</p>
         ) : (
           <DashboardMetricCards metrics={metrics} />
         )
       ) : null}
 
-      <div className="grid min-w-0 gap-3 lg:grid-cols-[3.5fr_1.5fr] lg:items-stretch lg:gap-3">
+      <div className="grid min-h-0 min-w-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)] lg:items-stretch">
         <DashboardUpcomingAppointments
           items={upcoming}
           agendaHref={agendaHref}
           loading={appointments.isLoading}
         />
-        <div className="grid min-w-0 grid-rows-[1fr_auto] gap-2.5">
+        <div className="flex min-h-0 min-w-0 flex-col gap-3">
           <DashboardMiniCalendar appointmentDates={appointmentDates} selected={today} />
           <DashboardQuickActions />
         </div>

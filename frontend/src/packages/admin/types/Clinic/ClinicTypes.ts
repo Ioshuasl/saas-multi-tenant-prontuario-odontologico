@@ -17,6 +17,7 @@ export type ClinicProfile = {
   responsibleCro: string | null;
   timezone: string;
   acceptedPaymentMethods: string[];
+  chairsEnabled: boolean;
   defaultUnit: {
     id: string;
     name: string;

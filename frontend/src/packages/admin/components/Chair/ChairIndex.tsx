@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { PlusIcon } from 'lucide-react';
 import { ChairTable } from '@/packages/admin/components/Chair/ChairTable';
 import { adminErrorMessage } from '@/packages/admin/helpers/AdminErrorMessage';
+import { SETTINGS_SECTION, settingsHref } from '@/packages/admin/helpers/SettingsTabs';
 import { useChairListHook } from '@/packages/admin/hooks/Chair/useChairListHook';
 import { useClinicGetHook } from '@/packages/admin/hooks/Clinic/useClinicGetHook';
 import type { ChairSummary } from '@/packages/admin/types/Chair/ChairTypes';
@@ -19,16 +22,61 @@ const ChairFormDialog = dynamic(
 );
 
 export function ChairIndex() {
+  const router = useRouter();
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ChairSummary | undefined>();
   const clinicQuery = useClinicGetHook();
+  const chairsEnabled = clinicQuery.data?.chairsEnabled === true;
   const unitId = clinicQuery.data?.defaultUnit?.id;
-  const chairsQuery = useChairListHook(unitId);
+  const chairsQuery = useChairListHook(unitId, { enabled: chairsEnabled && Boolean(unitId) });
+
+  useEffect(() => {
+    if (clinicQuery.isSuccess && !chairsEnabled) {
+      router.replace(settingsHref(SETTINGS_SECTION.CLINICA));
+    }
+  }, [clinicQuery.isSuccess, chairsEnabled, router]);
 
   const openCreate = () => {
     setEditing(undefined);
     setFormMode('create');
   };
+
+  if (clinicQuery.isLoading) {
+    return (
+      <div className="grid min-w-0 gap-4">
+        <ClivraPageHeader
+          title="Cadeiras"
+          description="Salas e cadeiras usadas na agenda da unidade padrão."
+        />
+        <ClivraSurface contentClassName="px-4 py-6">
+          <p className="text-sm text-muted-foreground">Carregando…</p>
+        </ClivraSurface>
+      </div>
+    );
+  }
+
+  if (!chairsEnabled) {
+    return (
+      <div className="grid min-w-0 gap-4">
+        <ClivraPageHeader
+          title="Cadeiras"
+          description="Salas e cadeiras usadas na agenda da unidade padrão."
+        />
+        <Alert>
+          <AlertDescription>
+            Agenda por cadeira está desativada.{' '}
+            <Link
+              href={settingsHref(SETTINGS_SECTION.CLINICA)}
+              className="font-medium underline underline-offset-2"
+            >
+              Ative em Configurações → Clínica
+            </Link>
+            .
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="grid min-w-0 gap-4">
@@ -45,7 +93,7 @@ export function ChairIndex() {
         }
       />
 
-      {clinicQuery.isLoading || chairsQuery.isLoading ? (
+      {chairsQuery.isLoading ? (
         <ClivraSurface contentClassName="px-4 py-6">
           <p className="text-sm text-muted-foreground">Carregando…</p>
         </ClivraSurface>

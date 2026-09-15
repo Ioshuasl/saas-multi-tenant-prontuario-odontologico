@@ -105,7 +105,8 @@ function ComboboxContent({
         align={align}
         alignOffset={alignOffset}
         anchor={anchor}
-        className="isolate z-50"
+        // Acima de Sheet/Dialog (z-50) — lista de pacientes no drawer de agendamento.
+        className="isolate z-[100]"
       >
         <ComboboxPrimitive.Popup
           data-slot="combobox-content"

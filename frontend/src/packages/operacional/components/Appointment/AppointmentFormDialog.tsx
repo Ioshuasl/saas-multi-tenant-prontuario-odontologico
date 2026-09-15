@@ -13,7 +13,7 @@ import { useAppointmentCreateFormHook } from '@/packages/operacional/hooks/Appoi
 import { usePatientListHook } from '@/packages/operacional/hooks/Patient/usePatientListHook';
 import type { AppointmentCreateFormValues } from '@/packages/operacional/schemas/Appointment/AppointmentSchema';
 import type { AppointmentFormDialogProps } from '@/packages/operacional/types/Appointment/AppointmentFormDialogTypes';
-import { MotionDialogBody } from '@/shared/motion/MotionDialogBody';
+import { useSheetOpenState } from '@/shared/motion/useSheetOpenState';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 import { Checkbox } from '@/shared/ui/checkbox';
@@ -25,16 +25,16 @@ import {
   ComboboxItem,
   ComboboxList,
 } from '@/shared/ui/combobox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/shared/ui/native-select';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/shared/ui/sheet';
 import { Textarea } from '@/shared/ui/textarea';
 
 function slotSummary(startsAt: string, endsAt: string): string {
@@ -94,6 +94,11 @@ export function AppointmentFormDialog({
     handleForm();
   }, [professionalId, chairId, startsAt, endsAt, form]);
 
+  const { sheetOpen, requestClose, onOpenChange, onOpenChangeComplete } = useSheetOpenState(
+    open,
+    onClose,
+  );
+
   const onSubmit = async (values: AppointmentCreateFormValues) => {
     const nextChairId = chairId ? chairId : null;
     if (values.recurring) {
@@ -123,7 +128,7 @@ export function AppointmentFormDialog({
         notes: values.notes,
       });
     }
-    onClose();
+    requestClose();
   };
 
   const pending = create.isPending || createSeries.isPending;
@@ -131,27 +136,29 @@ export function AppointmentFormDialog({
   const professionalName =
     professionals.find((p) => p.id === (professionalId || form.watch('professionalId')))?.name ??
     null;
-  const summaryParts = [
-    slotSummary(startsAt, endsAt),
-    professionalName,
-  ].filter(Boolean);
+  const summaryParts = [slotSummary(startsAt, endsAt), professionalName].filter(Boolean);
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <MotionDialogBody>
-          <DialogHeader>
-            <DialogTitle>Novo agendamento</DialogTitle>
-            {summaryParts.length > 0 ? (
-              <DialogDescription>{summaryParts.join(' · ')}</DialogDescription>
-            ) : null}
-          </DialogHeader>
-          <form
-            className="grid gap-4"
-            onSubmit={(e) => {
-              void form.handleSubmit(onSubmit)(e);
-            }}
-          >
+    <Sheet
+      open={sheetOpen}
+      onOpenChange={onOpenChange}
+      onOpenChangeComplete={onOpenChangeComplete}
+    >
+      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
+        <SheetHeader className="border-b border-border px-4 py-4 text-left">
+          <SheetTitle>Novo agendamento</SheetTitle>
+          {summaryParts.length > 0 ? (
+            <SheetDescription>{summaryParts.join(' · ')}</SheetDescription>
+          ) : null}
+        </SheetHeader>
+
+        <form
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={(e) => {
+            void form.handleSubmit(onSubmit)(e);
+          }}
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
             <FieldGroup>
               <Field data-invalid={Boolean(form.formState.errors.patientId)}>
                 <FieldLabel htmlFor="appt-patient">Paciente</FieldLabel>
@@ -262,27 +269,27 @@ export function AppointmentFormDialog({
             </FieldGroup>
 
             {error ? (
-              <Alert variant="destructive" role="alert">
+              <Alert variant="destructive" className="mt-4" role="alert">
                 <AlertDescription>{operacionalErrorMessage(error)}</AlertDescription>
               </Alert>
             ) : null}
+          </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                className="cursor-pointer"
-                onClick={onClose}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" className="cursor-pointer" disabled={pending}>
-                {pending ? 'Salvando…' : 'Agendar'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </MotionDialogBody>
-      </DialogContent>
-    </Dialog>
+          <SheetFooter className="border-t border-border px-4 py-3 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="cursor-pointer"
+              onClick={requestClose}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" className="cursor-pointer" disabled={pending}>
+              {pending ? 'Salvando…' : 'Agendar'}
+            </Button>
+          </SheetFooter>
+        </form>
+      </SheetContent>
+    </Sheet>
   );
 }

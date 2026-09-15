@@ -1,6 +1,7 @@
 'use client';
 
-import { useDeferredValue, useEffect, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Controller } from 'react-hook-form';
 import { WAITLIST_WEEKDAYS } from '@/packages/operacional/enum/Waitlist/WaitlistStatusEnum';
 import { operacionalErrorMessage } from '@/packages/operacional/helpers/OperacionalErrorMessage';
 import { useAgendaProfessionalListHook } from '@/packages/operacional/hooks/Appointment/useAgendaProfessionalListHook';
@@ -10,20 +11,28 @@ import { useWaitlistCreateHook } from '@/packages/operacional/hooks/Waitlist/use
 import { useWaitlistCreateFormHook } from '@/packages/operacional/hooks/Waitlist/useWaitlistFormHook';
 import type { WaitlistCreateFormValues } from '@/packages/operacional/schemas/Waitlist/WaitlistSchema';
 import type { WaitlistFormDialogProps } from '@/packages/operacional/types/Waitlist/WaitlistFormDialogTypes';
-import { MotionDialogBody } from '@/shared/motion/MotionDialogBody';
+import { useSheetOpenState } from '@/shared/motion/useSheetOpenState';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 import { Checkbox } from '@/shared/ui/checkbox';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/shared/ui/combobox';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/field';
 import { Input } from '@/shared/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/shared/ui/native-select';
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/shared/ui/sheet';
 
 export function WaitlistFormDialog({ open, professionalId, onClose }: WaitlistFormDialogProps) {
   const form = useWaitlistCreateFormHook(professionalId);
@@ -32,8 +41,17 @@ export function WaitlistFormDialog({ open, professionalId, onClose }: WaitlistFo
   const proceduresQuery = useProcedureListHook();
   const [patientSearch, setPatientSearch] = useState('');
   const deferredSearch = useDeferredValue(patientSearch);
-  const patientsQuery = usePatientListHook(deferredSearch);
+  const patientsQuery = usePatientListHook(deferredSearch, { active: 'true', limit: 30 });
   const anyTime = form.watch('anyTime');
+
+  const patients = patientsQuery.data?.items ?? [];
+  const patientIds = useMemo(() => patients.map((patient) => patient.id), [patients]);
+  const patientLabelById = useMemo(() => {
+    const map = new Map(
+      patients.map((patient) => [patient.id, `#${patient.code} ${patient.name}`] as const),
+    );
+    return (id: string) => map.get(id) ?? id;
+  }, [patients]);
 
   const handleForm = () => {
     form.reset({
@@ -53,6 +71,11 @@ export function WaitlistFormDialog({ open, professionalId, onClose }: WaitlistFo
     if (open) handleForm();
   }, [open, professionalId, form]);
 
+  const { sheetOpen, requestClose, onOpenChange, onOpenChangeComplete } = useSheetOpenState(
+    open,
+    onClose,
+  );
+
   const onSave = async (values: WaitlistCreateFormValues) => {
     await create.mutateAsync({
       patientId: values.patientId,
@@ -61,50 +84,77 @@ export function WaitlistFormDialog({ open, professionalId, onClose }: WaitlistFo
       priority: values.priority,
       preferredPeriods: values.anyTime
         ? []
-        : [{ weekday: values.weekday ?? 1, from: values.from ?? '08:00', to: values.to ?? '12:00' }],
+        : [
+            {
+              weekday: values.weekday ?? 1,
+              from: values.from ?? '08:00',
+              to: values.to ?? '12:00',
+            },
+          ],
     });
-    onClose();
+    requestClose();
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <MotionDialogBody>
-          <DialogHeader>
-            <DialogTitle>Fila de espera</DialogTitle>
-          </DialogHeader>
-          <form
-            className="grid gap-4"
-            onSubmit={(event) => {
-              void form.handleSubmit(onSave)(event);
-            }}
-          >
+    <Sheet
+      open={sheetOpen}
+      onOpenChange={onOpenChange}
+      onOpenChangeComplete={onOpenChangeComplete}
+    >
+      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
+        <SheetHeader className="border-b border-border px-4 py-4 text-left">
+          <SheetTitle>Adicionar à fila</SheetTitle>
+        </SheetHeader>
+
+        <form
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={(event) => {
+            void form.handleSubmit(onSave)(event);
+          }}
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
             <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="waitlist-patient-search">Paciente</FieldLabel>
-                <Input
-                  id="waitlist-patient-search"
-                  placeholder="Buscar paciente…"
-                  value={patientSearch}
-                  onChange={(event) => setPatientSearch(event.target.value)}
-                />
-              </Field>
               <Field data-invalid={Boolean(form.formState.errors.patientId)}>
-                <FieldLabel htmlFor="waitlist-patient">Selecionar</FieldLabel>
-                <NativeSelect
-                  id="waitlist-patient"
-                  value={form.watch('patientId')}
-                  onChange={(event) =>
-                    form.setValue('patientId', event.target.value, { shouldValidate: true })
-                  }
-                >
-                  <NativeSelectOption value="">Escolha…</NativeSelectOption>
-                  {(patientsQuery.data?.items ?? []).map((patient) => (
-                    <NativeSelectOption key={patient.id} value={patient.id}>
-                      #{patient.code} {patient.name}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
+                <FieldLabel htmlFor="waitlist-patient">Paciente</FieldLabel>
+                <Controller
+                  control={form.control}
+                  name="patientId"
+                  render={({ field }) => (
+                    <Combobox
+                      items={patientIds}
+                      value={field.value || null}
+                      onValueChange={(next) => {
+                        field.onChange(typeof next === 'string' ? next : '');
+                      }}
+                      onInputValueChange={(value) => {
+                        setPatientSearch(value);
+                      }}
+                      itemToStringLabel={patientLabelById}
+                      filter={null}
+                    >
+                      <ComboboxInput
+                        id="waitlist-patient"
+                        placeholder="Buscar paciente…"
+                        className="w-full"
+                        showClear
+                      />
+                      <ComboboxContent className="z-[80]">
+                        <ComboboxEmpty>
+                          {patientsQuery.isLoading
+                            ? 'Carregando…'
+                            : 'Nenhum paciente encontrado.'}
+                        </ComboboxEmpty>
+                        <ComboboxList>
+                          {(id) => (
+                            <ComboboxItem key={id} value={id}>
+                              {patientLabelById(id)}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
+                  )}
+                />
                 <FieldError>{form.formState.errors.patientId?.message}</FieldError>
               </Field>
               <Field data-invalid={Boolean(form.formState.errors.procedureId)}>
@@ -199,22 +249,22 @@ export function WaitlistFormDialog({ open, professionalId, onClose }: WaitlistFo
             </FieldGroup>
 
             {create.isError ? (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="mt-4">
                 <AlertDescription>{operacionalErrorMessage(create.error)}</AlertDescription>
               </Alert>
             ) : null}
+          </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={create.isPending}>
-                {create.isPending ? 'Salvando…' : 'Adicionar à fila'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </MotionDialogBody>
-      </DialogContent>
-    </Dialog>
+          <SheetFooter className="border-t border-border px-4 py-3 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" className="cursor-pointer" onClick={requestClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" className="cursor-pointer" disabled={create.isPending}>
+              {create.isPending ? 'Salvando…' : 'Adicionar à fila'}
+            </Button>
+          </SheetFooter>
+        </form>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -13,7 +13,7 @@ export const CLIVRA = {
   logoWordmarkBurgundy: '/brand/logo-wordmark-burgundy.png',
   favicon: '/favicon.ico',
   appleIcon: '/apple-icon.png',
-  loginClinicBg: '/brand/login-clinic-bg.png',
+  loginClinicBg: '/brand/img-bg-login-page.png',
   /** Paleta oficial (espelho de globals.css / DS) — preferir tokens CSS na UI. */
   colors: {
     burgundy: '#4A0F16',

@@ -6,8 +6,8 @@ import {
   FileBarChartIcon,
   FileTextIcon,
   HomeIcon,
-  InboxIcon,
   ListChecksIcon,
+  MessageCircleIcon,
   SettingsIcon,
 } from 'lucide-react';
 import {
@@ -50,8 +50,8 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: '/app/agenda', label: 'Agenda', icon: CalendarDaysIcon, group: 'main' },
   {
     href: '/app/inbox',
-    label: 'Inbox',
-    icon: InboxIcon,
+    label: 'WhatsApp',
+    icon: MessageCircleIcon,
     group: 'main',
     permission: 'messaging.read',
   },

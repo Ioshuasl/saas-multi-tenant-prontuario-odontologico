@@ -6,7 +6,6 @@ import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AgendaGrid } from '@/packages/operacional/components/Appointment/AgendaGrid';
 import { AgendaToolbar } from '@/packages/operacional/components/Appointment/AgendaToolbar';
-import { WaitlistPanel } from '@/packages/operacional/components/Waitlist/WaitlistPanel';
 import { APPOINTMENT_STATUS_META } from '@/packages/operacional/enum/Appointment/AppointmentStatusEnum';
 import type { SlotMinutes } from '@/packages/operacional/helpers/AgendaNotionTokens';
 import {
@@ -19,6 +18,7 @@ import {
 } from '@/packages/operacional/helpers/AgendaTime';
 import { operacionalErrorMessage } from '@/packages/operacional/helpers/OperacionalErrorMessage';
 import { useAgendaChairListHook } from '@/packages/operacional/hooks/Appointment/useAgendaChairListHook';
+import { useAgendaClinicSettingsHook } from '@/packages/operacional/hooks/Appointment/useAgendaClinicSettingsHook';
 import { useAgendaProfessionalListHook } from '@/packages/operacional/hooks/Appointment/useAgendaProfessionalListHook';
 import { useAppointmentListHook } from '@/packages/operacional/hooks/Appointment/useAppointmentListHook';
 import { useAppointmentUpdateHook } from '@/packages/operacional/hooks/Appointment/useAppointmentUpdateHook';
@@ -60,6 +60,13 @@ const ScheduleBlockFormDialog = dynamic(
     ),
   { ssr: false },
 );
+const WaitlistPanel = dynamic(
+  () =>
+    import('@/packages/operacional/components/Waitlist/WaitlistPanel').then(
+      (m) => m.WaitlistPanel,
+    ),
+  { ssr: false },
+);
 
 function toLocalInput(date: Date): string {
   return format(date, "yyyy-MM-dd'T'HH:mm");
@@ -92,12 +99,22 @@ export function AgendaIndex() {
   );
   const [selected, setSelected] = useState<AppointmentSummary | null>(null);
   const [blockOpen, setBlockOpen] = useState(false);
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
   const [moveError, setMoveError] = useState<string | null>(null);
 
+  const clinicSettingsQuery = useAgendaClinicSettingsHook();
+  const chairsEnabled = clinicSettingsQuery.data?.chairsEnabled === true;
+
   const professionalsQuery = useAgendaProfessionalListHook();
-  const chairsQuery = useAgendaChairListHook();
+  const chairsQuery = useAgendaChairListHook({ enabled: chairsEnabled });
   const professionals = professionalsQuery.data ?? [];
   const chairs = chairsQuery.data ?? [];
+
+  useEffect(() => {
+    if (!chairsEnabled && resourceMode === 'chair') {
+      setResourceMode('professional');
+    }
+  }, [chairsEnabled, resourceMode]);
 
   useEffect(() => {
     if (!professionalId && professionals[0]) {
@@ -106,10 +123,11 @@ export function AgendaIndex() {
   }, [professionals, professionalId]);
 
   useEffect(() => {
+    if (!chairsEnabled) return;
     if (!chairId && chairs[0]) {
       setChairId(chairs[0].id);
     }
-  }, [chairs, chairId]);
+  }, [chairs, chairId, chairsEnabled]);
 
   const days = useMemo(
     () => (viewMode === 'week' ? weekDays(anchor) : [anchor]),
@@ -122,9 +140,13 @@ export function AgendaIndex() {
   );
   const { from: fromIso, to: toIso } = rangeIso(from, to);
 
-  const activeProfessionalId = resourceMode === 'professional' ? professionalId : undefined;
-  const activeChairId = resourceMode === 'chair' ? chairId : undefined;
-  const resourceReady = resourceMode === 'professional' ? Boolean(professionalId) : Boolean(chairId);
+  const effectiveResourceMode: AgendaResourceMode =
+    chairsEnabled && resourceMode === 'chair' ? 'chair' : 'professional';
+  const activeProfessionalId =
+    effectiveResourceMode === 'professional' ? professionalId : undefined;
+  const activeChairId = effectiveResourceMode === 'chair' ? chairId : undefined;
+  const resourceReady =
+    effectiveResourceMode === 'professional' ? Boolean(professionalId) : Boolean(chairId);
 
   const listQuery = useAppointmentListHook({
     professionalId: activeProfessionalId,
@@ -183,9 +205,9 @@ export function AgendaIndex() {
   })();
 
   const resourceError =
-    resourceMode === 'professional' ? professionalsQuery.error : chairsQuery.error;
+    effectiveResourceMode === 'professional' ? professionalsQuery.error : chairsQuery.error;
   const emptyResourceMessage =
-    resourceMode === 'professional'
+    effectiveResourceMode === 'professional'
       ? 'Cadastre um profissional para visualizar a agenda.'
       : 'Cadastre uma cadeira para visualizar a agenda.';
 
@@ -201,12 +223,14 @@ export function AgendaIndex() {
   };
 
   return (
-    <div className="grid gap-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Agenda</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Consultas do dia e da semana · visão por profissional ou cadeira.
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {chairsEnabled
+              ? 'Consultas do dia e da semana · visão por profissional ou cadeira.'
+              : 'Consultas do dia e da semana por profissional.'}
           </p>
         </div>
         <Button
@@ -220,13 +244,13 @@ export function AgendaIndex() {
       </div>
 
       {resourceError ? (
-        <Alert variant="destructive" role="alert">
+        <Alert variant="destructive" role="alert" className="shrink-0">
           <AlertDescription>{operacionalErrorMessage(resourceError)}</AlertDescription>
         </Alert>
       ) : null}
 
-      <Card>
-        <CardHeader className="border-b border-border pb-4">
+      <Card className="min-h-0 flex-1 gap-0 py-0">
+        <CardHeader className="shrink-0 border-b border-border py-3">
           <AgendaToolbar
             viewMode={viewMode}
             onViewMode={setViewMode}
@@ -236,8 +260,9 @@ export function AgendaIndex() {
             onToday={() => setAnchor(new Date())}
             slotMinutes={slotMinutes}
             onSlotMinutes={setSlotMinutes}
-            resourceMode={resourceMode}
+            resourceMode={effectiveResourceMode}
             onResourceMode={setResourceMode}
+            chairsEnabled={chairsEnabled}
             professionals={professionals}
             professionalId={professionalId}
             onProfessionalId={setProfessionalId}
@@ -245,13 +270,15 @@ export function AgendaIndex() {
             chairId={chairId}
             onChairId={setChairId}
             onBlock={() => setBlockOpen(true)}
+            waitlistOpen={waitlistOpen}
+            onWaitlistToggle={() => setWaitlistOpen((open) => !open)}
           />
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="flex min-h-0 flex-1 flex-col py-3">
           {!resourceReady ? (
             <p className="text-sm text-muted-foreground">{emptyResourceMessage}</p>
           ) : listQuery.isLoading ? (
-            <div className="h-64 animate-pulse rounded-lg bg-muted" aria-hidden />
+            <div className="h-full min-h-64 animate-pulse rounded-lg bg-muted" aria-hidden />
           ) : listQuery.isError ? (
             <Alert variant="destructive" role="alert">
               <AlertDescription>{operacionalErrorMessage(listQuery.error)}</AlertDescription>
@@ -261,7 +288,7 @@ export function AgendaIndex() {
               days={days}
               appointments={appointments}
               slotMinutes={slotMinutes}
-              showProfessional={resourceMode === 'chair'}
+              showProfessional={effectiveResourceMode === 'chair'}
               onSlotClick={(startsAt, endsAt) => openCreate(startsAt, endsAt)}
               onOpenAppointment={setSelected}
               onMoveOrResize={(input) => {
@@ -271,12 +298,12 @@ export function AgendaIndex() {
           )}
 
           {moveError ? (
-            <Alert variant="destructive" className="mt-4" role="alert">
+            <Alert variant="destructive" className="mt-3 shrink-0" role="alert">
               <AlertDescription>{moveError}</AlertDescription>
             </Alert>
           ) : null}
         </CardContent>
-        <CardFooter className="flex flex-wrap gap-2 border-t border-border pt-4">
+        <CardFooter className="shrink-0 flex-wrap gap-2 border-border">
           {(['REQUESTED', 'SCHEDULED', 'CONFIRMED', 'IN_SERVICE', 'NO_SHOW'] as const).map(
             (status) => {
               const meta = APPOINTMENT_STATUS_META[status];
@@ -299,13 +326,19 @@ export function AgendaIndex() {
         </CardFooter>
       </Card>
 
-      <WaitlistPanel professionalId={professionalId || undefined} />
+      {waitlistOpen ? (
+        <div className="flex max-h-[min(38%,22rem)] min-h-0 shrink-0 flex-col overflow-hidden">
+          <WaitlistPanel professionalId={professionalId || undefined} />
+        </div>
+      ) : null}
 
       {createSlot ? (
         <AppointmentFormDialog
           open
-          professionalId={resourceMode === 'professional' ? professionalId : professionals[0]?.id}
-          chairId={resourceMode === 'chair' ? chairId : undefined}
+          professionalId={
+            effectiveResourceMode === 'professional' ? professionalId : professionals[0]?.id
+          }
+          chairId={effectiveResourceMode === 'chair' ? chairId : undefined}
           professionals={professionals}
           startsAt={createSlot.startsAt}
           endsAt={createSlot.endsAt}
@@ -320,8 +353,8 @@ export function AgendaIndex() {
       {blockOpen ? (
         <ScheduleBlockFormDialog
           open
-          professionalId={resourceMode === 'professional' ? professionalId : null}
-          chairId={resourceMode === 'chair' ? chairId : null}
+          professionalId={effectiveResourceMode === 'professional' ? professionalId : null}
+          chairId={effectiveResourceMode === 'chair' ? chairId : null}
           startsAt={blockDefaults.startsAt}
           endsAt={blockDefaults.endsAt}
           onClose={() => setBlockOpen(false)}
@@ -329,8 +362,8 @@ export function AgendaIndex() {
       ) : null}
 
       <p className="sr-only">
-        Visão {viewMode} por {resourceMode === 'chair' ? 'cadeira' : 'profissional'} a partir de{' '}
-        {toYmd(anchor)}
+        Visão {viewMode} por {effectiveResourceMode === 'chair' ? 'cadeira' : 'profissional'} a
+        partir de {toYmd(anchor)}
       </p>
     </div>
   );

@@ -23,6 +23,7 @@ type AgendaGridProps = {
   appointments: AppointmentSummary[];
   slotMinutes: SlotMinutes;
   showProfessional?: boolean;
+  className?: string;
   onSlotClick: (startsAt: Date, endsAt: Date) => void;
   onOpenAppointment: (appointment: AppointmentSummary) => void;
   onMoveOrResize: (input: {
@@ -41,6 +42,7 @@ export function AgendaGrid({
   appointments,
   slotMinutes,
   showProfessional = false,
+  className,
   onSlotClick,
   onOpenAppointment,
   onMoveOrResize,
@@ -60,7 +62,13 @@ export function AgendaGrid({
   };
 
   return (
-    <div className={cn('overflow-auto rounded-lg border border-border', AGENDA_TOKENS.gridBg)}>
+    <div
+      className={cn(
+        'h-full min-h-0 overflow-auto rounded-lg border border-border',
+        AGENDA_TOKENS.gridBg,
+        className,
+      )}
+    >
       <div
         className="grid"
         style={{

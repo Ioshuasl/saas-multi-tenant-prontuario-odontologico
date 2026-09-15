@@ -23,6 +23,7 @@ export const ClinicUpdateSchema = z.object({
   acceptedPaymentMethods: z
     .array(z.enum(PAYMENT_METHODS as [string, ...string[]]))
     .min(1, 'Selecione ao menos um método'),
+  chairsEnabled: z.boolean(),
   phone: z.string().max(30).optional().nullable(),
   address: addressSchema,
 });
