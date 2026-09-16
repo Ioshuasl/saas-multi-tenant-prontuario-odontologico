@@ -40,7 +40,7 @@ export type BookingAvailability = {
 
 export type BookingAvailabilityQuery = {
   slug: string;
-  procedureId: string;
+  procedureId?: string;
   professionalId: string;
   from?: string;
   to?: string;
@@ -48,12 +48,13 @@ export type BookingAvailabilityQuery = {
 
 export type BookingCreateInput = {
   slug: string;
-  procedureId: string;
+  procedureId?: string | null;
   professionalId: string;
   startsAt: string;
   name: string;
   phone: string;
   email?: string | null;
+  patientNote?: string | null;
   consentDataProcessing: boolean;
   consentTerms: boolean;
   consentWhatsappMarketing: boolean;

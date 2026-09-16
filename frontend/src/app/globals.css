@@ -94,11 +94,12 @@
     --chart-4: #c4b8ae;
     --chart-5: #eae6e1;
     --radius: 0.625rem;
-    --sidebar: #4a0f16;
+    /* Bordo escuro — referência prototipos/dashboard-clivra.png */
+    --sidebar: #2c090f;
     --sidebar-foreground: #ffffff;
     --sidebar-primary: #ffffff;
-    --sidebar-primary-foreground: #4a0f16;
-    --sidebar-accent: #7a2b36;
+    --sidebar-primary-foreground: #2c090f;
+    --sidebar-accent: #5c2028;
     --sidebar-accent-foreground: #ffffff;
     --sidebar-border: rgb(255 255 255 / 12%);
     --sidebar-ring: #a85b67;
@@ -133,11 +134,12 @@
     --chart-3: #c4b8ae;
     --chart-4: #6b6663;
     --chart-5: #2a2623;
-    --sidebar: #4a0f16;
+    /* Bordo escuro — referência prototipos/dashboard-clivra.png */
+    --sidebar: #2c090f;
     --sidebar-foreground: #ffffff;
     --sidebar-primary: #ffffff;
-    --sidebar-primary-foreground: #4a0f16;
-    --sidebar-accent: #7a2b36;
+    --sidebar-primary-foreground: #2c090f;
+    --sidebar-accent: #5c2028;
     --sidebar-accent-foreground: #ffffff;
     --sidebar-border: rgb(255 255 255 / 12%);
     --sidebar-ring: #a85b67;

@@ -8,6 +8,7 @@ export const BookingIdentitySchema = z.object({
     .max(20)
     .refine((value) => value.replace(/\D/g, '').length >= 10, 'Informe um telefone válido'),
   email: z.string().email('E-mail inválido'),
+  patientNote: z.string().max(500, 'Máximo 500 caracteres').optional(),
   consentDataProcessing: z
     .boolean()
     .refine((value) => value, 'É necessário autorizar o tratamento dos dados.'),

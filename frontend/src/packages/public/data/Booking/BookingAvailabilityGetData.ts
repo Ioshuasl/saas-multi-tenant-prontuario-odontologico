@@ -8,9 +8,9 @@ export async function BookingAvailabilityGetData(
   query: BookingAvailabilityQuery,
 ): Promise<BookingAvailability> {
   const params = new URLSearchParams({
-    procedureId: query.procedureId,
     professionalId: query.professionalId,
   });
+  if (query.procedureId) params.set('procedureId', query.procedureId);
   if (query.from) params.set('from', query.from);
   if (query.to) params.set('to', query.to);
   return apiClient.request<BookingAvailability>(

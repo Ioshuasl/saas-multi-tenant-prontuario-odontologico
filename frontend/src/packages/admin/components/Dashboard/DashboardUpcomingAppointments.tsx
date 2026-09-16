@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CalendarDaysIcon, MoreVerticalIcon } from 'lucide-react';
+import { CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, MoreVerticalIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import type { DashboardAppointmentSummary } from '@/packages/admin/types/Dashboard/DashboardAppointmentTypes';
 import { cn } from '@/shared/helpers/utils';
@@ -77,29 +77,49 @@ function professionalLabel(name: string | undefined): string {
 }
 
 type DashboardUpcomingAppointmentsProps = {
+  title: string;
   items: DashboardAppointmentSummary[];
+  total: number;
+  page: number;
+  totalPages: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
   agendaHref: string;
   loading?: boolean;
+  emptyTitle?: string;
+  emptyDescription?: string;
 };
 
 export function DashboardUpcomingAppointments({
+  title,
   items,
+  total,
+  page,
+  totalPages,
+  pageSize,
+  onPageChange,
   agendaHref,
   loading,
+  emptyTitle = 'Nenhum atendimento',
+  emptyDescription = 'Não há atendimentos para a data selecionada.',
 }: DashboardUpcomingAppointmentsProps) {
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+  const showPagination = totalPages > 1;
+
   return (
-    <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-[12px] border border-border bg-card">
+    <section className="flex h-full min-h-[18rem] min-w-0 flex-col overflow-hidden rounded-[12px] border border-border bg-card">
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 py-3">
-        <h2 className="inline-flex items-center gap-2 text-[15px] font-semibold text-foreground">
-          <CalendarDaysIcon className="size-3.5 text-primary" strokeWidth={1.7} />
-          Próximos atendimentos
+        <h2 className="inline-flex min-w-0 items-center gap-2 text-[15px] font-semibold text-foreground">
+          <CalendarDaysIcon className="size-3.5 shrink-0 text-primary" strokeWidth={1.7} />
+          <span className="truncate">{title}</span>
         </h2>
         <Link
           href={agendaHref}
           prefetch={false}
-          className="text-[12px] font-medium text-primary transition-opacity hover:opacity-80"
+          className="shrink-0 text-[12px] font-medium text-primary transition-opacity hover:opacity-80"
         >
-          Ver todos →
+          Ver na agenda →
         </Link>
       </header>
 
@@ -108,10 +128,8 @@ export function DashboardUpcomingAppointments({
           <p className="px-4 py-6 text-sm text-muted-foreground">Carregando…</p>
         ) : items.length === 0 ? (
           <div className="px-4 py-8 text-center">
-            <p className="text-sm font-medium text-foreground">Nenhum atendimento próximo</p>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              Não existem atendimentos agendados para este período.
-            </p>
+            <p className="text-sm font-medium text-foreground">{emptyTitle}</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">{emptyDescription}</p>
           </div>
         ) : (
           <ul className="divide-y divide-border">
@@ -163,7 +181,7 @@ export function DashboardUpcomingAppointments({
                     <Link
                       href={`/app/agenda?appointmentId=${row.id}`}
                       prefetch={false}
-                      className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                       aria-label="Abrir atendimento"
                     >
                       <MoreVerticalIcon className="size-3.5" />
@@ -175,6 +193,37 @@ export function DashboardUpcomingAppointments({
           </ul>
         )}
       </div>
+
+      {showPagination ? (
+        <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-3 py-2">
+          <p className="text-[11px] text-muted-foreground tabular-nums">
+            {from}–{to} de {total}
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              aria-label="Página anterior"
+              disabled={page <= 1}
+              onClick={() => onPageChange(page - 1)}
+            >
+              <ChevronLeftIcon className="size-3.5" />
+            </button>
+            <span className="min-w-10 text-center text-[11px] font-medium tabular-nums text-foreground">
+              {page}/{totalPages}
+            </span>
+            <button
+              type="button"
+              className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              aria-label="Próxima página"
+              disabled={page >= totalPages}
+              onClick={() => onPageChange(page + 1)}
+            >
+              <ChevronRightIcon className="size-3.5" />
+            </button>
+          </div>
+        </footer>
+      ) : null}
     </section>
   );
 }

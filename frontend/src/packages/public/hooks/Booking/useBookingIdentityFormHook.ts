@@ -14,6 +14,7 @@ export function useBookingIdentityFormHook() {
       name: '',
       phone: '',
       email: '',
+      patientNote: '',
       consentDataProcessing: false,
       consentTerms: false,
       consentWhatsappMarketing: false,

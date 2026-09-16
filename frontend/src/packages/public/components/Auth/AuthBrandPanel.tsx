@@ -25,10 +25,10 @@ const FEATURES = [
   },
 ] as const;
 
-/** Painel de marca do login — tipografia alinhada a `prototipos/login-clivra.png`. */
+/** Painel de marca do login — densifica em notebooks (altura ~768px). */
 export function AuthBrandPanel() {
   return (
-    <aside className="relative flex h-full min-h-[320px] flex-col overflow-hidden text-white lg:min-h-dvh">
+    <aside className="relative flex h-full min-h-0 flex-col overflow-hidden text-white">
       <Image
         src={CLIVRA.loginClinicBg}
         alt=""
@@ -61,40 +61,75 @@ export function AuthBrandPanel() {
         aria-hidden
       />
 
-      <div className="relative z-10 flex h-full min-h-dvh flex-1 flex-col px-10 py-9 lg:px-12 lg:py-10">
+      <div
+        className={[
+          'relative z-10 flex h-full min-h-0 flex-1 flex-col',
+          'px-8 py-7 lg:px-10 lg:py-8',
+          '[@media(max-height:820px)]:px-7 [@media(max-height:820px)]:py-5',
+          '[@media(max-height:720px)]:py-4',
+        ].join(' ')}
+      >
         <ClivraLogo
-          size={34}
-          className="shrink-0"
-          wordmarkClassName="login-display text-[22px] font-semibold text-white"
+          size={32}
+          className="shrink-0 [@media(max-height:820px)]:scale-95"
+          wordmarkClassName="login-display text-[20px] font-semibold text-white lg:text-[22px]"
         />
 
-        <div className="mt-16 flex flex-1 flex-col lg:mt-[4.5rem]">
-          <div className="w-full max-w-[34rem]">
-            <h2 className="login-display text-[42px] leading-[1.18] font-semibold text-white">
-              <span className="block whitespace-nowrap">Tecnologia e cuidado</span>
-              <span className="block whitespace-nowrap">para uma odontologia</span>
-              <span className="block whitespace-nowrap">mais eficiente.</span>
+        <div
+          className={[
+            'mt-10 flex min-h-0 flex-1 flex-col lg:mt-12',
+            '[@media(max-height:900px)]:mt-8',
+            '[@media(max-height:820px)]:mt-5',
+            '[@media(max-height:720px)]:mt-4',
+          ].join(' ')}
+        >
+          <div className="w-full max-w-[34rem] shrink-0">
+            <h2
+              className={[
+                'login-display font-semibold text-white',
+                'text-[clamp(1.625rem,2.6vw+0.6rem,2.625rem)] leading-[1.2]',
+                '[@media(max-height:820px)]:text-[1.75rem] [@media(max-height:820px)]:leading-[1.22]',
+                '[@media(max-height:720px)]:text-[1.5rem]',
+              ].join(' ')}
+            >
+              <span className="block">Tecnologia e cuidado</span>
+              <span className="block">para uma odontologia</span>
+              <span className="block">mais eficiente.</span>
             </h2>
-            <p className="login-sans mt-4 max-w-[28rem] text-[17px] leading-[1.55] font-normal text-white/88">
+            <p
+              className={[
+                'login-sans mt-3 max-w-[28rem] font-normal text-white/88',
+                'text-[15px] leading-[1.5] lg:text-[16px] lg:leading-[1.55]',
+                '[@media(max-height:820px)]:mt-2 [@media(max-height:820px)]:text-[14px]',
+                '[@media(max-height:720px)]:mt-1.5 [@media(max-height:720px)]:text-[13px]',
+              ].join(' ')}
+            >
               Gestão completa para clínicas odontológicas, em um só lugar.
             </p>
           </div>
 
-          <ul className="mt-12 grid gap-7">
+          <ul
+            className={[
+              'mt-8 grid gap-5 lg:mt-10 lg:gap-6',
+              '[@media(max-height:900px)]:mt-6 [@media(max-height:900px)]:gap-4',
+              '[@media(max-height:820px)]:mt-4 [@media(max-height:820px)]:gap-3',
+              '[@media(max-height:720px)]:mt-3 [@media(max-height:720px)]:gap-2.5',
+            ].join(' ')}
+          >
             {FEATURES.map((feature) => {
               const Icon = feature.icon;
               return (
-                <li key={feature.title} className="flex items-start gap-3.5">
+                <li key={feature.title} className="flex items-start gap-3">
                   <Icon
-                    className="mt-0.5 size-[22px] shrink-0 text-[#F0C4CA]"
+                    className="mt-0.5 size-5 shrink-0 text-[#F0C4CA] [@media(max-height:820px)]:size-[18px]"
                     strokeWidth={1.5}
                     aria-hidden
                   />
                   <div className="min-w-0">
-                    <p className="login-sans text-[16px] leading-snug font-semibold text-white">
+                    <p className="login-sans text-[15px] leading-snug font-semibold text-white [@media(max-height:820px)]:text-[14px]">
                       {feature.title}
                     </p>
-                    <p className="login-sans mt-1 text-[14px] leading-snug font-normal text-white/72">
+                    <p className="login-sans mt-0.5 text-[13px] leading-snug font-normal text-white/72 [@media(max-height:820px)]:text-[12px]">
                       {feature.description}
                     </p>
                   </div>
@@ -103,9 +138,15 @@ export function AuthBrandPanel() {
             })}
           </ul>
 
-          <div className="mt-auto pt-12">
-            <div className="mb-4 h-px w-full bg-white/25" aria-hidden />
-            <p className="login-sans text-[11px] font-medium tracking-[0.16em] text-white/78 uppercase">
+          <div
+            className={[
+              'mt-auto shrink-0 pt-8',
+              '[@media(max-height:820px)]:pt-4',
+              '[@media(max-height:700px)]:hidden',
+            ].join(' ')}
+          >
+            <div className="mb-3 h-px w-full bg-white/25" aria-hidden />
+            <p className="login-sans text-[11px] font-medium tracking-[0.14em] text-white/78 uppercase">
               Clínicas mais organizadas. Sorrisos mais saudáveis.
             </p>
           </div>

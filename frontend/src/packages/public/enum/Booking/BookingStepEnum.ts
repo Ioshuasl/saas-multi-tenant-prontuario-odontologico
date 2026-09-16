@@ -1,5 +1,4 @@
 export const BOOKING_STEPS = [
-  'procedure',
   'professional',
   'slot',
   'identity',
@@ -8,3 +7,6 @@ export const BOOKING_STEPS = [
 ] as const;
 
 export type BookingStep = (typeof BOOKING_STEPS)[number];
+
+/** Valor sentinela: qualquer profissional disponível no horário. */
+export const BOOKING_ANY_PROFESSIONAL = 'any';

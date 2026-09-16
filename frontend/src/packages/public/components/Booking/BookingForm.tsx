@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { BookingShell } from '@/packages/public/components/Booking/BookingShell';
 import { BookingStepIdentity } from '@/packages/public/components/Booking/BookingStepIdentity';
 import { BookingStepOtp } from '@/packages/public/components/Booking/BookingStepOtp';
-import { BookingStepProcedure } from '@/packages/public/components/Booking/BookingStepProcedure';
 import { BookingStepProfessional } from '@/packages/public/components/Booking/BookingStepProfessional';
 import { BookingStepSlot } from '@/packages/public/components/Booking/BookingStepSlot';
 import { BookingStepSuccess } from '@/packages/public/components/Booking/BookingStepSuccess';
-import type { BookingStep } from '@/packages/public/enum/Booking/BookingStepEnum';
+import {
+  BOOKING_ANY_PROFESSIONAL,
+  type BookingStep,
+} from '@/packages/public/enum/Booking/BookingStepEnum';
 import { addDaysYmd, ymdInTimeZone } from '@/packages/public/helpers/BookingTime';
 import { publicErrorMessage, suggestedSlotsFromError } from '@/packages/public/helpers/PublicErrorMessage';
 import { useBookingAvailabilityGetHook } from '@/packages/public/hooks/Booking/useBookingAvailabilityGetHook';
@@ -19,18 +21,20 @@ import { useBookingOtpFormHook } from '@/packages/public/hooks/Booking/useBookin
 import { useBookingVerifyHook } from '@/packages/public/hooks/Booking/useBookingVerifyHook';
 import type { BookingIdentityFormValues } from '@/packages/public/schemas/Booking/BookingSchema';
 import type { BookingFormProps } from '@/packages/public/types/Booking/BookingFormTypes';
-import type { BookingCreateResult, BookingVerifyResult } from '@/packages/public/types/Booking/BookingTypes';
+import type {
+  BookingCreateResult,
+  BookingVerifyResult,
+} from '@/packages/public/types/Booking/BookingTypes';
 import { ApiClientError } from '@/shared/api/api-client';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 import { Skeleton } from '@/shared/ui/skeleton';
 
 const STEP_META: Record<Exclude<BookingStep, 'success'>, { label: string; index: number }> = {
-  procedure: { label: 'Serviço', index: 1 },
-  professional: { label: 'Profissional', index: 2 },
-  slot: { label: 'Data e horário', index: 3 },
-  identity: { label: 'Seus dados', index: 4 },
-  otp: { label: 'Código de verificação', index: 5 },
+  professional: { label: 'Profissional', index: 1 },
+  slot: { label: 'Data e horário', index: 2 },
+  identity: { label: 'Seus dados', index: 3 },
+  otp: { label: 'Código de verificação', index: 4 },
 };
 
 export function BookingForm({ slug }: BookingFormProps) {
@@ -40,9 +44,9 @@ export function BookingForm({ slug }: BookingFormProps) {
   const create = useBookingCreateHook();
   const verify = useBookingVerifyHook();
 
-  const [step, setStep] = useState<BookingStep>('procedure');
-  const [procedureId, setProcedureId] = useState('');
-  const [professionalId, setProfessionalId] = useState('');
+  const [step, setStep] = useState<BookingStep>('professional');
+  const [professionalChoice, setProfessionalChoice] = useState('');
+  const [resolvedProfessionalId, setResolvedProfessionalId] = useState('');
   const [startsAt, setStartsAt] = useState('');
   const [rangeOffset, setRangeOffset] = useState(0);
   const [booking, setBooking] = useState<BookingCreateResult | null>(null);
@@ -57,56 +61,72 @@ export function BookingForm({ slug }: BookingFormProps) {
   const to = addDaysYmd(today, rangeOffset + 6);
   const skipProfessional = (clinic?.professionals.length ?? 0) <= 1;
 
+  const availabilityProfessionalIds = useMemo(() => {
+    if (!clinic) return [];
+    if (professionalChoice === BOOKING_ANY_PROFESSIONAL) {
+      return clinic.professionals.map((item) => item.id);
+    }
+    if (professionalChoice) return [professionalChoice];
+    return [];
+  }, [clinic, professionalChoice]);
+
   const availabilityQuery = useBookingAvailabilityGetHook({
     slug,
-    procedureId,
-    professionalId,
+    professionalIds: availabilityProfessionalIds,
     from,
     to,
-    enabled: Boolean(procedureId && professionalId) && (step === 'slot' || step === 'identity'),
+    enabled:
+      availabilityProfessionalIds.length > 0 && (step === 'slot' || step === 'identity'),
   });
 
   useEffect(() => {
-    if (step !== 'professional' || !clinic) return;
+    if (!clinic) return;
     if (clinic.professionals.length === 1) {
       const only = clinic.professionals[0];
       if (!only) return;
-      setProfessionalId(only.id);
-      setStep('slot');
+      setProfessionalChoice(only.id);
+      setResolvedProfessionalId(only.id);
+      if (step === 'professional') setStep('slot');
     }
-  }, [step, clinic]);
+  }, [clinic, step]);
 
-  const procedure = clinic?.procedures.find((item) => item.id === procedureId);
-  const professional = clinic?.professionals.find((item) => item.id === professionalId);
+  const professional = clinic?.professionals.find(
+    (item) => item.id === (resolvedProfessionalId || professionalChoice),
+  );
 
-  const visibleTotal = skipProfessional ? 4 : 5;
+  const visibleTotal = skipProfessional ? 3 : 4;
   const visibleIndex = useMemo(() => {
     if (step === 'success') return visibleTotal;
     const raw = STEP_META[step].index;
-    if (skipProfessional && raw > 2) return raw - 1;
+    if (skipProfessional && raw > 1) return raw - 1;
     return raw;
   }, [skipProfessional, step, visibleTotal]);
 
-  const goBackFromSlot = () => {
-    if (skipProfessional) {
-      setStep('procedure');
+  const onSelectSlot = (nextStartsAt: string) => {
+    setStartsAt(nextStartsAt);
+    if (professionalChoice === BOOKING_ANY_PROFESSIONAL) {
+      const owner = availabilityQuery.slotOwners.get(nextStartsAt);
+      setResolvedProfessionalId(owner ?? '');
       return;
     }
-    setStep('professional');
+    setResolvedProfessionalId(professionalChoice);
   };
 
   const onCreate = async (values: BookingIdentityFormValues) => {
+    const professionalId = resolvedProfessionalId || professionalChoice;
+    if (!professionalId || professionalId === BOOKING_ANY_PROFESSIONAL) return;
+
     setSlotAlert(null);
     setSuggestedSlots([]);
     try {
       const result = await create.mutateAsync({
         slug,
-        procedureId,
         professionalId,
         startsAt,
         name: values.name,
         phone: values.phone,
         email: values.email,
+        patientNote: values.patientNote?.trim() || null,
         consentDataProcessing: values.consentDataProcessing,
         consentTerms: values.consentTerms,
         consentWhatsappMarketing: values.consentWhatsappMarketing,
@@ -156,10 +176,27 @@ export function BookingForm({ slug }: BookingFormProps) {
           </AlertDescription>
         </Alert>
         {!notFound ? (
-          <Button type="button" size="lg" className="w-full" onClick={() => void clinicQuery.refetch()}>
+          <Button
+            type="button"
+            size="lg"
+            className="w-full cursor-pointer"
+            onClick={() => void clinicQuery.refetch()}
+          >
             Tentar novamente
           </Button>
         ) : null}
+      </BookingShell>
+    );
+  }
+
+  if (clinic.professionals.length === 0) {
+    return (
+      <BookingShell title={clinic.name}>
+        <Alert>
+          <AlertDescription>
+            Esta clínica ainda não possui profissionais disponíveis para agendamento online.
+          </AlertDescription>
+        </Alert>
       </BookingShell>
     );
   }
@@ -169,29 +206,26 @@ export function BookingForm({ slug }: BookingFormProps) {
   return (
     <BookingShell
       title={clinic.name}
-      description={step === 'success' ? undefined : 'Escolha o serviço e o horário em poucos passos.'}
+      description={
+        step === 'success'
+          ? undefined
+          : 'Reserve um horário. O dentista define o atendimento na consulta.'
+      }
       stepLabel={stepMeta ? `Passo ${visibleIndex} de ${visibleTotal} · ${stepMeta.label}` : undefined}
       progress={step === 'success' ? 100 : Math.round((visibleIndex / visibleTotal) * 100)}
     >
-      {step === 'procedure' ? (
-        <BookingStepProcedure
-          procedures={clinic.procedures}
-          selectedId={procedureId}
-          onSelect={setProcedureId}
-          onContinue={() => {
-            setProfessionalId(skipProfessional ? (clinic.professionals[0]?.id ?? '') : '');
-            setStep(skipProfessional ? 'slot' : 'professional');
-          }}
-        />
-      ) : null}
-
-      {step === 'professional' ? (
+      {step === 'professional' && !skipProfessional ? (
         <BookingStepProfessional
           professionals={clinic.professionals}
-          selectedId={professionalId}
-          onSelect={setProfessionalId}
-          onBack={() => setStep('procedure')}
-          onContinue={() => setStep('slot')}
+          selectedId={professionalChoice}
+          onSelect={setProfessionalChoice}
+          onContinue={() => {
+            setStartsAt('');
+            setResolvedProfessionalId(
+              professionalChoice === BOOKING_ANY_PROFESSIONAL ? '' : professionalChoice,
+            );
+            setStep('slot');
+          }}
         />
       ) : null}
 
@@ -200,16 +234,22 @@ export function BookingForm({ slug }: BookingFormProps) {
           timezone={timezone}
           days={availabilityQuery.data?.days ?? []}
           loading={availabilityQuery.isLoading}
-          errorMessage={availabilityQuery.isError ? publicErrorMessage(availabilityQuery.error) : null}
+          errorMessage={
+            availabilityQuery.isError ? publicErrorMessage(availabilityQuery.error) : null
+          }
           slotAlert={slotAlert}
           suggestedSlots={suggestedSlots}
           selectedStartsAt={startsAt}
           canGoBackRange={rangeOffset > 0}
-          onSelect={setStartsAt}
+          onSelect={onSelectSlot}
           onPrevRange={() => setRangeOffset((value) => Math.max(0, value - 7))}
           onNextRange={() => setRangeOffset((value) => value + 7)}
           onRetry={() => void availabilityQuery.refetch()}
-          onBack={goBackFromSlot}
+          onBack={() => {
+            if (skipProfessional) return;
+            setStep('professional');
+          }}
+          showBack={!skipProfessional}
           onContinue={() => setStep('identity')}
         />
       ) : null}
@@ -243,7 +283,6 @@ export function BookingForm({ slug }: BookingFormProps) {
         <BookingStepSuccess
           timezone={timezone}
           startsAt={verifyResult.appointment.startsAt}
-          procedureName={procedure?.name}
           professionalName={professional?.name}
           requested={verifyResult.appointment.status === 'REQUESTED'}
         />

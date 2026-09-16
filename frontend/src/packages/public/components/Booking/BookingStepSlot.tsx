@@ -19,6 +19,7 @@ type BookingStepSlotProps = {
   suggestedSlots?: string[];
   selectedStartsAt: string;
   canGoBackRange: boolean;
+  showBack?: boolean;
   onSelect: (startsAt: string) => void;
   onPrevRange: () => void;
   onNextRange: () => void;
@@ -36,6 +37,7 @@ export function BookingStepSlot({
   suggestedSlots = [],
   selectedStartsAt,
   canGoBackRange,
+  showBack = true,
   onSelect,
   onPrevRange,
   onNextRange,
@@ -77,9 +79,11 @@ export function BookingStepSlot({
         <Button type="button" size="lg" className="w-full" onClick={onRetry}>
           Tentar novamente
         </Button>
-        <Button type="button" variant="ghost" className="w-full" onClick={onBack}>
-          Voltar
-        </Button>
+        {showBack ? (
+          <Button type="button" variant="ghost" className="w-full" onClick={onBack}>
+            Voltar
+          </Button>
+        ) : null}
       </>
     );
   }
@@ -165,9 +169,11 @@ export function BookingStepSlot({
         <Button type="button" size="lg" className="w-full" disabled={!selectedStartsAt} onClick={onContinue}>
           Continuar
         </Button>
-        <Button type="button" variant="ghost" className="w-full" onClick={onBack}>
-          Voltar
-        </Button>
+        {showBack ? (
+          <Button type="button" variant="ghost" className="w-full" onClick={onBack}>
+            Voltar
+          </Button>
+        ) : null}
       </div>
     </>
   );

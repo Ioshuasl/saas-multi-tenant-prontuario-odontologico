@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { LinkIcon } from 'lucide-react';
 import { AgendaGrid } from '@/packages/operacional/components/Appointment/AgendaGrid';
 import { AgendaToolbar } from '@/packages/operacional/components/Appointment/AgendaToolbar';
 import { APPOINTMENT_STATUS_META } from '@/packages/operacional/enum/Appointment/AppointmentStatusEnum';
@@ -28,6 +29,8 @@ import type {
   AppointmentSummary,
 } from '@/packages/operacional/types/Appointment/AppointmentTypes';
 import { ApiClientError } from '@/shared/api/api-client';
+import { useAuth } from '@/shared/auth/AuthProvider';
+import { cn } from '@/shared/helpers/utils';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
@@ -37,7 +40,7 @@ import {
   CardFooter,
   CardHeader,
 } from '@/shared/ui/card';
-import { cn } from '@/shared/helpers/utils';
+import { toast } from '@/shared/ui/toast';
 
 const AppointmentDetailsDialog = dynamic(
   () =>
@@ -88,15 +91,20 @@ function defaultCreateSlot(anchor: Date, slotMinutes: SlotMinutes): {
 }
 
 export function AgendaIndex() {
+  const { tenant } = useAuth();
   const [viewMode, setViewMode] = useState<AgendaViewMode>('week');
   const [resourceMode, setResourceMode] = useState<AgendaResourceMode>('professional');
   const [anchor, setAnchor] = useState(() => new Date());
   const [slotMinutes, setSlotMinutes] = useState<SlotMinutes>(30);
   const [professionalId, setProfessionalId] = useState('');
   const [chairId, setChairId] = useState('');
-  const [createSlot, setCreateSlot] = useState<{ startsAt: string; endsAt: string } | null>(
-    null,
-  );
+  const [createSlot, setCreateSlot] = useState<{
+    startsAt: string;
+    endsAt: string;
+    patientId?: string;
+    patientLabel?: string;
+    professionalId?: string;
+  } | null>(null);
   const [selected, setSelected] = useState<AppointmentSummary | null>(null);
   const [blockOpen, setBlockOpen] = useState(false);
   const [waitlistOpen, setWaitlistOpen] = useState(false);
@@ -104,6 +112,7 @@ export function AgendaIndex() {
 
   const clinicSettingsQuery = useAgendaClinicSettingsHook();
   const chairsEnabled = clinicSettingsQuery.data?.chairsEnabled === true;
+  const tenantSlug = tenant?.slug ?? null;
 
   const professionalsQuery = useAgendaProfessionalListHook();
   const chairsQuery = useAgendaChairListHook({ enabled: chairsEnabled });
@@ -222,6 +231,26 @@ export function AgendaIndex() {
     setCreateSlot(defaultCreateSlot(anchor, slotMinutes));
   };
 
+  const onCopyPublicBookingLink = async () => {
+    if (!tenantSlug) return;
+    const url = `${window.location.origin}/agendar/${tenantSlug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.add({
+        type: 'success',
+        title: 'Link de agendamento copiado',
+        description: 'Envie para o paciente agendar sozinho.',
+        timeout: 4000,
+      });
+    } catch {
+      toast.add({
+        type: 'error',
+        title: 'Não foi possível copiar o link',
+        timeout: 4000,
+      });
+    }
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
       <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
@@ -233,14 +262,28 @@ export function AgendaIndex() {
               : 'Consultas do dia e da semana por profissional.'}
           </p>
         </div>
-        <Button
-          type="button"
-          className="cursor-pointer"
-          disabled={!resourceReady}
-          onClick={() => openCreate()}
-        >
-          Novo agendamento
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="cursor-pointer"
+            disabled={!tenantSlug}
+            onClick={() => {
+              void onCopyPublicBookingLink();
+            }}
+          >
+            <LinkIcon />
+            Copiar link público
+          </Button>
+          <Button
+            type="button"
+            className="cursor-pointer"
+            disabled={!resourceReady}
+            onClick={() => openCreate()}
+          >
+            Novo agendamento
+          </Button>
+        </div>
       </div>
 
       {resourceError ? (
@@ -336,18 +379,35 @@ export function AgendaIndex() {
         <AppointmentFormDialog
           open
           professionalId={
-            effectiveResourceMode === 'professional' ? professionalId : professionals[0]?.id
+            createSlot.professionalId ??
+            (effectiveResourceMode === 'professional' ? professionalId : professionals[0]?.id)
           }
           chairId={effectiveResourceMode === 'chair' ? chairId : undefined}
           professionals={professionals}
           startsAt={createSlot.startsAt}
           endsAt={createSlot.endsAt}
+          initialPatientId={createSlot.patientId}
+          initialPatientLabel={createSlot.patientLabel}
           onClose={() => setCreateSlot(null)}
         />
       ) : null}
 
       {selected ? (
-        <AppointmentDetailsDialog appointment={selected} onClose={() => setSelected(null)} />
+        <AppointmentDetailsDialog
+          appointment={selected}
+          onClose={() => setSelected(null)}
+          onReschedule={(appointment) => {
+            const slot = defaultCreateSlot(anchor, slotMinutes);
+            setCreateSlot({
+              ...slot,
+              patientId: appointment.patientId,
+              patientLabel: appointment.patient?.name
+                ? appointment.patient.name
+                : undefined,
+              professionalId: appointment.professionalId,
+            });
+          }}
+        />
       ) : null}
 
       {blockOpen ? (

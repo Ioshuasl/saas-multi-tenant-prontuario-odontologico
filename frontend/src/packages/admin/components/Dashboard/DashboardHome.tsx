@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   endOfDay,
   endOfMonth,
   format,
   getHours,
+  isSameDay,
   startOfDay,
   startOfMonth,
   subMonths,
@@ -39,6 +40,8 @@ import { useRevenueGetHook } from '@/packages/admin/hooks/Report/useRevenueGetHo
 import { useAuth } from '@/shared/auth/AuthProvider';
 import { hasPermission } from '@/shared/auth/permissions';
 
+const DAY_LIST_PAGE_SIZE = 8;
+
 function greetingLabel(now: Date): string {
   const hour = getHours(now);
   if (hour < 12) return 'Bom dia';
@@ -60,24 +63,35 @@ function percentChange(today: number, yesterday: number): number | null {
   return Math.round(((today - yesterday) / yesterday) * 100);
 }
 
+function dayListTitle(day: Date, today: Date): string {
+  if (isSameDay(day, today)) return 'Atendimentos de hoje';
+  return `Atendimentos de ${format(day, "d 'de' MMM", { locale: ptBR })}`;
+}
+
 export function DashboardHome() {
   const { user, me } = useAuth();
   const canFinancial = hasPermission(me, 'reports.financial');
   const canReports = hasPermission(me, 'reports.read');
   const canAgenda = hasPermission(me, 'agenda.read');
 
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
   const todayKey = format(today, 'yyyy-MM-dd');
-  const dayFrom = startOfDay(today).toISOString();
-  const dayTo = endOfDay(today).toISOString();
-  const monthFrom = startOfMonth(today).toISOString();
-  const monthTo = endOfMonth(today).toISOString();
+
+  const [selectedDay, setSelectedDay] = useState(() => startOfDay(new Date()));
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
+  const [listPage, setListPage] = useState(1);
+
+  const selectedKey = format(selectedDay, 'yyyy-MM-dd');
+  const dayFrom = startOfDay(selectedDay).toISOString();
+  const dayTo = endOfDay(selectedDay).toISOString();
+  const monthFrom = startOfMonth(calendarMonth).toISOString();
+  const monthTo = endOfMonth(calendarMonth).toISOString();
   const prevMonthEnd = endOfMonth(subMonths(today, 1));
   const prevMonthKey = format(prevMonthEnd, 'yyyy-MM-dd');
 
   const dashboard = useDashboardGetHook({}, canReports);
   const dashboardPrevMonth = useDashboardGetHook({ date: prevMonthKey }, canReports && canFinancial);
-  const appointments = useDashboardAppointmentListHook(
+  const dayAppointments = useDashboardAppointmentListHook(
     { from: dayFrom, to: dayTo },
     canAgenda,
   );
@@ -91,6 +105,10 @@ export function DashboardHome() {
   );
   const onboarding = useOnboardingGetHook();
 
+  useEffect(() => {
+    setListPage(1);
+  }, [selectedKey]);
+
   const role = me?.current.role;
   const firstName = displayFirstName(user?.name, role);
   const greet = greetingLabel(today);
@@ -100,20 +118,29 @@ export function DashboardHome() {
     ? '/app/onboarding'
     : '/app/configuracoes/clinica';
 
-  const upcoming = useMemo(() => {
-    return [...(appointments.data ?? [])]
-      .filter((row) => row.status !== 'CANCELLED' && row.status !== 'NO_SHOW')
-      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-      .slice(0, 5);
-  }, [appointments.data]);
+  const dayItems = useMemo(() => {
+    return [...(dayAppointments.data ?? [])].sort((a, b) =>
+      a.startsAt.localeCompare(b.startsAt),
+    );
+  }, [dayAppointments.data]);
+
+  const totalPages = Math.max(1, Math.ceil(dayItems.length / DAY_LIST_PAGE_SIZE));
+  const pageItems = useMemo(() => {
+    const page = Math.min(listPage, totalPages);
+    const start = (page - 1) * DAY_LIST_PAGE_SIZE;
+    return dayItems.slice(start, start + DAY_LIST_PAGE_SIZE);
+  }, [dayItems, listPage, totalPages]);
 
   const appointmentDates = useMemo(() => {
     return Array.from(
-      new Set((monthAppointments.data ?? []).map((row) => format(new Date(row.startsAt), 'yyyy-MM-dd'))),
+      new Set(
+        (monthAppointments.data ?? []).map((row) => format(new Date(row.startsAt), 'yyyy-MM-dd')),
+      ),
     );
   }, [monthAppointments.data]);
 
-  const agendaHref = dashboard.data?.drillDown.agenda ?? `/app/agenda?date=${todayKey}`;
+  const listAgendaHref = `/app/agenda?date=${selectedKey}`;
+  const metricAgendaHref = dashboard.data?.drillDown.agenda ?? `/app/agenda?date=${todayKey}`;
 
   const metrics = useMemo((): DashboardMetric[] => {
     const data = dashboard.data;
@@ -140,7 +167,7 @@ export function DashboardHome() {
         title: 'Agenda de hoje',
         value: String(agendaTotal),
         valueHint: agendaTotal === 1 ? 'atendimento' : 'atendimentos',
-        href: agendaHref,
+        href: metricAgendaHref,
         icon: CalendarDaysIcon,
         footer: (
           <MetricDotFooter color="green">
@@ -223,11 +250,11 @@ export function DashboardHome() {
 
     return list;
   }, [
-    agendaHref,
     canFinancial,
     canReports,
     dashboard.data,
     dashboardPrevMonth.data,
+    metricAgendaHref,
     monthAppointments.data,
     revenueToday.data,
   ]);
@@ -263,16 +290,33 @@ export function DashboardHome() {
         )
       ) : null}
 
-      <div className="grid min-h-0 min-w-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)] lg:items-stretch">
+      <div className="grid min-h-0 min-w-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16.5rem,20rem)] lg:items-start">
         <DashboardUpcomingAppointments
-          items={upcoming}
-          agendaHref={agendaHref}
-          loading={appointments.isLoading}
+          title={dayListTitle(selectedDay, today)}
+          items={pageItems}
+          total={dayItems.length}
+          page={Math.min(listPage, totalPages)}
+          totalPages={totalPages}
+          pageSize={DAY_LIST_PAGE_SIZE}
+          onPageChange={setListPage}
+          agendaHref={listAgendaHref}
+          loading={dayAppointments.isLoading}
+          emptyTitle={
+            isSameDay(selectedDay, today)
+              ? 'Nenhum atendimento hoje'
+              : 'Nenhum atendimento neste dia'
+          }
+          emptyDescription="Não há atendimentos registrados para a data selecionada."
         />
-        <div className="flex min-h-0 min-w-0 flex-col gap-3">
-          <DashboardMiniCalendar appointmentDates={appointmentDates} selected={today} />
+        <aside className="flex w-full min-w-0 flex-col gap-3 lg:max-w-[20rem]">
+          <DashboardMiniCalendar
+            appointmentDates={appointmentDates}
+            selected={selectedDay}
+            onSelectDay={(day) => setSelectedDay(startOfDay(day))}
+            onMonthChange={(month) => setCalendarMonth(startOfMonth(month))}
+          />
           <DashboardQuickActions />
-        </div>
+        </aside>
       </div>
 
       <p className="sr-only">

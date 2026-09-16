@@ -95,6 +95,7 @@ async function main() {
     console.info(`  convite pendente ${INVITE_EMAIL} (token dev: ${INVITE_RAW_TOKEN})`);
     console.info('  S5: categoria Procedimentos + orçamento DRAFT da Maria (3 itens)');
     console.info('  S6: categorias E7 + parcelas OPEN da Maria (aceite billing)');
+    console.info('  Agenda: 16 agendamentos (todos os status) + 7 entradas na fila de espera');
   } finally {
     await prisma.$disconnect();
   }

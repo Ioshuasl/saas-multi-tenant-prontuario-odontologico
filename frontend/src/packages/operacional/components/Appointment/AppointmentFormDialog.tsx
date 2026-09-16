@@ -54,6 +54,8 @@ export function AppointmentFormDialog({
   professionals = [],
   startsAt,
   endsAt,
+  initialPatientId,
+  initialPatientLabel,
   onClose,
 }: AppointmentFormDialogProps) {
   const form = useAppointmentCreateFormHook({
@@ -61,24 +63,35 @@ export function AppointmentFormDialog({
     chairId: chairId ?? '',
     startsAt,
     endsAt,
+    patientId: initialPatientId ?? '',
   });
   const create = useAppointmentCreateHook();
   const createSeries = useAppointmentSeriesCreateHook();
-  const [patientSearch, setPatientSearch] = useState('');
+  const [patientSearch, setPatientSearch] = useState(initialPatientLabel ?? '');
   const deferredSearch = useDeferredValue(patientSearch);
   const patientsQuery = usePatientListHook(deferredSearch, { active: 'true', limit: 30 });
   const lockProfessional = Boolean(professionalId) && !chairId;
 
   const patients = patientsQuery.data?.items ?? [];
-  const patientIds = useMemo(() => patients.map((p) => p.id), [patients]);
+  const patientIds = useMemo(() => {
+    const ids = patients.map((p) => p.id);
+    if (initialPatientId && !ids.includes(initialPatientId)) {
+      return [initialPatientId, ...ids];
+    }
+    return ids;
+  }, [patients, initialPatientId]);
   const patientLabelById = useMemo(() => {
     const map = new Map(patients.map((p) => [p.id, `#${p.code} ${p.name}`] as const));
-    return (id: string) => map.get(id) ?? id;
-  }, [patients]);
+    return (id: string) => {
+      if (map.has(id)) return map.get(id)!;
+      if (id === initialPatientId && initialPatientLabel) return initialPatientLabel;
+      return id;
+    };
+  }, [patients, initialPatientId, initialPatientLabel]);
 
   const handleForm = () => {
     form.reset({
-      patientId: '',
+      patientId: initialPatientId ?? '',
       professionalId: professionalId ?? '',
       chairId: chairId ?? '',
       startsAt,
@@ -87,12 +100,12 @@ export function AppointmentFormDialog({
       recurring: false,
       rruleFreq: 'WEEKLY',
     });
-    setPatientSearch('');
+    setPatientSearch(initialPatientLabel ?? '');
   };
 
   useEffect(() => {
     handleForm();
-  }, [professionalId, chairId, startsAt, endsAt, form]);
+  }, [professionalId, chairId, startsAt, endsAt, initialPatientId, initialPatientLabel, form]);
 
   const { sheetOpen, requestClose, onOpenChange, onOpenChangeComplete } = useSheetOpenState(
     open,

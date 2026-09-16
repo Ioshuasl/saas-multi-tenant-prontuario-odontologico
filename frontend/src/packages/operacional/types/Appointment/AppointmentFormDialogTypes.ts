@@ -10,5 +10,8 @@ export type AppointmentFormDialogProps = {
   chairs?: ChairOption[];
   startsAt: string;
   endsAt: string;
+  /** Prefill ao reagendar (ex.: após falta). */
+  initialPatientId?: string;
+  initialPatientLabel?: string;
   onClose: () => void;
 };

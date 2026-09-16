@@ -7,6 +7,7 @@ import { Button } from '@/shared/ui/button';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/field';
 import { Input } from '@/shared/ui/input';
+import { Textarea } from '@/shared/ui/textarea';
 
 type BookingStepIdentityProps = {
   form: UseFormReturn<BookingIdentityFormValues>;
@@ -56,6 +57,16 @@ export function BookingStepIdentity({
             {...form.register('email')}
           />
           <FieldError>{form.formState.errors.email?.message}</FieldError>
+        </Field>
+        <Field data-invalid={Boolean(form.formState.errors.patientNote)}>
+          <FieldLabel htmlFor="booking-note">O que te traz? (opcional)</FieldLabel>
+          <Textarea
+            id="booking-note"
+            rows={3}
+            placeholder="Ex.: dor no dente, limpeza, retorno…"
+            {...form.register('patientNote')}
+          />
+          <FieldError>{form.formState.errors.patientNote?.message}</FieldError>
         </Field>
         <Field data-invalid={Boolean(form.formState.errors.consentDataProcessing)}>
           <div className="flex items-start gap-2">
@@ -109,10 +120,16 @@ export function BookingStepIdentity({
         </Alert>
       ) : null}
 
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
+      <Button type="submit" size="lg" className="w-full cursor-pointer" disabled={pending}>
         {pending ? 'Enviando código…' : 'Enviar código'}
       </Button>
-      <Button type="button" variant="ghost" className="w-full" onClick={onBack} disabled={pending}>
+      <Button
+        type="button"
+        variant="ghost"
+        className="w-full cursor-pointer"
+        onClick={onBack}
+        disabled={pending}
+      >
         Voltar
       </Button>
     </form>

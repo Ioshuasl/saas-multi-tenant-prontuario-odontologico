@@ -61,19 +61,13 @@ function NavLink({
       prefetch={false}
       onClick={onNavigate}
       className={cn(
-        'group relative flex items-center gap-3 rounded-[10px] text-[13px] font-medium transition-colors',
+        'group flex items-center gap-3 rounded-[10px] text-[13px] font-medium transition-colors',
         nested ? 'px-3 py-2' : 'px-3 py-2',
         active
           ? 'bg-sidebar-accent text-sidebar-accent-foreground'
           : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground',
       )}
     >
-      {active ? (
-        <span
-          className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-sidebar-primary"
-          aria-hidden
-        />
-      ) : null}
       <Icon
         className={cn(
           'shrink-0 stroke-[1.5]',
@@ -119,18 +113,12 @@ function SettingsNavBranch({
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
         className={cn(
-          'group relative flex w-full cursor-pointer items-center gap-3 rounded-[10px] px-3 py-2 text-[13px] font-medium transition-colors',
+          'group flex w-full cursor-pointer items-center gap-3 rounded-[10px] px-3 py-2 text-[13px] font-medium transition-colors',
           parentActive
             ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
             : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground',
         )}
       >
-        {parentActive ? (
-          <span
-            className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-sidebar-primary"
-            aria-hidden
-          />
-        ) : null}
         <Icon
           className={cn(
             'size-4 shrink-0 stroke-[1.5]',
@@ -260,10 +248,7 @@ function SidebarBody({
           if (items.length === 0) return null;
 
           return (
-            <div key={group.id} className={cn(groupIndex > 0 && 'mt-3')}>
-              {groupIndex > 0 ? (
-                <div className="mx-2.5 mb-2.5 border-t border-sidebar-border" aria-hidden />
-              ) : null}
+            <div key={group.id} className={cn(groupIndex > 0 && 'mt-1')}>
               <ul className="flex flex-col gap-0.5">
                 {items.map((item) => {
                   const visibleChildren = (item.children ?? []).filter((child) => {

@@ -29,13 +29,16 @@ test.describe('Public booking (E4b)', () => {
     await page.goto(`/agendar/${slug}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
-    await page.getByRole('button', { name: /Consulta/ }).first().click();
-    await page.getByRole('button', { name: 'Continuar' }).click();
-
-    const dentist = page.getByRole('button', { name: 'Dra. Ana Souza' });
-    if (await dentist.isVisible().catch(() => false)) {
-      await dentist.click();
+    const anyProfessional = page.getByRole('button', { name: /Qualquer profissional/i });
+    if (await anyProfessional.isVisible().catch(() => false)) {
+      await anyProfessional.click();
       await page.getByRole('button', { name: 'Continuar' }).click();
+    } else {
+      const dentist = page.getByRole('button', { name: 'Dra. Ana Souza' });
+      if (await dentist.isVisible().catch(() => false)) {
+        await dentist.click();
+        await page.getByRole('button', { name: 'Continuar' }).click();
+      }
     }
 
     await pickFirstPublicSlot(page);
@@ -62,15 +65,20 @@ test.describe('Public booking (E4b)', () => {
 
     await page.goto(`/agendar/${slug}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.getByText('Escolha o serviço e o horário em poucos passos.')).toBeVisible();
+    await expect(
+      page.getByText(/Reserve um horário|dentista define o atendimento/i),
+    ).toBeVisible();
 
-    await page.getByRole('button', { name: /Consulta/ }).first().click();
-    await page.getByRole('button', { name: 'Continuar' }).click();
-
-    const dentist = page.getByRole('button', { name: 'Dra. Ana Souza' });
-    if (await dentist.isVisible().catch(() => false)) {
-      await dentist.click();
+    const anyProfessional = page.getByRole('button', { name: /Qualquer profissional/i });
+    if (await anyProfessional.isVisible().catch(() => false)) {
+      await anyProfessional.click();
       await page.getByRole('button', { name: 'Continuar' }).click();
+    } else {
+      const dentist = page.getByRole('button', { name: 'Dra. Ana Souza' });
+      if (await dentist.isVisible().catch(() => false)) {
+        await dentist.click();
+        await page.getByRole('button', { name: 'Continuar' }).click();
+      }
     }
 
     await pickFirstPublicSlot(page);
@@ -78,6 +86,7 @@ test.describe('Public booking (E4b)', () => {
     await page.getByLabel('Nome completo').fill(`Paciente Público ${stamp}`);
     await page.getByLabel('Telefone').fill(`6299${String(stamp).slice(-7)}`);
     await page.getByLabel('E-mail').fill(email);
+    await page.getByLabel(/O que te traz/i).fill('Limpeza');
     await page.getByRole('checkbox', { name: /Aceito o tratamento dos meus dados pessoais/i }).click();
     await page.getByRole('checkbox', { name: /Aceito os termos de uso/i }).click();
     await page.getByRole('button', { name: 'Enviar código' }).click();
@@ -88,7 +97,8 @@ test.describe('Public booking (E4b)', () => {
     await page.getByRole('button', { name: 'Confirmar agendamento' }).click();
 
     await expect(
-      page.getByText(/Aguarde a confirmação da clínica|Consulta agendada com sucesso/i),
+      page.getByText(/Pedido de horário enviado|Horário agendado com sucesso|Aguarde a confirmação/i),
     ).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/Consulta \/ avalia/i)).toBeVisible();
   });
 });

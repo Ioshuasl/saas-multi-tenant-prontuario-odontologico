@@ -25,8 +25,8 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/field';
 import { Input } from '@/shared/ui/input';
 
 /**
- * Login — tipografia em px (não rem) para não herdar o `html { font-size: 15px }`
- * e bater com `prototipos/login-clivra.png`.
+ * Login — tipografia em px (não rem) para não herdar o `html { font-size: 15px }`.
+ * Notebook/altura baixa: densifica gaps e tipografia para caber em 1 viewport.
  */
 export function LoginForm() {
   const router = useRouter();
@@ -41,44 +41,79 @@ export function LoginForm() {
   };
 
   return (
-    <div className="login-page grid min-h-dvh bg-[#F7F5F2] lg:grid-cols-[minmax(0,0.55fr)_minmax(0,0.45fr)]">
-      <div className="hidden lg:block">
+    <div
+      className={cn(
+        'login-page grid min-h-dvh bg-[#F7F5F2]',
+        'lg:h-dvh lg:max-h-dvh lg:grid-cols-[minmax(0,0.55fr)_minmax(0,0.45fr)] lg:overflow-hidden',
+      )}
+    >
+      <div className="hidden min-h-0 lg:block">
         <AuthBrandPanel />
       </div>
 
-      <main className="relative flex flex-col items-center justify-center px-6 py-10 sm:px-12 lg:px-16 lg:py-12">
-        <div className="mb-8 flex w-full max-w-[480px] justify-center lg:hidden">
+      <main
+        className={cn(
+          'relative flex flex-col items-center justify-center',
+          'px-6 py-8 sm:px-10 lg:min-h-0 lg:overflow-y-auto lg:px-12 lg:py-8',
+          'xl:px-16',
+          '[@media(max-height:820px)]:py-5 [@media(max-height:820px)]:justify-center',
+          '[@media(max-height:720px)]:py-4',
+        )}
+      >
+        <div className="mb-6 flex w-full max-w-[420px] justify-center lg:hidden">
           <ClivraLogo
-            size={34}
-            wordmarkClassName="login-display text-[22px] font-semibold text-primary"
+            size={32}
+            wordmarkClassName="login-display text-[20px] font-semibold text-primary"
           />
         </div>
 
-        <div className="w-full max-w-[480px]">
-          <div className="mb-9">
-            <div className="mb-5 h-0.5 w-11 bg-primary" aria-hidden />
-            <p className="login-sans mb-2 text-[14px] font-medium text-primary">
+        <div className="w-full max-w-[420px]">
+          <div
+            className={cn(
+              'mb-7',
+              '[@media(max-height:820px)]:mb-4',
+              '[@media(max-height:720px)]:mb-3',
+            )}
+          >
+            <div className="mb-4 h-0.5 w-10 bg-primary [@media(max-height:820px)]:mb-3" aria-hidden />
+            <p className="login-sans mb-1.5 text-[13px] font-medium text-primary lg:text-[14px]">
               Bem-vindo de volta
             </p>
-            <h1 className="login-display text-[40px] leading-[1.12] font-semibold text-[#1A1A1A]">
+            <h1
+              className={cn(
+                'login-display font-semibold text-[#1A1A1A]',
+                'text-[clamp(1.75rem,2vw+1rem,2.25rem)] leading-[1.15]',
+                '[@media(max-height:820px)]:text-[1.75rem]',
+                '[@media(max-height:720px)]:text-[1.5rem]',
+              )}
+            >
               Acesse sua conta
             </h1>
-            <p className="login-sans mt-3 text-[15px] leading-[1.55] text-[#6B6663]">
+            <p
+              className={cn(
+                'login-sans mt-2 text-[14px] leading-snug text-[#6B6663] lg:text-[15px]',
+                '[@media(max-height:820px)]:mt-1.5 [@media(max-height:820px)]:text-[13px]',
+              )}
+            >
               Informe seus dados para continuar com o Clivra.
             </p>
           </div>
 
           <form
-            className="grid gap-5"
+            className={cn(
+              'grid gap-4',
+              '[@media(max-height:820px)]:gap-3',
+              '[@media(max-height:720px)]:gap-2.5',
+            )}
             onSubmit={(e) => {
               void form.handleSubmit(onSave)(e);
             }}
           >
-            <FieldGroup className="gap-5">
+            <FieldGroup className="gap-4 [@media(max-height:820px)]:gap-3">
               <Field data-invalid={Boolean(form.formState.errors.email)}>
                 <FieldLabel
                   htmlFor="email"
-                  className="login-sans text-[14px] font-semibold text-[#2A2A2A]"
+                  className="login-sans text-[13px] font-semibold text-[#2A2A2A] lg:text-[14px]"
                 >
                   E-mail
                 </FieldLabel>
@@ -94,8 +129,9 @@ export function LoginForm() {
                     autoComplete="email"
                     placeholder="seu@email.com"
                     className={cn(
-                      'login-sans h-12 rounded-[10px] border-[#DDD8D3] bg-[#F3F0EC] pl-10 text-[15px] shadow-none md:text-[15px]',
+                      'login-sans h-11 rounded-[10px] border-[#DDD8D3] bg-[#F3F0EC] pl-10 text-[15px] shadow-none md:text-[15px]',
                       'placeholder:text-[#9A948E] focus-visible:border-secondary focus-visible:bg-white',
+                      '[@media(max-height:820px)]:h-10',
                     )}
                     {...form.register('email')}
                   />
@@ -106,7 +142,7 @@ export function LoginForm() {
               <Field data-invalid={Boolean(form.formState.errors.password)}>
                 <FieldLabel
                   htmlFor="password"
-                  className="login-sans text-[14px] font-semibold text-[#2A2A2A]"
+                  className="login-sans text-[13px] font-semibold text-[#2A2A2A] lg:text-[14px]"
                 >
                   Senha
                 </FieldLabel>
@@ -122,8 +158,9 @@ export function LoginForm() {
                     autoComplete="current-password"
                     placeholder="Digite sua senha"
                     className={cn(
-                      'login-sans h-12 rounded-[10px] border-[#DDD8D3] bg-[#F3F0EC] pr-11 pl-10 text-[15px] shadow-none md:text-[15px]',
+                      'login-sans h-11 rounded-[10px] border-[#DDD8D3] bg-[#F3F0EC] pr-11 pl-10 text-[15px] shadow-none md:text-[15px]',
                       'placeholder:text-[#9A948E] focus-visible:border-secondary focus-visible:bg-white',
+                      '[@media(max-height:820px)]:h-10',
                     )}
                     {...form.register('password')}
                   />
@@ -143,7 +180,7 @@ export function LoginForm() {
             </FieldGroup>
 
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <label className="login-sans flex cursor-pointer items-center gap-2.5 text-[14px] text-[#4A4540]">
+              <label className="login-sans flex cursor-pointer items-center gap-2.5 text-[13px] text-[#4A4540] lg:text-[14px]">
                 <Checkbox
                   checked={rememberMe}
                   onCheckedChange={(checked) => setRememberMe(checked === true)}
@@ -152,7 +189,7 @@ export function LoginForm() {
                 Lembrar de mim
               </label>
               <Link
-                className="login-sans text-[14px] font-semibold text-primary underline-offset-4 hover:underline"
+                className="login-sans text-[13px] font-semibold text-primary underline-offset-4 hover:underline lg:text-[14px]"
                 href="/forgot-password"
               >
                 Esqueceu sua senha?
@@ -168,15 +205,18 @@ export function LoginForm() {
             <Button
               type="submit"
               disabled={login.isPending}
-              className="login-sans mt-1 h-12 cursor-pointer gap-2 rounded-[10px] bg-primary text-[15px] font-semibold text-primary-foreground hover:bg-[#3A0C12]"
+              className={cn(
+                'login-sans h-11 cursor-pointer gap-2 rounded-[10px] bg-primary text-[15px] font-semibold text-primary-foreground hover:bg-[#3A0C12]',
+                '[@media(max-height:820px)]:h-10',
+              )}
             >
               {login.isPending ? 'Entrando…' : 'Entrar'}
               {!login.isPending ? <ArrowRightIcon className="size-4" aria-hidden /> : null}
             </Button>
 
-            <div className="relative my-1 py-2">
+            <div className="relative py-1 [@media(max-height:720px)]:py-0.5">
               <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[#E5E1DC]" />
-              <span className="login-sans relative mx-auto block w-fit bg-[#F7F5F2] px-3 text-[13px] text-[#8A847E]">
+              <span className="login-sans relative mx-auto block w-fit bg-[#F7F5F2] px-3 text-[12px] text-[#8A847E] lg:text-[13px]">
                 ou
               </span>
             </div>
@@ -185,14 +225,23 @@ export function LoginForm() {
               variant="outline"
               nativeButton={false}
               render={<Link href="/signup" />}
-              className="login-sans h-12 justify-center gap-2.5 rounded-[10px] border-[#DDD8D3] bg-white text-[15px] font-medium text-[#2A2A2A] hover:bg-[#F3F0EC]"
+              className={cn(
+                'login-sans h-11 justify-center gap-2.5 rounded-[10px] border-[#DDD8D3] bg-white text-[15px] font-medium text-[#2A2A2A] hover:bg-[#F3F0EC]',
+                '[@media(max-height:820px)]:h-10',
+              )}
             >
               <UserPlusIcon className="size-4 text-primary" strokeWidth={1.75} aria-hidden />
               Criar sua conta
             </Button>
           </form>
 
-          <p className="login-sans mt-9 text-center text-[13px] text-[#6B6663]">
+          <p
+            className={cn(
+              'login-sans mt-6 text-center text-[12px] text-[#6B6663] lg:mt-7 lg:text-[13px]',
+              '[@media(max-height:820px)]:mt-4',
+              '[@media(max-height:700px)]:hidden',
+            )}
+          >
             Não tem uma conta? Entre em contato com sua clínica.
           </p>
         </div>

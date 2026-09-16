@@ -21,6 +21,7 @@ type DashboardMiniCalendarProps = {
   appointmentDates?: string[];
   selected?: Date;
   onSelectDay?: (day: Date) => void;
+  onMonthChange?: (month: Date) => void;
 };
 
 const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
@@ -34,8 +35,9 @@ export function DashboardMiniCalendar({
   appointmentDates = [],
   selected,
   onSelectDay,
+  onMonthChange,
 }: DashboardMiniCalendarProps) {
-  const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
+  const [cursor, setCursor] = useState(() => startOfMonth(selected ?? new Date()));
   const today = new Date();
 
   const days = useMemo(() => {
@@ -46,34 +48,40 @@ export function DashboardMiniCalendar({
 
   const appointmentSet = useMemo(() => new Set(appointmentDates), [appointmentDates]);
 
+  const goToMonth = (next: Date) => {
+    const month = startOfMonth(next);
+    setCursor(month);
+    onMonthChange?.(month);
+  };
+
   return (
-    <section className="flex min-h-0 flex-1 flex-col rounded-[14px] border border-border bg-card p-4 shadow-clivra-sm">
-      <header className="mb-3 flex shrink-0 items-center gap-2">
+    <section className="flex w-full shrink-0 flex-col overflow-hidden rounded-[14px] border border-border bg-card p-3.5 shadow-clivra-sm sm:p-4">
+      <header className="mb-2.5 flex items-center gap-2">
         <CalendarDaysIcon className="size-4 text-primary" strokeWidth={1.6} />
         <h2 className="text-[15px] font-semibold text-primary">Calendário</h2>
       </header>
 
-      <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
+      <div className="mb-2.5 flex items-center justify-between gap-2">
         <button
           type="button"
-          className="inline-flex size-8 items-center justify-center rounded-lg text-primary transition-colors hover:bg-muted"
+          className="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg text-primary transition-colors hover:bg-muted"
           aria-label="Mês anterior"
-          onClick={() => setCursor((d) => subMonths(d, 1))}
+          onClick={() => goToMonth(subMonths(cursor, 1))}
         >
           <ChevronLeftIcon className="size-4" strokeWidth={1.8} />
         </button>
         <p className="text-[13px] font-semibold text-foreground">{monthTitle(cursor)}</p>
         <button
           type="button"
-          className="inline-flex size-8 items-center justify-center rounded-lg text-primary transition-colors hover:bg-muted"
+          className="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg text-primary transition-colors hover:bg-muted"
           aria-label="Próximo mês"
-          onClick={() => setCursor((d) => addMonths(d, 1))}
+          onClick={() => goToMonth(addMonths(cursor, 1))}
         >
           <ChevronRightIcon className="size-4" strokeWidth={1.8} />
         </button>
       </div>
 
-      <div className="grid flex-1 grid-cols-7 content-start gap-y-1 text-center">
+      <div className="grid grid-cols-7 gap-y-0.5 text-center">
         {WEEKDAYS.map((day) => (
           <span
             key={day}
@@ -95,11 +103,14 @@ export function DashboardMiniCalendar({
               disabled={!inMonth}
               onClick={() => onSelectDay?.(day)}
               className={cn(
-                'relative mx-auto flex size-8 items-center justify-center rounded-full text-[13px] tabular-nums transition-colors',
-                !inMonth && 'text-muted-foreground/40',
+                'relative mx-auto flex size-7 cursor-pointer items-center justify-center rounded-full text-[12px] tabular-nums transition-colors sm:size-8 sm:text-[13px]',
+                !inMonth && 'cursor-default text-muted-foreground/40',
                 inMonth && !isToday && 'font-medium text-foreground hover:bg-muted',
                 isToday && 'bg-primary font-semibold text-primary-foreground',
-                selected && isSameDay(day, selected) && !isToday && 'ring-2 ring-primary/25',
+                selected &&
+                  isSameDay(day, selected) &&
+                  !isToday &&
+                  'bg-primary/12 font-semibold text-primary ring-2 ring-primary/30',
               )}
             >
               {format(day, 'd')}
@@ -111,7 +122,7 @@ export function DashboardMiniCalendar({
         })}
       </div>
 
-      <ul className="mt-3 flex shrink-0 flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground">
+      <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground">
         <li className="inline-flex items-center gap-1.5">
           <span className="size-1.5 rounded-full bg-primary" />
           Atendimentos
